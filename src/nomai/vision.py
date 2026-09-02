@@ -601,20 +601,28 @@ def assign_rows(columns, centers, thetas, ncols):
         trace.append(nxt)
         best = nxt
 
-    chain = {}
-    cur = min(best, key=lambda s: best[s][0])
-    for i in range(ncols, 1, -1):
-        chain[i] = cur
-        cur = trace[i - 2][cur][1]
-    chain[1] = states[1][0]
+    def chain_from(end):
+        chain, cur = {}, end
+        for i in range(ncols, 1, -1):
+            chain[i] = cur
+            cur = trace[i - 2][cur][1]
+        chain[1] = states[1][0]
+        rows = {}
+        for i in range(1, ncols + 1):
+            lo, hi = chain[i]
+            members = per_col[i]
+            rows[members[0]] = lo
+            rows[members[-1]] = hi
+        return rows
 
-    rows = {}
-    for i in range(1, ncols + 1):
-        lo, hi = chain[i]
-        members = per_col[i]
-        rows[members[0]] = lo
-        rows[members[-1]] = hi
-    return rows, per_col
+    # The runners-up were being thrown away, and for a very short drawing one of them
+    # is sometimes right. Three turns using only two rows can sit on {1,2} or {2,3}:
+    # same glyphs, same transitions, column one still on the midline, and the
+    # geometric difference is about one row gap sheared across a drawing too small for
+    # the fit to resolve it. So keep the best chain ending at *each* terminal state --
+    # at most three of them -- and let the decoder, which is an exact test, say which.
+    order = sorted(best, key=lambda s: best[s][0])
+    return chain_from(order[0]), per_col, [chain_from(s) for s in order[1:]]
 
 
 def solve_rotations(columns, centers, fits, ncols, turn_weight: float = 3.0):
@@ -899,10 +907,19 @@ def analyze(path) -> "Observation":
 
 
 def observe(strokes) -> "Observation":
-    """One spiral's strokes -> its Observation.
+    """One spiral's strokes -> its Observation."""
+    return observe_all(strokes)[0]
+
+
+def observe_all(strokes) -> list:
+    """One spiral's strokes -> the readings of its rows, best first.
 
     Split out of `analyze` so a scroll can hand this each of its spirals in turn once
     it has cut them apart; a plain drawing takes exactly the path it always did.
+
+    There is more than one entry only when the row assignment is genuinely undecided,
+    which happens on drawings too small for the geometry to settle it. The decoder is
+    the exact test that does.
     """
     from .decode import Observation
 
@@ -934,7 +951,7 @@ def observe(strokes) -> "Observation":
     centers = {k: fits[k][0].origin for k in clusters}
     thetas = solve_rotations(columns, centers, fits, ncols)
 
-    rows, _per_col = assign_rows(columns, centers, thetas, ncols)
+    rows, _per_col, alt_rows = assign_rows(columns, centers, thetas, ncols)
     rows = refine_rows(columns, rows, centers, ncols)
 
     # With columns and rows known the layout is fully determined up to one global
@@ -963,22 +980,39 @@ def observe(strokes) -> "Observation":
                 near, key=lambda f: (_angdiff(f.theta, thetas[columns[k]]), f.resid)
             )
 
-    coord = {k: (columns[k], rows[k]) for k in clusters}
-    glyphs = {coord[k]: chosen[k].gid for k in clusters}
-
-    paths = [[], []]
-    for i in range(1, ncols + 1):
-        js = sorted(rows[k] for k in clusters if columns[k] == i)
-        paths[0].append((i, js[0]))
-        paths[1].append((i, js[-1]))
-
     vmaps = {k: vertex_map(clusters[k], chosen[k]) for k in clusters}
-    conns = {}
-    for ka, pa, kb, pb in connections:
-        if columns[ka] > columns[kb]:
-            ka, pa, kb, pb = kb, pb, ka, pa
-        ga = KNOWN_GLYPHS[chosen[ka].gid - 1].allpoints
-        gb = KNOWN_GLYPHS[chosen[kb].gid - 1].allpoints
-        conns[(coord[ka], coord[kb])] = (ga[vmaps[ka][pa]], gb[vmaps[kb][pb]])
 
-    return Observation(glyphs=glyphs, paths=paths, connections=conns)
+    def assemble(rowmap):
+        """The same drawing, read with one particular set of rows.
+
+        Only the coordinates change: which glyph is which and where each connection
+        lands were settled without reference to the rows, so an alternative is a
+        relabelling and nothing has to be recomputed.
+        """
+        coord = {k: (columns[k], rowmap[k]) for k in clusters}
+        paths = [[], []]
+        for i in range(1, ncols + 1):
+            js = sorted(rowmap[k] for k in clusters if columns[k] == i)
+            paths[0].append((i, js[0]))
+            paths[1].append((i, js[-1]))
+        conns = {}
+        for ka, pa, kb, pb in connections:
+            if columns[ka] > columns[kb]:
+                ka, pa, kb, pb = kb, pb, ka, pa
+            ga = KNOWN_GLYPHS[chosen[ka].gid - 1].allpoints
+            gb = KNOWN_GLYPHS[chosen[kb].gid - 1].allpoints
+            conns[(coord[ka], coord[kb])] = (ga[vmaps[ka][pa]], gb[vmaps[kb][pb]])
+        return Observation(
+            glyphs={coord[k]: chosen[k].gid for k in clusters},
+            paths=paths,
+            connections=conns,
+        )
+
+    out = [assemble(rows)]
+    seen = {tuple(sorted(rows.items(), key=lambda kv: str(kv[0])))}
+    for alt in alt_rows:
+        key = tuple(sorted(alt.items(), key=lambda kv: str(kv[0])))
+        if key not in seen:
+            seen.add(key)
+            out.append(assemble(alt))
+    return out

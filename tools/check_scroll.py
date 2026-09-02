@@ -7,7 +7,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from nomai.codec import write  # noqa: E402
-from nomai.decode import decode_strict, x_to_record  # noqa: E402
+from nomai.codec import read_strict  # noqa: E402
+from nomai.decode import x_to_record  # noqa: E402
 from nomai.glyphs import KNOWN_GLYPHS  # noqa: E402
 from nomai.oracle import STRICT  # noqa: E402
 from nomai.scroll import (  # noqa: E402
@@ -56,7 +57,7 @@ for name, spec in CASES.items():
                 obs, edges, joins = analyze_scroll(svg)
                 got, parents = [], []
                 for o in obs:
-                    r = decode_strict(o, bases=(BASE,))
+                    r = read_strict(o, bases=(BASE,))
                     if len(r) != 1:
                         got.append(None)
                         parents.append(None)

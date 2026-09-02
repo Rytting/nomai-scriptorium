@@ -130,8 +130,7 @@ ways.
 * Works in the browser with no server: write, render, read, translate.
 * Reference implementation in Python, including scrolls, plus a JS port for the page.
   `python tools/check_scroll.py` writes four conversation shapes across both windings
-  and three tightnesses and reads them back: 21 of 24, the three failures being the
-  same per-drawing limits the single-spiral reader has.
+  and three tightnesses and reads them back: 22 of 24.
 * Known limits: a few drawings still fail to read at one winding — the page warns you
   when it has made one of those, since it can tell — and heavy handwriting degrades it.
 

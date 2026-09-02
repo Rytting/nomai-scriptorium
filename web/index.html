@@ -851,8 +851,10 @@ function soloSVG(grid, amount, seed, L){
    nonce search makes, and it is exact -- the recovered grid either matches the one
    written or it does not. */
 function readsBack(grid, amount, seed, L){
-  try { return sameGrid(analyze(soloSVG(grid, amount, seed, L)), grid); }
-  catch (e){ return false; }
+  try {
+    return observeAll(parseSVG(soloSVG(grid, amount, seed, L)).strokes)
+      .some(o => sameGrid(o, grid));
+  } catch (e){ return false; }
 }
 function nearestPair(a, b){
   let best = null;
@@ -1612,7 +1614,7 @@ function readDrawing(text, name){
   let scroll, obs;
   try {
     scroll = analyzeScroll(text);
-    obs = scroll.spirals[0];
+    obs = scroll.spirals[0][0];
   }
   catch (err){ return fail(err.message); }
   if (obs.fit){
@@ -1629,7 +1631,7 @@ function readDrawing(text, name){
   /* one alphabet for the whole scroll: they were written together */
   let base = null, per = scroll.spirals.map(() => []);
   for (const b of [256, 200000]){
-    const got = scroll.spirals.map(o => { try { return readStrict(o, b); } catch (err){ return []; } });
+    const got = scroll.spirals.map(cands => readAny(cands, b));
     if (got.some(r => r.length)){ per = got; base = b; break; }
   }
   const firsts = per.map(r => r[0] || null);
@@ -1638,8 +1640,8 @@ function readDrawing(text, name){
     ? checkTree(scroll.edges, parents, firsts.length) : null;
   $("stats").innerHTML = [
     scroll.spirals.length > 1 ? ["spirals", scroll.spirals.length] : null,
-    ["glyphs", scroll.spirals.reduce((a, o) => a + o.glyphs.size, 0)],
-    ["turns", scroll.spirals.reduce((a, o) => a + o.ncols, 0)],
+    ["glyphs", scroll.spirals.reduce((a, o) => a + o[0].glyphs.size, 0)],
+    ["turns", scroll.spirals.reduce((a, o) => a + o[0].ncols, 0)],
     scroll.spirals.length > 1 ? ["replies", scroll.joins.length]
                               : ["joins", obs.conns.length],
     ["alphabet", base === null ? "-" : (base === 256 ? "Latin" : "any")]
@@ -1700,7 +1702,7 @@ function selectSpiral(i){
   state.sel = i;
   tprog = 0; thold = false;
   if (traf){ cancelAnimationFrame(traf); traf = null; }
-  const o = state.pending.obs && state.pending.obs[i];
+  const o = state.pending.obs && state.pending.obs[i] && state.pending.obs[i][0];
   /* the beams ride the spiral you are pointing at, and nothing else */
   state.track = o && o.fit ? trackFromFit(o.ncols, o.fit) : state.track;
   walkers = [];

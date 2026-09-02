@@ -66,9 +66,9 @@ spiral it answers, which is used to check the tree the geometry gives rather tha
 supply it.
 
 `python tools/check_scroll.py` round trips four conversation shapes across both
-windings and three tightnesses: 21 of 24. The three that fail are the same per-drawing
-limits the single-spiral reader has, on the root spiral, whose winding and coil the
-layout is not free to change.
+windings and three tightnesses: 22 of 24. The two that fail are drawings that cannot
+be read at the winding and coil asked for, and are either the root -- whose winding and
+coil the layout is not free to change -- or a reply for which no placement helped.
 
 ## Handwriting
 
@@ -104,7 +104,7 @@ python tools/validate.py             # port, ask sequence, decoder: 12/12
 python tools/strict_roundtrip.py     # strict dialect round trip: 600/600
 python tools/batch_svg.py            # SVG in, text out, across the corpus
 python tools/check_shape.py          # tilt, winding, tightness: 72/72
-python tools/check_scroll.py         # conversations, written and read back: 21/24
+python tools/check_scroll.py         # conversations, written and read back: 22/24
 ```
 
 Run them from PowerShell — Git Bash's cp1252 console cannot print the CJK in the

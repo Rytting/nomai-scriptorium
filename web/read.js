@@ -589,16 +589,29 @@ function assignRows(columns, centers, thetas, ncols){
     if (!nxt.size) throw new Error("no row assignment survives at column " + i);
     trace.push(nxt); best = nxt;
   }
-  const chain = new Map();
-  let cur = [...best.keys()].reduce((x, y) => best.get(y).cost < best.get(x).cost ? y : x);
-  for (let i = ncols; i > 1; i--){ chain.set(i, trace[i - 2].get(cur).st); cur = trace[i - 2].get(cur).prev; }
-  chain.set(1, states.get(1)[0]);
-  const rows = new Map();
-  for (let i = 1; i <= ncols; i++){
-    const ms = perCol.get(i), [lo, hi] = chain.get(i);
-    rows.set(ms[0], lo); rows.set(ms[ms.length - 1], hi);
-  }
-  return { rows, perCol };
+  /* The runners-up were being thrown away, and on a very short drawing one of them
+     is sometimes right. Three turns using only two rows can sit on {1,2} or {2,3}:
+     same glyphs, same transitions, column one still on the midline, and the geometric
+     difference is about one row gap sheared across a drawing too small for the fit to
+     resolve. So keep the best chain ending at *each* terminal state -- at most three
+     of them -- and let the decoder, which is an exact test, say which. */
+  const chainFrom = end => {
+    const chain = new Map();
+    let cur = end;
+    for (let i = ncols; i > 1; i--){
+      chain.set(i, trace[i - 2].get(cur).st);
+      cur = trace[i - 2].get(cur).prev;
+    }
+    chain.set(1, states.get(1)[0]);
+    const rows = new Map();
+    for (let i = 1; i <= ncols; i++){
+      const ms = perCol.get(i), [lo, hi] = chain.get(i);
+      rows.set(ms[0], lo); rows.set(ms[ms.length - 1], hi);
+    }
+    return rows;
+  };
+  const order = [...best.keys()].sort((a, b) => best.get(a).cost - best.get(b).cost);
+  return { rows: chainFrom(order[0]), perCol, alts: order.slice(1).map(chainFrom) };
 }
 
 /* re-decide rows against the fitted layout: a wrong row lands a full gap away from
@@ -664,6 +677,18 @@ const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 function analyze(svgText){
   return observe(parseSVG(svgText).strokes);
 }
+/* Exactly one reading, from whichever candidate reading of the rows works. A wrong
+   row placement fails loudly -- a join landing on no vertex, say -- and that is the
+   signal wanted rather than an error to pass on. */
+function readAny(cands, base){
+  for (const o of (Array.isArray(cands) ? cands : [cands])){
+    try {
+      const got = readStrict(o, base);
+      if (got.length === 1) return got;
+    } catch (e){ /* try the next reading of the rows */ }
+  }
+  return [];
+}
 /* Every spiral in a scroll, innermost-rooted first, with the joins that held them
    together. One spiral in, one observation out -- so a plain drawing takes the same
    path it always did. */
@@ -671,7 +696,8 @@ function analyzeScroll(svgText){
   const { strokes, dots } = parseSVG(svgText);
   if (strokes.length < 2) throw new Error("no Nomai strokes found in that file");
   const { groups, joins } = splitScroll(strokes, dots);
-  return { spirals: groups.map(observe), joins, groups, edges: joinEdges(groups, joins) };
+  return { spirals: groups.map(observeAll), joins, groups,
+           edges: joinEdges(groups, joins) };
 }
 /* Which two spirals each join actually holds together. Its endpoints sit on glyph
    vertices, bit-identically, so this is a lookup and not a nearest-neighbour guess. */
@@ -710,7 +736,11 @@ function checkTree(edges, parents, count){
   }
   return { ok: true };
 }
-function observe(strokes){
+/* One spiral's strokes -> the readings of its rows, best first. There is more than
+   one only when the row assignment is genuinely undecided, which happens on drawings
+   too small for the geometry to settle it; the decoder is the exact test that does. */
+function observe(strokes){ return observeAll(strokes)[0]; }
+function observeAll(strokes){
   if (strokes.length < 2) throw new Error("no Nomai strokes found in that file");
   const { clusters, conns } = decompose(strokes);
   const fits = new Map();
@@ -729,8 +759,9 @@ function observe(strokes){
   const ncols = Math.max(...columns.values());
   const centers = new Map([...clusters.keys()].map(k => [k, fits.get(k)[0].origin]));
   const thetas = solveRotations(columns, centers, fits, ncols);
-  let { rows } = assignRows(columns, centers, thetas, ncols);
-  rows = refineRows(columns, rows, centers, ncols);
+  const assigned = assignRows(columns, centers, thetas, ncols);
+  const altRows = assigned.alts;
+  let rows = refineRows(columns, assigned.rows, centers, ncols);
 
   const chosen = new Map();
   const placed = globalPlacement(columns, rows, centers, ncols);
@@ -748,27 +779,45 @@ function observe(strokes){
       chosen.set(k, near[0]);
     }
   }
-  const coord = new Map([...clusters.keys()].map(k => [k, [columns.get(k), rows.get(k)]]));
-  const glyphs = new Map();
-  for (const k of clusters.keys()) glyphs.set(coord.get(k).join(","), chosen.get(k).gid);
-  const paths = [[], []];
-  for (let i = 1; i <= ncols; i++){
-    const js = [...clusters.keys()].filter(k => columns.get(k) === i).map(k => rows.get(k)).sort();
-    paths[0].push([i, js[0]]); paths[1].push([i, js[js.length - 1]]);
-  }
   const vmaps = new Map([...clusters.keys()].map(k => [k, vertexMap(clusters.get(k), chosen.get(k))]));
-  const conns2 = [];
-  for (let c of conns){
-    let { ka, pa, kb, pb } = c;
-    if (columns.get(ka) > columns.get(kb)) [ka, pa, kb, pb] = [kb, pb, ka, pa];
-    const ga = allpoints(G.glyphs[chosen.get(ka).gid - 1]);
-    const gb = allpoints(G.glyphs[chosen.get(kb).gid - 1]);
-    const ia = vmaps.get(ka).get(pkey(pa)), ib = vmaps.get(kb).get(pkey(pb));
-    if (ia === undefined || ib === undefined) throw new Error("a join lands on no vertex");
-    conns2.push({ a: coord.get(ka), pa: ga[ia], b: coord.get(kb), pb: gb[ib] });
-  }
   const fit = placed ? placed.fit : null;
-  return { glyphs, paths, conns: conns2, ncols, fit };
+
+  /* Only the coordinates change between readings: which glyph is which and where each
+     connection lands were settled without reference to the rows, so an alternative is
+     a relabelling and nothing has to be recomputed. */
+  const assemble = rowmap => {
+    const co = new Map([...clusters.keys()].map(k =>
+      [k, [columns.get(k), rowmap.get(k)]]));
+    const gl = new Map();
+    for (const k of clusters.keys()) gl.set(co.get(k).join(","), chosen.get(k).gid);
+    const ps = [[], []];
+    for (let i = 1; i <= ncols; i++){
+      const js = [...clusters.keys()].filter(k => columns.get(k) === i)
+        .map(k => rowmap.get(k)).sort();
+      ps[0].push([i, js[0]]); ps[1].push([i, js[js.length - 1]]);
+    }
+    const cs = [];
+    for (let c of conns){
+      let { ka, pa, kb, pb } = c;
+      if (columns.get(ka) > columns.get(kb)) [ka, pa, kb, pb] = [kb, pb, ka, pa];
+      const ga = allpoints(G.glyphs[chosen.get(ka).gid - 1]);
+      const gb = allpoints(G.glyphs[chosen.get(kb).gid - 1]);
+      const ia = vmaps.get(ka).get(pkey(pa)), ib = vmaps.get(kb).get(pkey(pb));
+      if (ia === undefined || ib === undefined) throw new Error("a join lands on no vertex");
+      cs.push({ a: co.get(ka), pa: ga[ia], b: co.get(kb), pb: gb[ib] });
+    }
+    return { glyphs: gl, paths: ps, conns: cs, ncols, fit };
+  };
+
+  const out = [assemble(rows)];
+  const seen = new Set([[...rows.entries()].sort().join("|")]);
+  for (const alt of altRows){
+    const key = [...alt.entries()].sort().join("|");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    try { out.push(assemble(alt)); } catch (e) { /* an unreadable relabelling */ }
+  }
+  return out;
 }
 
 /* ---------- observation back to text (unambiguous dialect only) ---------- */

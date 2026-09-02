@@ -32,7 +32,7 @@ from .render import (
     spiral_elements,
 )
 from .svgparse import parse_svg
-from .vision import observe
+from .vision import observe_all
 
 Point = tuple[float, float]
 
@@ -166,7 +166,8 @@ def reads_back(grid, glyphs, handwriting: float, seed: int,
     vx, vy, w, h = layout.canvas()
     try:
         strokes, _ = parse_svg(document(els, w, h, origin=(vx, vy)))
-        return _same_structure(observe(strokes), Observation.from_grid(grid))
+        want = Observation.from_grid(grid)
+        return any(_same_structure(o, want) for o in observe_all(strokes))
     except Exception:  # noqa: BLE001 -- any failure to read is a failure to read
         return False
 
@@ -391,4 +392,4 @@ def analyze_scroll(text_or_path):
     if len(strokes) < 2:
         raise ValueError("no Nomai strokes found in that file")
     groups, joins = split_scroll(strokes, dots)
-    return [observe(g) for g in groups], join_edges(groups, joins), joins
+    return [observe_all(g) for g in groups], join_edges(groups, joins), joins

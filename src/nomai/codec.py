@@ -44,8 +44,38 @@ def write(message: str, base: int = 256, dialect: str = STRICT,
 def read(obs: Observation, bases=(256, 200_000), dialect: str = STRICT):
     """Drawing -> readings. STRICT returns exactly one; UPSTREAM returns candidates."""
     if dialect == STRICT:
-        return decode_strict(obs, bases=bases)
+        return read_strict(obs, bases)
     return decode_backward(obs, bases=bases, dialect=UPSTREAM)
+
+
+def read_strict(candidates, bases=(256, 200_000)):
+    """Exactly one reading, from whichever candidate reading of the rows works.
+
+    `candidates` is what `vision.observe_all` returns: one Observation normally, and
+    more only when the row assignment is genuinely undecided -- which happens on
+    drawings too small for the geometry to settle it. A wrong row placement fails
+    loudly, usually with a connection landing on no vertex, and that is the signal
+    wanted rather than an error to pass on.
+    """
+    if isinstance(candidates, Observation):
+        candidates = [candidates]
+    for cand in candidates:
+        try:
+            got = decode_strict(cand, bases=bases)
+        except Exception:  # noqa: BLE001
+            continue
+        if len(got) == 1:
+            return got
+    return []
+
+
+def read_drawing(text_or_path, bases=(256, 200_000)):
+    """An SVG holding one spiral -> its reading, or an empty list."""
+    from .svgparse import parse_svg
+    from .vision import observe_all
+
+    strokes, _dots = parse_svg(text_or_path)
+    return read_strict(observe_all(strokes), bases)
 
 
 def write_scroll(turns, base: int = 256, handwriting: float = 0.0, seed: int = 47,
@@ -82,8 +112,8 @@ def read_scroll(text_or_path, base: int = 256):
 
     obs, edges, _joins = analyze_scroll(text_or_path)
     records = []
-    for o in obs:
-        got = decode_strict(o, bases=(base,))
+    for cands in obs:
+        got = read_strict(cands, bases=(base,))
         records.append(
             x_to_record(got[0][1], base, False, STRICT) if len(got) == 1 else None
         )

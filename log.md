@@ -860,3 +860,43 @@ Two smaller things fell out. The `me` field's handler still called
 `state.pending.readings`, which had been renamed several changes earlier and would
 have thrown the moment anyone typed their name while reading. And the reveal flag was
 per-scroll where it needed to be per-row.
+
+## The short-message failures were rows, not the fit
+
+Six drawings out of sixty failed to read: `a`, `d` and `e` -- every one a single
+character -- at one winding and at the two tighter coils. Everything longer passed at
+every setting.
+
+The first guess was wrong and worth recording. From the page it had looked like the
+tightness fit landing in a wrong minimum: a spiral written at 0.2 came back fitted at
+0.51. Walking the residual over `b` for a failing drawing killed that theory --
+`'c'` reads correctly with its true tightness ranked *fourth*, so a slightly wrong `b`
+is not what breaks it. Nor was it overlap: clustering was exact in every case, and the
+winding with the *closer* glyphs was the one that worked.
+
+Comparing the recovered grid against the truth showed it at once. Every glyph was
+identified correctly. The rows were shifted by one for every column except the first.
+
+Three turns using only two rows can sit on {1,2} or {2,3}. Both have the same glyphs,
+the same transitions, and column one on the midline; the geometry that separates them
+is a shear of about one row gap, which on a drawing that small is inside the noise of
+the fit. So `assign_rows` picks one, and sometimes picks wrong.
+
+The fix is not a better score. The Viterbi already computes the best chain ending at
+*each* terminal state and was throwing all but one away; keeping them costs nothing,
+and an alternative is a pure relabelling -- identity and connection endpoints were
+settled without reference to rows -- so nothing is recomputed. The decoder then says
+which is right, because a wrong row placement fails loudly: a connection lands on no
+vertex, or no reading survives.
+
+That is the same bargain made everywhere else here. Spend a little work, delete a
+guess.
+
+Result: the sixty-drawing sweep goes from 54 to **84 of 84** (it also grew, since
+short messages now pass at every setting), and scrolls from 21 to 22 of 24 in Python,
+20 to 21 in the page. Both implementations carry the fix; validate.py still passes
+twelve of twelve and check_shape.py seventy-two of seventy-two.
+
+The two that still fail are a different thing: a drawing that cannot be read at the
+winding and coil asked for. The layout already retries a reply elsewhere and the page
+already warns when the root is one of them, so neither fails silently.
