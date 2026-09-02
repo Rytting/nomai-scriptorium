@@ -449,7 +449,8 @@ function globalPlacement(columns, rows, centers, ncols){
     const cr = Math.cos(sl) * s, ci = Math.sin(sl) * s;
     wmap.set(k, [fit.wr * cr - fit.wi * ci, fit.wr * ci + fit.wi * cr]);
   }
-  return { predict, wmap, resid: fit.resid };
+  return { predict, wmap, resid: fit.resid,
+           fit: { wr: fit.wr, wi: fit.wi, tx: fit.tx, ty: fit.ty } };
 }
 
 const rowStates = (n, dj) => n === 1 ? [[1, 1], [2, 2], [3, 3]]
@@ -636,7 +637,8 @@ function analyze(svgText){
     if (ia === undefined || ib === undefined) throw new Error("a join lands on no vertex");
     conns2.push({ a: coord.get(ka), pa: ga[ia], b: coord.get(kb), pb: gb[ib] });
   }
-  return { glyphs, paths, conns: conns2, ncols };
+  const fit = placed ? placed.fit : null;
+  return { glyphs, paths, conns: conns2, ncols, fit };
 }
 
 /* ---------- observation back to text (unambiguous dialect only) ---------- */
