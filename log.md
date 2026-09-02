@@ -823,3 +823,16 @@ made it greedy for space -- extra room always beat a nearer spot, so a reply tha
 could not sit snugly was flung to the far end of the sheet on a long tether. Capping
 the reward at "room enough" and charging for the distance brought the worst join from
 19 times an ordinary connection down to about 3.
+
+### The composer was aiming at something it did not say
+
+Adding a reply reset the target and left the reply's own words sitting in the box.
+The button then quietly meant "rewrite the first spiral", so the obvious next move --
+fix the reply you just wrote -- overwrote the root with it.
+
+The target was implicit and it changed behind the writer's back, which is worse than
+having no target at all. It is written down now (`state.aim` = new / reply / edit,
+with an index), shown in the banner, and marked on the row it points at. After a reply
+is added the aim moves to *that reply*, so the natural next action does the natural
+thing. Every row also gained a `rewrite` link, so any spiral in a scroll can be
+corrected, not just the first one -- which is what was really being asked for.

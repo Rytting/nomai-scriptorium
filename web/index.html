@@ -126,6 +126,7 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
   font:inherit;font-size:13px;text-decoration:underline;text-underline-offset:2px}
 .linky:hover{color:var(--amber)}
 .trow .linky{flex:none}
+.trow.aimed{border-color:var(--amber);background:var(--rock-3)}
 .answering{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;
   padding:8px 11px;border-radius:3px;background:var(--rock-3);
   border-left:2px solid var(--amber)}
@@ -961,38 +962,85 @@ function setBaseUI(v){
    same content is drawn. It applies at once, and deliberately without the growth
    animation: replaying three seconds of growth on every tick of a slider makes the
    thing impossible to aim, and growth is what the Write button means. */
+/* The composer is always pointed at one spiral, and it says which.
+
+   It used to keep that target implicitly, and reset it after a reply was added while
+   leaving the reply's words still sitting in the box. The button then quietly meant
+   "rewrite the first spiral", so the obvious next move -- fix the reply you just
+   wrote -- overwrote the root with it instead. A target that changes behind you is
+   worse than no target, so it is written down and shown. */
+function aimText(){
+  const a = state.aim;
+  if (a.kind === "new" || !state.scroll[a.index]) return null;
+  const sp = state.scroll[a.index];
+  return (sp.sig ? sp.sig + ": " : "") + sp.text;
+}
+function showAim(){
+  const a = state.aim, line = aimText();
+  const on = a.kind !== "new" && line !== null
+             && !(a.kind === "edit" && state.scroll.length < 2);
+  $("answering").hidden = !on;
+  if (!on) return;
+  $("answering").querySelector(".label").textContent =
+    a.kind === "reply" ? "Answering" : "Rewriting";
+  $("answering-what").textContent = line;
+  $("answering-off").textContent = a.kind === "reply"
+    ? "not a reply after all" : "leave it as it is";
+}
+function setAim(kind, index){
+  /* the composer lives in the writing pane, so aiming it is asking to write --
+     doing that silently while the pane is hidden looks like a dead button */
+  if (state.mode !== "write") setMode("write");
+  state.aim = { kind, index };
+  if (kind === "reply"){
+    $("msg").value = "";
+  } else if (kind === "edit" && state.scroll[index]){
+    const sp = state.scroll[index];
+    $("msg").value = sp.text;
+    setSigned(!!sp.sig);
+    if (sp.sig) $("sig").value = sp.sig;
+  }
+  showAim();
+  syncWrite();
+  $("msg").focus();
+}
 function contentNow(){
   return JSON.stringify([$("msg").value, state.signed ? $("sig").value.trim() : "",
-    state.dialect, state.base, state.replyTo]);
+    state.dialect, state.base, state.aim.kind, state.aim.index]);
 }
 function syncWrite(){
   const ready = !!$("msg").value.trim()
     && (!state.signed || !!$("sig").value.trim());
   const changed = contentNow() !== state.committed;
-  const replying = state.replyTo !== null;
+  const a = state.aim;
   $("write").disabled = !changed || !ready;
   $("write").textContent = state.signed && !$("sig").value.trim() ? "Needs a name"
-    : replying ? "Add this reply"
-    : state.scroll.length > 1 ? (changed ? "Rewrite the first spiral" : "Written")
-    : changed ? "Write it" : "Written";
+    : a.kind === "reply" ? "Add this reply"
+    : !changed ? "Written"
+    : a.kind === "new" ? "Write it"
+    : state.scroll.length > 1 ? "Rewrite this spiral" : "Rewrite it";
 }
 function commit(){
   state.revealed = true;
   const text = $("msg").value, sig = state.signed ? $("sig").value.trim() : "";
   state.signedAs = sig;
+  const a = state.aim;
   let growIdx = null;
-  if (state.replyTo !== null){
-    state.scroll.push({ text, sig, parent: state.replyTo });
+  if (a.kind === "reply"){
+    state.scroll.push({ text, sig, parent: a.index });
     growIdx = state.scroll.length - 1;
-  } else if (state.scroll.length){
-    state.scroll[0].text = text;
-    state.scroll[0].sig = sig;
+    /* aim at what was just written, so the next thing you do is fix it if you want */
+    state.aim = { kind: "edit", index: growIdx };
+  } else if (a.kind === "edit" && state.scroll[a.index]){
+    state.scroll[a.index].text = text;
+    state.scroll[a.index].sig = sig;
   } else {
     state.scroll = [{ text, sig, parent: null }];
+    state.aim = { kind: "edit", index: 0 };
   }
   state.written = state.scroll[0].text;
   build(true, growIdx);
-  if (state.replyTo !== null){ state.replyTo = null; $("answering").hidden = true; }
+  showAim();
   /* after the build, because widening the alphabet for a non-Latin message is part
      of what got committed */
   state.committed = contentNow();
@@ -1283,14 +1331,19 @@ function paintThread(){
       ? (sp.sig ? `<b>${esc(sp.sig)}:</b> ` : "") + esc(sp.text)
       : `<span class="garble">${esc(noise(Math.min(46,
           Array.from(sp.text).length + (sp.sig ? sp.sig.length + 2 : 0))))}</span>`;
-    return `<div class="trow"><span class="depth">${"\u2502 ".repeat(depth[k])}</span>`
+    const aimed = state.aim.kind !== "new" && state.aim.index === k
+      ? " aimed" : "";
+    return `<div class="trow${aimed}"><span class="depth">${"\u2502 ".repeat(depth[k])}</span>`
       + `<span class="said ${kind}">${said}</span>`
-      + (open ? `<button class="linky" data-reply="${k}">reply</button>`
+      + (open ? `<button class="linky" data-edit="${k}">rewrite</button>`
+              + `<button class="linky" data-reply="${k}">reply</button>`
               : `<span class="depth">untranslated</span>`)
       + `</div>`;
   }).join("");
   box.querySelectorAll("[data-reply]").forEach(b =>
-    b.onclick = () => setReplyTo(+b.dataset.reply));
+    b.onclick = () => setAim("reply", +b.dataset.reply));
+  box.querySelectorAll("[data-edit]").forEach(b =>
+    b.onclick = () => setAim("edit", +b.dataset.edit));
   if (!open) scrambleRows();
 }
 /* keep the unread rows moving, so they read as writing rather than as damage */
@@ -1305,21 +1358,11 @@ function scrambleRows(){
     spans.forEach(sp => { sp.textContent = noise(sp.textContent.length); });
   }, 90);
 }
-function setReplyTo(k){
-  /* the composer lives in the writing pane, so asking to answer something is asking
-     to write -- doing it silently while that pane is hidden looks like a dead button */
-  if (k !== null && state.mode !== "write") setMode("write");
-  state.replyTo = k;
-  const sp = state.scroll[k];
-  $("answering").hidden = k === null;
-  if (k !== null){
-    $("answering-what").textContent = (sp.sig ? sp.sig + ": " : "") + sp.text;
-    $("msg").value = "";
-    $("msg").focus();
-  }
-  syncWrite();
-}
-$("answering-off").onclick = () => { setReplyTo(null); };
+$("answering-off").onclick = () => {
+  /* backing out returns the aim to the spiral the row was about, which is the thing
+     on screen -- dropping it on the floor would leave the box pointed at nothing */
+  setAim("edit", state.aim.index);
+};
 
 function paint(sc, widened, shaky){
   const glyphs = sc.reduce((a, sp) => a + sp.grid.glyphs.size, 0);
@@ -1570,8 +1613,10 @@ function readDrawing(text, name){
   if (firsts.every(Boolean) && (!tree || tree.ok)){
     state.scroll = firsts.map((r, i) => ({ text: r.text, sig: r.sig || "",
                                            parent: parents[i] }));
+    state.aim = { kind: "edit", index: 0 };
   } else {
     state.scroll = [];
+    state.aim = { kind: "new", index: 0 };
     $("thread").hidden = true;
   }
   state.revealed = false;
@@ -1726,7 +1771,7 @@ drop.addEventListener("drop", e => takeFile(e.dataTransfer.files[0]));
 
 state.mode = "write";
 state.scroll = [];
-state.replyTo = null;
+state.aim = { kind: "new", index: 0 };
 state.revealed = true;
 state.tilt = 0;
 state.flip = 1;
