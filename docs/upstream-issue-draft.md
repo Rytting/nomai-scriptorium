@@ -24,8 +24,11 @@
 **发在哪**：issue #2 底下回一帖。歧义那份完整写法留着，帖里提一句，
 他要就另开 issue 给他，不主动塞。
 
-**发之前还缺一样**：得有能链过去的东西。目前仓库只在本地，artifact 也没公开。
-这两件都得你点头。
+**链接已就位**（2026-09-02）：
+仓库 https://github.com/Rytting/nomai-scriptorium （公开，MIT，附上游版权声明）
+页面 https://rytting.github.io/nomai-scriptorium/ （GitHub Pages，已实测可写可读）
+
+**还没发。** 发到公开 issue 是挂你名字的对外动作，等你读过草稿点头。
 
 ---
 
@@ -132,4 +135,10 @@ ways.
 Thanks for building the thing in the first place — the alphabet and the spiral are
 yours, and none of this would exist without them. Enjoy the leave.
 
-<!-- LINKS: page + repo go here once we decide what to make public -->
+---
+
+* Try it: **https://rytting.github.io/nomai-scriptorium/** — no server, nothing leaves
+  the page.
+* Code: **https://github.com/Rytting/nomai-scriptorium** — MIT, with your notice
+  reproduced. Python reference implementation, a JS port for the page, and the working
+  log including the measurements above and the several things that did not work.
