@@ -69,16 +69,19 @@ Measured on 60 spirals from nomai-writing.com: **52/60 recovered exactly** (glyp
 rows and connections all correct). It degrades with handwriting — reliable to about
 0.3, and the site's default is 0.4, which is right at the edge.
 
-### But your drawings are genuinely ambiguous, and item 5 is not the main reason
+### Item 5 is real, but there's a larger leak beside it
 
-This is the part that might be worth your time even if you never touch the code again.
+This is the part that might be useful to you whenever you next look at it.
 
-A drawing does not determine its message, and the dominant cause is not the
-`Oracle` wrap-around of item 5. It's the `sort!` in `next!`. Two row questions are
-asked and their answers are then sorted, which throws away *which* was asked first.
-There's a second, smaller leak: `allpoints` builds annotations from core vertices, so
-duplicate points make some connection-pair questions carry fewer distinct outcomes
-than the count passed to `ask!`.
+Item 5 is real — I ran into it. But working out what each `ask!` consumes meant
+accounting for every place a bit could go missing, and it turned out most of the
+collisions come from somewhere else, which I don't think is on the list yet.
+
+It's the `sort!` in `next!`. Two row questions are asked and their answers are then
+sorted, which throws away *which* was asked first. There's a third, smaller leak:
+`allpoints` builds annotations from core vertices, so duplicate points make some
+connection-pair questions carry fewer distinct outcomes than the count passed to
+`ask!`.
 
 Concretely, at base 256:
 
