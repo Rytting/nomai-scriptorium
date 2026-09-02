@@ -551,3 +551,33 @@ handwriting × 2 次），`python tools/batch_svg.py` 逐个解。
       连接线是 2 点直线、字形核心是 3~7 点折线，可分离，大概率不需要 ML
 - [ ] 螺旋的阅读顺序 / 曲线追踪
 - [ ] 33 个字形的分类器（真做识别时才需要；SVG 输入下可能用不上）
+
+## How tightly the spiral winds
+
+The shape of the path is `r = a e^(b theta)`, and `b` is the only thing in it that
+decides how tight the coil is: small `b` turns many times in the same length of path,
+large `b` opens out into something closer to a single arc. Upstream fixes it at 0.29.
+
+The floor on the control is geometry, not taste. Two consecutive turns sit
+`r (e^(2 pi b) - 1)` apart, while the band of glyphs is a fixed `6K` wide regardless
+of where on the path it sits. At `b = 0.29` the gap is about `5.2 r` -- enormous. At
+`b = 0.12` it is `0.87 r`, which at the innermost radius of 164 is narrower than the
+band, so the turns start running through each other. 0.15 leaves room.
+
+Reading needed the same treatment the mirror did, for the same reason: the fit is a
+similarity, and a similarity carries rotation, scale and translation but not a change
+of shape. A drawing wound at a different `b` matched nothing. So `b` is recovered as
+well -- a coarse sweep from 0.15 to 0.60 in steps of 0.05, then a refinement in steps
+of 0.01 around the winner, nested inside the two windings. About thirty closed-form
+fits over a few dozen points; the cost does not show up.
+
+That it works at all rests on the residual having a sharp minimum in `b`, which was
+not obvious beforehand. It does: across twelve drawings the recovered `b` came back
+*exactly* equal to the written one, and for values deliberately placed off the search
+grid it landed on the nearest grid point. The one case that drifted further (0.60
+recovered as 0.62) was a two-character message -- four glyphs is not much of a curve
+to fit a curve parameter to, and it still read back correctly.
+
+Python was brought along at the same time, and gained tilt too, which it had never
+had. Sweep in tools/check_shape.py: 3 messages x 2 windings x 3 tilts x 4
+shape/handwriting combinations, 72 of 72.

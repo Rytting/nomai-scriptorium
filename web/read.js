@@ -439,11 +439,22 @@ function globalPlacement(columns, rows, centers, ncols){
   const keys = [...columns.keys()].filter(k => rows.has(k));
   if (keys.length < 3) return null;
   const obs = keys.map(k => centers.get(k));
+  /* Tightness changes the shape of the path, which a similarity cannot absorb any
+     more than a reflection can, so it has to be recovered too. The residual is smooth
+     in it: a coarse sweep then a local refinement finds it in a few dozen fits. */
   let L = null, fit = null;
-  for (const f of [1, -1]){
-    const cand = layoutFor(ncols, 0, f);
+  const tryOne = (f, b) => {
+    const cand = layoutFor(ncols, 0, f, b);
     const got = procrustes(keys.map(k => cand.place(columns.get(k), rows.get(k))([0, 0])), obs);
-    if (got && (!fit || got.resid < fit.resid)){ fit = got; L = cand; fit.flip = f; }
+    if (got && (!fit || got.resid < fit.resid)){
+      fit = got; L = cand; fit.flip = f; fit.tight = b;
+    }
+  };
+  for (const f of [1, -1])
+    for (let b = 0.15; b <= 0.601; b += 0.05) tryOne(f, +b.toFixed(3));
+  if (fit){
+    const f = fit.flip, b0 = fit.tight;
+    for (let d = -0.04; d <= 0.041; d += 0.01) tryOne(f, +(b0 + d).toFixed(3));
   }
   if (!fit) return null;
   const pred = keys.map(k => L.place(columns.get(k), rows.get(k))([0, 0]));
@@ -458,7 +469,8 @@ function globalPlacement(columns, rows, centers, ncols){
     wmap.set(k, [fit.wr * cr - fit.wi * ci, fit.wr * ci + fit.wi * cr]);
   }
   return { predict, wmap, resid: fit.resid,
-           fit: { wr: fit.wr, wi: fit.wi, tx: fit.tx, ty: fit.ty, flip: fit.flip } };
+           fit: { wr: fit.wr, wi: fit.wi, tx: fit.tx, ty: fit.ty,
+                  flip: fit.flip, tight: fit.tight } };
 }
 
 const rowStates = (n, dj) => n === 1 ? [[1, 1], [2, 2], [3, 3]]

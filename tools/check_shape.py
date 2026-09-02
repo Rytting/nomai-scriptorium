@@ -1,4 +1,4 @@
-"""Does the Python side render and read every tilt and winding?"""
+"""Does the Python side render and read every tilt, winding and tightness?"""
 import math
 import pathlib
 import sys
@@ -17,16 +17,16 @@ tmp = ROOT / "data" / "strict_svg"
 tmp.mkdir(exist_ok=True)
 path = tmp / "winding.svg"
 
-print(f"{'flip':>5} {'tilt':>7} {'hw':>5}  result")
-print("-" * 40)
+print(f"{'flip':>5} {'tilt':>7} {'tight':>6} {'hw':>5}  result")
+print("-" * 52)
 ok = fail = 0
 for msg in ("Come to the Ash Twin Project", "hi", "The Eye of the Universe"):
     for flip in (1, -1):
         for tilt in (0.0, math.pi * 0.6, math.pi * 1.3):
-            for hw in (0.0, 0.15):
+            for tight, hw in ((0.29, 0.0), (0.29, 0.15), (0.15, 0.1), (0.6, 0.1)):
                 grid = write(msg, 256, STRICT)
                 path.write_text(
-                    render_grid(grid, KNOWN_GLYPHS, hw, 47, tilt, flip),
+                    render_grid(grid, KNOWN_GLYPHS, hw, 47, tilt, flip, tight),
                     encoding="utf-8",
                 )
                 try:
@@ -36,5 +36,6 @@ for msg in ("Come to the Ash Twin Project", "hi", "The Eye of the Universe"):
                     good, got = False, type(exc).__name__
                 ok, fail = (ok + 1, fail) if good else (ok, fail + 1)
                 if not good:
-                    print(f"{flip:>5} {tilt:>7.2f} {hw:>5}  FAIL {msg!r} -> {got}")
+                    print(f"{flip:>5} {tilt:>7.2f} {tight:>6} {hw:>5}  "
+                          f"FAIL {msg!r} -> {got}")
 print(f"\n{ok} ok, {fail} failed")

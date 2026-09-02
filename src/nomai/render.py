@@ -115,11 +115,11 @@ def theta_at_length(length: float, a: float = SPIRAL_A, b: float = SPIRAL_B) -> 
     return math.log(1.0 + length * b / (a * math.hypot(1.0, b))) / b
 
 
-def spiral_period(ncols: int) -> float:
+def spiral_period(ncols: int, b: float = SPIRAL_B) -> float:
     """Upstream grows the period in pi/24 steps until the path is long enough."""
     needed = 3.5 * GLYPH_K * ncols
     period = math.pi / 4
-    while arc_length(period) < needed:
+    while arc_length(period, SPIRAL_A, b) < needed:
         period += math.pi / 24
     return period
 
@@ -127,12 +127,14 @@ def spiral_period(ncols: int) -> float:
 class SpiralLayout:
     """Where every (column, row) cell sits, and at what angle and scale."""
 
-    def __init__(self, ncols: int, tilt: float = 0.0, flip: int = 1):
+    def __init__(self, ncols: int, tilt: float = 0.0, flip: int = 1,
+                 tight: float = SPIRAL_B):
         self.ncols = ncols
         self.flip = -1 if flip == -1 else 1
-        self.period = spiral_period(ncols)
+        self.b = tight
+        self.period = spiral_period(ncols, self.b)
         self.rotation = math.pi - (self.period % (2 * math.pi)) + tilt
-        self.total_len = arc_length(self.period)
+        self.total_len = arc_length(self.period, SPIRAL_A, self.b)
         self.delta = (MAX_SCALE - 1) / (ncols - 1) if ncols > 1 else 0.0
         xs, ys = [], []
         for n in range(801):
@@ -151,7 +153,7 @@ class SpiralLayout:
         a plain rotation of itself.
         """
         a = self.flip * theta
-        r = SPIRAL_A * math.exp(SPIRAL_B * theta)
+        r = SPIRAL_A * math.exp(self.b * theta)
         z = complex(r * math.cos(a), r * math.sin(a))
         z *= complex(math.cos(self.rotation), math.sin(self.rotation))
         return (z.real, z.imag)
@@ -169,9 +171,9 @@ class SpiralLayout:
             dz/dtheta = a e^(b theta) (b + i f) e^(i f theta) e^(i rot)
             arg       = atan2(f, b) + f theta + rot
         """
-        theta = theta_at_length(max(0.0, min(1.0, k)) * self.total_len)
+        theta = theta_at_length(max(0.0, min(1.0, k)) * self.total_len, SPIRAL_A, self.b)
         return self._raw(theta), (
-            math.atan2(float(self.flip), SPIRAL_B) + self.flip * theta + self.rotation
+            math.atan2(float(self.flip), self.b) + self.flip * theta + self.rotation
         )
 
     def fraction(self, i: int) -> float:
@@ -246,9 +248,9 @@ def handwrite(grid, glyphs, amount: float, seed: int = 47):
 
 
 def render_grid(grid, glyphs, handwriting: float = 0.0, seed: int = 47,
-                tilt: float = 0.0, flip: int = 1) -> str:
+                tilt: float = 0.0, flip: int = 1, tight: float = SPIRAL_B) -> str:
     """A GlyphGrid -> a complete SVG, laid out on the spiral."""
-    layout = SpiralLayout(grid.ncols, tilt, flip)
+    layout = SpiralLayout(grid.ncols, tilt, flip, tight)
     places = {c: layout.place(*c) for c in grid.glyphs}
     els = []
     if handwriting > 0:

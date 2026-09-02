@@ -762,15 +762,28 @@ def global_placement(columns, rows, centers, ncols):
         return None
     obs = [centers[k] for k in keys]
     # A similarity carries rotation and scale but no reflection, so a drawing wound
-    # the other way matches nothing until the mirrored layout is tried as well.
-    layout = fit = None
-    for f in (1, -1):
-        cand = SpiralLayout(ncols, 0.0, f)
+    # the other way matches nothing until the mirrored layout is tried as well. How
+    # tightly it winds changes the shape of the path, which a similarity cannot absorb
+    # either, so that is recovered here too -- the residual is smooth in it, and a
+    # coarse sweep followed by a local refinement lands on it in a few dozen fits.
+    layout = fit = best = None
+
+    def attempt(f, b):
+        nonlocal layout, fit, best
+        cand = SpiralLayout(ncols, 0.0, f, b)
         got = procrustes(
             [cand.place(columns[k], rows[k])((0.0, 0.0)) for k in keys], obs
         )
         if got is not None and (fit is None or got[2] < fit[2]):
-            layout, fit = cand, got
+            layout, fit, best = cand, got, (f, b)
+
+    for f in (1, -1):
+        for step in range(10):
+            attempt(f, round(0.15 + 0.05 * step, 3))
+    if best is not None:
+        f, b0 = best
+        for step in range(-4, 5):
+            attempt(f, round(b0 + 0.01 * step, 3))
     if fit is None:
         return None
     pred = {k: layout.place(columns[k], rows[k])((0.0, 0.0)) for k in keys}
