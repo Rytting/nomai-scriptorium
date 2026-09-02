@@ -1,0 +1,16 @@
+# Upstream source: has its own git history, and is one command to restore.
+# See README.md for the exact clone and the pinned commit.
+vendor/
+
+# Generated test corpus: 4.8 MB, rebuilt by `julia tools/gen_samples.jl`.
+# The two hand-kept samples from the hosted API live in assets/samples/ instead.
+data/svg/
+
+# A saved copy of the author's site. Everything taken from it -- the endpoint, the
+# base/seed/handwriting parameters, the length limit -- is written down in
+# docs/reading-notes-nomaitext.md, so tracking the page itself would only republish
+# someone else's work. The file stays on disk; it is just not in the history.
+诺麦文字 --- Nomai writing.html
+
+__pycache__/
+*.pyc
