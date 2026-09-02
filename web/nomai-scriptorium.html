@@ -758,7 +758,7 @@ function attach(parentL, parentShift, t, side, reach, flip, tight, childNcols){
   /* The child's tail tangent must point back at the parent. tilt adds straight to
      that angle -- it is pi/2 at tilt 0 -- so the whole placement is one translation. */
   const tilt = Math.atan2(-ny, -nx) - Math.PI / 2;
-  return { shift: at, L: layoutFor(childNcols, tilt, flip, tight) };
+  return { shift: at, gap, L: layoutFor(childNcols, tilt, flip, tight) };
 }
 /* Every glyph's origin, which is enough to tell whether two spirals are on top of
    each other without walking every drawn vertex. */
@@ -789,25 +789,61 @@ function clearance(pts, taken){
    quietly. Letting a reply stand further off costs nothing but paper. */
 const SPOTS = [0.92, 0.78, 0.64, 0.5, 0.36, 0.22, 0.99, 0.1];
 const REACH = [1, 1.5, 2.2, 3.2];
+/* A reply may also loosen its coil or wind the other way to fit a gap. Both are free
+   at the far end: every spiral is read on its own, and the fit recovers winding and
+   tightness for each one independently, so a scroll may mix them. Both are charged
+   for here, but only lightly: a wall in the game has replies curling both ways and
+   coiled to different degrees, and that is what it should look like. The charge is
+   there to keep a change from being arbitrary, not to keep the scroll uniform. */
+const PAY_FLIP = 0.1, PAY_TIGHT = 0.04;
+let WANT_ROOM = 6;
+const tights = b => [b, Math.min(0.6, b * 1.4), Math.max(0.15, b * 0.72)]
+  .filter((v, i, a) => a.indexOf(v) === i);
 function chooseSpot(laid, parentIdx, ncols, flip, tight){
   const par = laid[parentIdx];
   const keys = [...par.sp.grid.glyphs.keys()];       /* shape only; any grid this size */
   const taken = [];
   for (const it of laid)
     taken.push(...centres(it.L.ncols, [...it.sp.grid.glyphs.keys()], it.L, it.shift));
-  const want = 6 * K * MAX_SCALE;
-  let best = null;
-  for (const reach of REACH) for (const t of SPOTS) for (const side of [1, -1]){
-    const pl = attach(par.L, par.shift, t, side, reach, flip, tight, ncols);
+  const want = WANT_ROOM * K * MAX_SCALE;
+  const ranked = [];
+  for (const reach of REACH) for (const tw of tights(tight)) for (const fl of [flip, -flip])
+  for (const t of SPOTS) for (const side of [1, -1]){
+    const pl = attach(par.L, par.shift, t, side, reach, fl, tw, ncols);
     const pts = centres(ncols, keys, pl.L, pl.shift);
     /* nothing hangs below the socket: the scroll is plugged into the wall at its
        lowest point, and a reply drooping past it reads as falling off */
     const below = Math.max(0, ...pts.map(p => p[1]));
-    const score = clearance(pts, taken) - 3 * below;
-    if (!best || score > best.score) best = { score, pl, ok: below === 0 };
-    if (best.ok && score >= want) return best.pl;
+    /* Room enough is enough. Scoring on clearance alone made the search greedy for
+       space -- extra room always beat a nearer spot, so a reply that could not fit
+       snugly was flung to the far end of the sheet on a long tether. Capping the
+       reward at `want` and charging for the distance means a reply only stands off
+       as far as it actually has to. */
+    const pay = (fl !== flip ? PAY_FLIP : 0) + (tw !== tight ? PAY_TIGHT : 0);
+    const score = Math.min(clearance(pts, taken), want)
+                - 0.55 * pl.gap - 3 * below - pay * want;
+    ranked.push({ score, pl });
   }
-  return best.pl;
+  ranked.sort((a, b) => b.score - a.score);
+  return ranked.slice(0, 8).map(r => r.pl);
+}
+/* One spiral on its own, in the placement being considered -- what the reader will
+   see once it cuts the scroll apart. */
+function soloSVG(grid, amount, seed, L){
+  const { byCol } = spiralParts(grid, amount, seed, L, null);
+  const [vx, vy, w, h] = L.canvas();
+  return document_(turnGroups(byCol), vx, vy, w, h);
+}
+/* Letting a reply pick its own coil and hand widens what gets drawn, and some
+   combinations of grid, winding and tightness the reader simply gets wrong -- its
+   fit for the tightness lands in the wrong minimum and everything after it follows.
+   The writer is the one who can do something about that: draw the candidate, read it
+   back, and if it does not come back move on to the next placement. Same bargain the
+   nonce search makes, and it is exact -- the recovered grid either matches the one
+   written or it does not. */
+function readsBack(grid, amount, seed, L){
+  try { return sameGrid(analyze(soloSVG(grid, amount, seed, L)), grid); }
+  catch (e){ return false; }
 }
 function nearestPair(a, b){
   let best = null;
@@ -834,6 +870,7 @@ const joinLine = (p, q) =>
    exactly that rotation -- the layout is anchored on the tail, so tilting the root
    turns everything about the socket, children included. */
 function balanceTilt(spirals, flip, tight){
+  /* no verification on the trial pass: it only wants the centre of mass */
   const trial = layScroll(spirals, 0, flip, tight);
   let sx = 0, sy = 0, n2 = 0;
   for (const it of trial) for (const p of centres(it.L.ncols,
@@ -841,23 +878,29 @@ function balanceTilt(spirals, flip, tight){
   if (!n2 || (sx === 0 && sy === 0)) return 0;
   return -Math.PI / 2 - Math.atan2(sy / n2, sx / n2);
 }
-function layScroll(spirals, tilt0, flip, tight){
+function layScroll(spirals, tilt0, flip, tight, amount, seed){
   const laid = [];
   spirals.forEach((sp, idx) => {
-    const place = idx === 0
-      ? { shift: [0, 0], L: layoutFor(sp.grid.ncols, tilt0, flip, tight) }
-      : chooseSpot(laid, sp.parent, sp.grid.ncols, flip, tight);
+    let place;
+    if (idx === 0){
+      place = { shift: [0, 0], L: layoutFor(sp.grid.ncols, tilt0, flip, tight) };
+    } else {
+      const cands = chooseSpot(laid, sp.parent, sp.grid.ncols, flip, tight);
+      place = cands[0];
+      if (amount !== undefined)
+        place = cands.find(c => readsBack(sp.grid, amount, seed + idx * 101, c.L))
+             || cands[0];
+    }
     laid.push({ L: place.L, shift: place.shift, sp });
   });
   return laid;
 }
 function renderScroll(spirals, amount, seed, flip, tight){
   const tilt0 = balanceTilt(spirals, flip, tight);
+  const placed = layScroll(spirals, tilt0, flip, tight, amount, seed);
   const laid = [], groups = [];
-  spirals.forEach((sp, idx) => {
-    const place = idx === 0
-      ? { shift: [0, 0], L: layoutFor(sp.grid.ncols, tilt0, flip, tight) }
-      : chooseSpot(laid, sp.parent, sp.grid.ncols, flip, tight);
+  placed.forEach((place, idx) => {
+    const sp = place.sp;
     const parts = spiralParts(sp.grid, amount, seed + idx * 101, place.L, place.shift);
     laid.push({ L: place.L, shift: place.shift, parts, sp });
   });
@@ -1842,6 +1885,11 @@ function build(grow, growIdx){
     state.svg = out.svg;
     L = out.root;
   }
+  /* A reply can be moved until it reads back; the first spiral cannot, because its
+     winding and coil are the writer's own choice. So check it and say so, rather
+     than handing over a drawing that quietly will not come back. */
+  const shaky = state.dialect === "strict"
+    && !readsBack(sc[0].grid, state.hw, state.seed, L);
   applyInk(inkFor(sc[0].sig || ""));
   state.track = trackFromLayout(L);
   state.socket = socketFor(state.track);
@@ -1849,7 +1897,7 @@ function build(grow, growIdx){
   draw(state.svg, grow, growIdx);
   paintThread();
   syncTilt();
-  paint(sc, widened);
+  paint(sc, widened, shaky);
 }
 function empty(text){
   $("plate").className = "plate empty";
@@ -2102,7 +2150,7 @@ function setReplyTo(k){
 }
 $("answering-off").onclick = () => { setReplyTo(null); };
 
-function paint(sc, widened){
+function paint(sc, widened, shaky){
   const glyphs = sc.reduce((a, sp) => a + sp.grid.glyphs.size, 0);
   const turns = sc.reduce((a, sp) => a + sp.grid.ncols, 0);
   const chars = sc.reduce((a, sp) => a + Array.from(sp.text).length, 0);
@@ -2115,6 +2163,11 @@ function paint(sc, widened){
   ].map(([n2, v]) => `<div class="stat"><span class="v">${v}</span><span class="n">${n2}</span></div>`).join("");
 
   const r = $("readings");
+  const shake = shaky
+    ? `<p class="note"><b>This one may not read back.</b> The first spiral, drawn this
+       way round and at this coil, is one the reader gets wrong — it is a limit of the
+       reading, not of the writing. Try the other curl, or nudge the wind; the drawing
+       says the same thing either way.</p>` : "";
   const wide = widened
     ? `<p class="note">Switched to the larger alphabet — Latin covers only the first
        256 characters. Every language works here; the spiral just runs longer, because
@@ -2129,7 +2182,7 @@ function paint(sc, widened){
       + `<p class="note">The original numbering throws information away in three places: which
          of two rows was asked first, tied connection pairs, and where the message ends. Any
          of those numberings draws this same picture, so the drawing does not say which one
-         was meant.</p>` + wide;
+         was meant.</p>` + wide + shake;
     return;
   }
   if (sc.length === 1){
@@ -2139,14 +2192,14 @@ function paint(sc, widened){
       + `${esc(rec.text)}</span></div>`
       + `<p class="note">Exactly one reading. Every question this drawing answers has a single
          possible answer, so anyone with the decoder recovers <b>this sentence and no other</b>.</p>`
-      + wide;
+      + wide + shake;
   } else {
     r.innerHTML = `<div class="reading only"><span class="tag">scroll</span>`
       + `<span class="t">${sc.length} spirals, ${sc.length - 1} of them replies</span></div>`
       + `<p class="note">One drawing holding the whole conversation, plugged into its wall at
          a single socket. Each reply records which spiral it answers, so a reader can check
          the tree it sees against the tree that was written. Tilt steps aside here: a scroll
-         turns itself upright about its socket.</p>` + wide;
+         turns itself upright about its socket.</p>` + wide + shake;
   }
 }
 

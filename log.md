@@ -790,3 +790,36 @@ free is its *shape*: how many spirals, which hangs off which, and whose each one
 because the ink already says so. What it says is the translator's to give. So the rows
 churn, and keep churning, until the translation finishes; then they settle and the
 reply links appear. Anything you wrote yourself is never hidden from you.
+
+## A reply may curl the other way
+
+A wall in the game has replies winding both ways and coiled to different degrees, so
+the layout may now vary a reply's winding and tightness as well as where it attaches.
+Both are free at the reading end: every spiral in a scroll is analysed on its own, and
+the fit recovers winding and tightness for each independently, so a scroll may mix
+them. Both are charged for, lightly, so that a change is never arbitrary.
+
+The first attempt at this cost more than it bought: 19 of 24 fell to 17. Raising the
+clearance target did nothing at any setting, which ruled out overlap. The real cause
+was visible in what the *reader* recovered -- a spiral written at tightness 0.2 coming
+back fitted at 0.51. The b-sweep lands in the wrong minimum for certain combinations
+of grid, winding and tightness; widening what gets drawn simply hits more of them.
+
+The fix is the bargain the nonce search already makes. The writer draws the candidate
+placement on its own, reads it back, and compares the recovered grid with the one it
+meant -- an exact test, not a score -- and moves to the next placement if it does not
+match. With that in place the suite went to **20 of 24**, better than before the
+variation existed, with 21 of 24 scrolls mixing windings and coils and join lengths
+between 0.1 and 3.4 times an ordinary connection. Laying out a five-spiral scroll
+costs about 250 ms, which is a click, not a keystroke.
+
+The four that remain all fail on the *first* spiral, whose winding and coil are the
+writer's own choice and so cannot be moved. Those get told instead: the page checks
+the root the same way and says plainly that this one may not read back, and that the
+other curl will say the same thing.
+
+Also fixed along the way: the placement search was scoring on clearance alone, which
+made it greedy for space -- extra room always beat a nearer spot, so a reply that
+could not sit snugly was flung to the far end of the sheet on a long tether. Capping
+the reward at "room enough" and charging for the distance brought the worst join from
+19 times an ordinary connection down to about 3.
