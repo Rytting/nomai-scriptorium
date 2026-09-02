@@ -10,6 +10,7 @@
   --edge:#2a3542; --edge-soft:#212a35;
   --ok:#4f9d69; --warn:#c9973f; --off:#6d7c8d;
   --beam:#6ef2c0; --screen-1:#0c3038; --screen-2:#061c23; --screen-ink:#8ff0d4;
+  --ink-none:#104e8b; --ink-mine:#5c47b8; --ink-theirs:#c26610;
   --sans:'Archivo',system-ui,sans-serif;
   --serif:'Instrument Serif',Georgia,serif;
   --mono:'IBM Plex Mono',ui-monospace,monospace;
@@ -46,13 +47,19 @@ h1 em{font-style:italic;color:var(--amber)}
   color:var(--text-faint);font-weight:500}
 
 .composer{display:flex;flex-direction:column;gap:10px}
+.whoami{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.whoami input{background:var(--rock-2);color:var(--text);border:1px solid var(--edge);
+  border-radius:3px;padding:6px 11px;font-family:var(--sans);font-size:13.5px;width:180px}
+.whoami input:focus{outline:2px solid var(--ink-soft);outline-offset:1px;
+  border-color:transparent}
+.swatch{width:11px;height:11px;border-radius:2px;background:var(--ink-none);flex:none}
 .sigrow{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
 .sigrow input{background:var(--rock-2);color:var(--text);border:1px solid var(--edge);
   border-radius:3px;padding:7px 12px;font-family:var(--sans);font-size:14px;width:200px}
 .sigrow input:focus{outline:2px solid var(--ink-soft);outline-offset:1px;
   border-color:transparent}
 .hint{color:var(--text-faint);font-size:12.5px;flex:1 1 260px;min-width:0}
-.who{font-style:italic;color:var(--amber-soft);font-family:var(--mono)}
+.who{font-style:italic;font-family:var(--mono)}
 textarea{width:100%;min-height:76px;resize:vertical;background:var(--rock-2);
   color:var(--text);border:1px solid var(--edge);border-radius:3px;padding:14px 16px;
   font-family:var(--sans);font-size:17px;line-height:1.5}
@@ -61,6 +68,17 @@ textarea:focus{outline:2px solid var(--ink-soft);outline-offset:1px;border-color
 .plate{background:var(--stone);border-radius:3px;padding:8px;position:relative;
   display:flex;align-items:center;justify-content:center;min-height:340px;
   border:1px solid var(--edge);overflow:hidden}
+/* Whose spiral it is is not in the drawing. The signature is; who is looking is a
+   setting on this end, and the colour is the two compared -- so the same file comes
+   up in your ink on your screen and in theirs on theirs, which is how the walls in
+   the game show a conversation differently depending on where you read it.
+
+   Colour is applied here rather than baked in, so a file someone else wrote recolours
+   the moment it is opened. CSS beats a presentation attribute, so this overrides the
+   stroke the file carries without touching it. */
+#art{--ink:var(--ink-none)}
+#art svg path[stroke-width]{stroke:var(--ink)}
+#art svg path:not([stroke-width]){fill:var(--ink)}
 .plate svg g[data-turn]{opacity:1}
 .plate.growing svg g[data-turn]{opacity:0}
 .plate svg g[data-turn].lit{opacity:1;transition:opacity .22s ease-out}
@@ -156,6 +174,13 @@ footer a{color:var(--text-dim)}
   answering the questions that decide each glyph, each row, each join. The spiral is
   what the answers look like.</p>
 </header>
+
+<div class="whoami">
+  <label class="label" for="me">You are</label>
+  <input id="me" placeholder="nobody in particular" maxlength="24" spellcheck="false">
+  <span class="swatch" id="swatch"></span>
+  <span class="hint" id="whohint"></span>
+</div>
 
 <div class="seg" role="group" aria-label="Mode" style="align-self:flex-start">
   <button id="m-write" aria-pressed="true">Write</button>
@@ -658,6 +683,7 @@ function build(){
     grid.readings = null;
   }
   state.svg = renderSVG(grid, state.hw, state.seed, state.tilt);
+  applyInk(inkFor(sig));
   state.track = trackFromLayout(layoutFor(grid.ncols, state.tilt));
   beams(false);
   draw(state.svg);
@@ -724,6 +750,18 @@ function seedWalkers(){
     dir: Math.random() < 0.5 ? -1 : 1,
     speed: 0.075 + Math.random() * 0.065      /* a full pass in 8 to 14 seconds */
   }));
+}
+/* unsigned notices keep the plain ink; a signed one is yours or someone else's */
+function inkFor(sig){
+  if (!sig) return "none";
+  const me = (state.me || "").trim().toLowerCase();
+  return me && sig.trim().toLowerCase() === me ? "mine" : "theirs";
+}
+function applyInk(kind){
+  $("art").style.setProperty("--ink", "var(--ink-" + kind + ")");
+  $("swatch").style.background = "var(--ink-" + kind + ")";
+  $("whohint").textContent = kind === "mine" ? "this one is yours"
+    : kind === "theirs" ? "someone else wrote this" : "";
 }
 function beams(mode){
   const svg = document.querySelector("svg.beams");
@@ -852,6 +890,16 @@ seg("d-strict", "d-upstream", "dialect", "strict", "upstream");
 $("b-256").onclick = () => { setBaseUI(256); build(); };
 $("b-200000").onclick = () => { setBaseUI(200000); build(); };
 $("hw").oninput = e => { state.hw = +e.target.value; hwRead(); build(); };
+function rememberMe(){
+  try { localStorage.setItem("nomai.me", state.me); } catch (e) { /* private window */ }
+}
+$("me").oninput = e => {
+  state.me = e.target.value;
+  rememberMe();
+  if (state.mode === "write") build();
+  else if (state.pending) applyInk(inkFor(state.pending.readings.length
+    ? state.pending.readings[0].sig : null));
+};
 function setSigned(on){
   state.signed = on;
   $("s-signed").setAttribute("aria-pressed", String(on));
@@ -959,6 +1007,9 @@ function readDrawing(text, name){
     ["joins", obs.conns.length],
     ["alphabet", base === null ? "-" : (base === 256 ? "Latin" : "any")]
   ].map(([n2, v]) => `<div class="stat"><span class="v">${v}</span><span class="n">${n2}</span></div>`).join("");
+  /* the colour goes on before the text does: on a wall you can see whose a spiral
+     is without translating it */
+  applyInk(inkFor(readings.length ? readings[0].sig : null));
   state.pending = { readings, name };
   translator();
 }
@@ -1087,6 +1138,8 @@ drop.addEventListener("drop", e => takeFile(e.dataTransfer.files[0]));
 
 state.mode = "write";
 state.tilt = 0;
+try { state.me = localStorage.getItem("nomai.me") || ""; } catch (e) { state.me = ""; }
+$("me").value = state.me;
 state.signed = false;
 state.signedAs = "";
 state.written = $("msg").value;
