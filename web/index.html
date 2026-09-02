@@ -127,6 +127,11 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
 .linky:hover{color:var(--amber)}
 .trow .linky{flex:none}
 .trow.aimed{border-color:var(--amber);background:var(--rock-3)}
+.trow.picked{border-color:var(--beam);background:var(--rock-3)}
+.trow[data-row]{cursor:default}
+#read-pane ~ * .trow[data-row]{cursor:pointer}
+.screen .pick{color:var(--beam)}
+.screen .off{opacity:.45}
 .answering{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;
   padding:8px 11px;border-radius:3px;background:var(--rock-3);
   border-left:2px solid var(--amber)}
@@ -733,7 +738,10 @@ function renderSVG(grid, amount, seed, tilt, flip, tight){
   const L = layoutFor(grid.ncols, tilt, flip, tight);
   const { byCol } = spiralParts(grid, amount, seed, L, null);
   const [vx, vy, w, h] = L.canvas();
-  return document_(turnGroups(byCol), vx, vy, w, h);
+  /* wrapped even when there is only one, so everything downstream -- the ink, the
+     selection, the growth -- can address spirals the same way whatever it is given */
+  return document_(['<g data-spiral="0">' + turnGroups(byCol).join("") + "</g>"],
+                   vx, vy, w, h);
 }
 
 /* ---- a scroll: one drawing holding a conversation ----
@@ -1021,7 +1029,6 @@ function syncWrite(){
     : state.scroll.length > 1 ? "Rewrite this spiral" : "Rewrite it";
 }
 function commit(){
-  state.revealed = true;
   const text = $("msg").value, sig = state.signed ? $("sig").value.trim() : "";
   state.signedAs = sig;
   const a = state.aim;
@@ -1039,6 +1046,7 @@ function commit(){
     state.aim = { kind: "edit", index: 0 };
   }
   state.written = state.scroll[0].text;
+  state.seen = new Set(state.scroll.map((_, i) => i));
   build(true, growIdx);
   showAim();
   /* after the build, because widening the alphabet for a non-Latin message is part
@@ -1109,11 +1117,11 @@ function build(grow, growIdx){
      than handing over a drawing that quietly will not come back. */
   const shaky = state.dialect === "strict"
     && !readsBack(sc[0].grid, state.hw, state.seed, L);
-  applyInk(inkFor(sc[0].sig || ""));
   state.track = trackFromLayout(L);
   state.socket = socketFor(state.track);
   beams(false);
   draw(state.svg, grow, growIdx);
+  applyInk(sigsOf());
   paintThread();
   syncTilt();
   paint(sc, widened, shaky);
@@ -1199,12 +1207,26 @@ function inkFor(sig){
   const me = (state.me || "").trim().toLowerCase();
   return me && sig.trim().toLowerCase() === me ? "mine" : "theirs";
 }
-function applyInk(kind){
-  $("art").style.setProperty("--ink", "var(--ink-" + kind + ")");
-  $("swatch").style.background = "var(--ink-" + kind + ")";
-  $("whohint").textContent = kind === "mine" ? "this one is yours"
-    : kind === "theirs" ? "someone else wrote this" : "";
+/* Whose each spiral is, one at a time. A conversation is exactly where this matters:
+   painting the whole scroll in one colour says the wall belongs to somebody, when
+   what it actually holds is several people answering each other. */
+function applyInk(sigs){
+  const list = Array.isArray(sigs) ? sigs : [sigs];
+  const kinds = list.map(inkFor);
+  $("art").querySelectorAll("[data-spiral]").forEach(g => {
+    const k = kinds[+g.dataset.spiral] || kinds[0] || "none";
+    g.style.setProperty("--ink", "var(--ink-" + k + ")");
+  });
+  $("art").style.setProperty("--ink", "var(--ink-" + (kinds[0] || "none") + ")");
+  const mine = kinds.filter(k => k === "mine").length;
+  const theirs = kinds.filter(k => k === "theirs").length;
+  $("swatch").style.background = "var(--ink-"
+    + (mine ? "mine" : theirs ? "theirs" : "none") + ")";
+  $("whohint").textContent = mine && theirs ? `${mine} yours, ${theirs} not`
+    : mine ? (mine > 1 ? "all yours" : "this one is yours")
+    : theirs ? (theirs > 1 ? "none of these are yours" : "someone else wrote this") : "";
 }
+const sigsOf = () => state.scroll.map(sp => sp.sig || "");
 function beams(mode){
   const svg = document.querySelector("svg.beams");
   if (!mode){
@@ -1323,28 +1345,37 @@ function paintThread(){
   if (sc.length < 1){ box.hidden = true; return; }
   const depth = sc.map(() => 0);
   sc.forEach((sp, k) => { if (sp.parent != null) depth[k] = depth[sp.parent] + 1; });
-  const open = state.revealed !== false;
   box.hidden = false;
   box.innerHTML = sc.map((sp, k) => {
+    /* per row, not per scroll: in a conversation you translate one spiral at a time,
+       so some rows are open while their neighbours are still churning */
+    const open = state.seen.has(k);
     const kind = inkFor(sp.sig || "");
     const said = open
       ? (sp.sig ? `<b>${esc(sp.sig)}:</b> ` : "") + esc(sp.text)
       : `<span class="garble">${esc(noise(Math.min(46,
           Array.from(sp.text).length + (sp.sig ? sp.sig.length + 2 : 0))))}</span>`;
-    const aimed = state.aim.kind !== "new" && state.aim.index === k
-      ? " aimed" : "";
-    return `<div class="trow${aimed}"><span class="depth">${"\u2502 ".repeat(depth[k])}</span>`
+    const aimed = state.mode === "write"
+      && state.aim.kind !== "new" && state.aim.index === k ? " aimed" : "";
+    const picked = state.mode === "read" && state.sel === k ? " picked" : "";
+    return `<div class="trow${aimed}${picked}" data-row="${k}">`
+      + `<span class="depth">${"\u2502 ".repeat(depth[k])}</span>`
       + `<span class="said ${kind}">${said}</span>`
       + (open ? `<button class="linky" data-edit="${k}">rewrite</button>`
               + `<button class="linky" data-reply="${k}">reply</button>`
-              : `<span class="depth">untranslated</span>`)
+              : `<span class="depth">${state.sel === k ? "point at it"
+                                                       : "click to aim"}</span>`)
       + `</div>`;
   }).join("");
   box.querySelectorAll("[data-reply]").forEach(b =>
     b.onclick = () => setAim("reply", +b.dataset.reply));
   box.querySelectorAll("[data-edit]").forEach(b =>
     b.onclick = () => setAim("edit", +b.dataset.edit));
-  if (!open) scrambleRows();
+  if (state.mode === "read")
+    box.querySelectorAll("[data-row]").forEach(r => r.onclick = e => {
+      if (!e.target.closest(".linky")) selectSpiral(+r.dataset.row);
+    });
+  if (sc.some((_, k) => !state.seen.has(k))) scrambleRows();
 }
 /* keep the unread rows moving, so they read as writing rather than as damage */
 let scrambleTimer = null;
@@ -1352,7 +1383,7 @@ function scrambleRows(){
   if (scrambleTimer) clearInterval(scrambleTimer);
   scrambleTimer = setInterval(() => {
     const spans = document.querySelectorAll("#thread .garble");
-    if (!spans.length || state.revealed !== false){
+    if (!spans.length){
       clearInterval(scrambleTimer); scrambleTimer = null; return;
     }
     spans.forEach(sp => { sp.textContent = noise(sp.textContent.length); });
@@ -1450,9 +1481,8 @@ function rememberMe(){
 $("me").oninput = e => {
   state.me = e.target.value;
   rememberMe();
-  if (state.mode === "write") reshape();
-  else if (state.pending) applyInk(inkFor(state.pending.readings.length
-    ? state.pending.readings[0].sig : null));
+  if (state.mode === "write") applyInk(sigsOf());
+  else if (state.pending) applyInk(state.pending.per.map(r => (r[0] && r[0].sig) || ""));
 };
 function setSigned(on){
   state.signed = on;
@@ -1556,7 +1586,10 @@ function setMode(m){
   $("read-pane").hidden = m !== "read";
   $("write-actions").hidden = m !== "write";
   $("write-controls").hidden = m !== "write";
-  if (m === "write"){ state.revealed = true; build(false); }
+  if (m === "write"){
+    state.seen = new Set(state.scroll.map((_, i) => i));
+    build(false);
+  }
   else { empty("waiting for a drawing"); $("thread").hidden = true; idleTranslator(); }
 }
 $("m-write").onclick = () => setMode("write");
@@ -1605,7 +1638,9 @@ function readDrawing(text, name){
    .map(([n2, v]) => `<div class="stat"><span class="v">${v}</span><span class="n">${n2}</span></div>`).join("");
   /* the colour goes on before the text does: on a wall you can see whose a spiral
      is without translating it */
-  applyInk(inkFor(firsts[0] ? firsts[0].sig : null));
+  /* the ink goes on before the words do: on a wall you can see whose a spiral is
+     without translating it, and in a conversation that is most of what you want */
+  applyInk(firsts.map(r => (r && r.sig) || ""));
   /* A scroll that read completely becomes one you can answer: the grids are rebuilt
      from the text when a reply is added, so the drawing is redrawn rather than
      patched. It will not come out stroke for stroke the same, and it does not need
@@ -1619,9 +1654,10 @@ function readDrawing(text, name){
     state.aim = { kind: "new", index: 0 };
     $("thread").hidden = true;
   }
-  state.revealed = false;
+  state.seen = new Set();
+  state.sel = 0;
   paintThread();
-  state.pending = { per, name, tree };
+  state.pending = { per, name, tree, obs: scroll.spirals };
   translator();
 }
 
@@ -1643,68 +1679,96 @@ const GARBLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789<>
 const noise = k => Array.from({ length: k },
   () => GARBLE[Math.floor(Math.random() * GARBLE.length)]).join("");
 
+/* The translator works one spiral at a time, because that is the whole of the
+   interaction. Sweeping the entire wall in a single hold answers everything at once
+   and leaves nothing to do; pointing the thing at one spiral, holding until it
+   resolves, and then choosing the next is what the tool is for. What has already been
+   translated stays translated. */
+let tprog = 0, thold = false, traf = null, tlast = 0;
+
+function selectSpiral(i){
+  if (!state.pending || !state.pending.per[i]) return;
+  state.sel = i;
+  tprog = 0; thold = false;
+  if (traf){ cancelAnimationFrame(traf); traf = null; }
+  const o = state.pending.obs && state.pending.obs[i];
+  /* the beams ride the spiral you are pointing at, and nothing else */
+  state.track = o && o.fit ? trackFromFit(o.ncols, o.fit) : state.track;
+  walkers = [];
+  beams(false); beams("idle");
+  paintThread();
+  paintTranslator();
+}
+
+function screenLine(i){
+  const r = state.pending.per[i], rec = r[0] || null;
+  if (state.seen.has(i)){
+    if (!rec) return `<span class="idle">${esc("<!> unreadable <!>")}</span>`;
+    return (rec.sig ? `<span class="who">${esc(rec.sig)}:</span> ` : "") + esc(rec.text);
+  }
+  const line = toLine(rec);
+  const chars = line ? Array.from(line) : [];
+  const len = chars.length || 46;
+  const chosen = i === state.sel;
+  const cut = chosen ? Math.floor(tprog * len) : 0;
+  return (chosen ? `<span class="pick">\u203a </span>` : `<span class="off">\u00a0\u00a0</span>`)
+    + esc(chars.slice(0, cut).join(""))
+    + `<span class="garble${chosen ? "" : " off"}">${esc(noise(len - cut))}</span>`;
+}
+
+function paintTranslator(){
+  const per = state.pending.per, line = $("line"), btn = $("translate");
+  if (!line) return;
+  line.parentElement.classList.toggle("many", per.length > 1);
+  line.innerHTML = per.map((_, i) => screenLine(i)).join("<br>");
+  const left = per.filter((_, i) => !state.seen.has(i)).length;
+  btn.disabled = !left;
+  btn.textContent = !left ? "All translated"
+    : per.length > 1 ? `Hold to translate this one \u00b7 ${left} left`
+    : "Hold to translate";
+  const fill = $("tfill");
+  if (fill) fill.style.width = (state.seen.has(state.sel) ? 100 : tprog * 100) + "%";
+}
+
 function translator(){
   $("readings").innerHTML = `<div class="translator">
-    <div class="screen"><span class="line" id="line"><span class="idle">${esc(IDLE)}</span></span></div>
+    <div class="screen"><span class="line" id="line"></span></div>
     <div class="tbar"><i id="tfill"></i></div>
     <button class="btn hold" id="translate" aria-pressed="false">Hold to translate</button>
   </div>`;
-  const per = state.pending.per;
-  const targets = per.map(r => toLine(r[0] || null));
-  const screen = $("line"), fill = $("tfill"), btn = $("translate");
-  /* a single sentence sits centred the way the tool in the game shows it; a
-     conversation is a list, and lists read from the left */
-  if (targets.length > 1) screen.parentElement.classList.add("many");
-  let prog = 0, holding = false, raf = null, last = 0, done = false;
-
-  /* Every spiral on the wall resolves at once, from the front, while the rest of
-     each line still churns -- the beams are sweeping all of it, not one line. */
-  const paintScreen = () => {
-    screen.innerHTML = targets.map(t => {
-      if (!t) return `<span class="garble">${esc(noise(46))}</span>`;
-      const chars = Array.from(t);
-      const cut = Math.floor(prog * chars.length);
-      return esc(chars.slice(0, cut).join(""))
-        + `<span class="garble">${esc(noise(chars.length - cut))}</span>`;
-    }).join("<br>");
-  };
+  const btn = $("translate");
   const frame = ts => {
-    const dt = Math.min(0.05, (ts - (last || ts)) / 1000);
-    last = ts;
-    prog = Math.max(0, Math.min(1, prog + dt * (holding ? 1 / 2.5 : -1 / 0.8)));
-    fill.style.width = (prog * 100) + "%";
-    if (prog >= 1 && !done){ done = true; finish(); return; }
-    if (prog <= 0 && !holding){
-      raf = null; beams("idle");
-      screen.innerHTML = `<span class="idle">${esc(IDLE)}</span>`;
-      return;
-    }
-    paintScreen();
-    raf = requestAnimationFrame(frame);
+    const dt = Math.min(0.05, (ts - (tlast || ts)) / 1000);
+    tlast = ts;
+    tprog = Math.max(0, Math.min(1, tprog + dt * (thold ? 1 / 2.5 : -1 / 0.8)));
+    if (tprog >= 1){ traf = null; finish(); return; }
+    paintTranslator();
+    if (tprog <= 0 && !thold){ traf = null; beams("idle"); return; }
+    traf = requestAnimationFrame(frame);
   };
   const start = e => {
-    if (done) return;
+    if (state.seen.has(state.sel)) return;
     if (e && e.preventDefault) e.preventDefault();
-    holding = true; btn.setAttribute("aria-pressed", "true"); beams("scan");
-    if (!raf){ last = 0; raf = requestAnimationFrame(frame); }
+    thold = true; btn.setAttribute("aria-pressed", "true"); beams("scan");
+    if (!traf){ tlast = 0; traf = requestAnimationFrame(frame); }
   };
   const stop = () => {
-    holding = false; btn.setAttribute("aria-pressed", "false");
-    if (!done) beams("idle");
+    thold = false; btn.setAttribute("aria-pressed", "false");
+    if (traf) beams("idle");
   };
   function finish(){
-    raf = null; beams("idle"); fill.style.width = "100%";
-    state.revealed = true;
-    paintThread();
+    thold = false; tprog = 0;
     btn.setAttribute("aria-pressed", "false");
-    btn.textContent = "Translated";
-    btn.disabled = true;
+    beams("idle");
+    state.seen.add(state.sel);
+    /* move on to the next one that has not been read, so holding again just works */
+    const next = state.pending.per.findIndex((_, i) => !state.seen.has(i));
+    paintThread();
+    if (next >= 0) selectSpiral(next); else { paintTranslator(); done(); }
+  }
+  function done(){
     const { per, name, tree } = state.pending;
-    const show = r2 => r2.sig
-      ? `<span class="who">${esc(r2.sig)}:</span> ${esc(r2.text)}` : esc(r2.text);
     if (per.length > 1){
-      screen.innerHTML = per.map(r => r[0] ? show(r[0])
-        : `<span class="idle">${esc("<!> unreadable <!>")}</span>`).join("<br>");
       $("readings").insertAdjacentHTML("beforeend", tree && tree.ok
         ? `<p class="note">A scroll: ${per.length} spirals, ${per.length - 1} of them
            replies. Which spiral each one answers is written into its own numbering,
@@ -1715,20 +1779,19 @@ function translator(){
       return;
     }
     const readings = per[0] || [];
+    const show = r2 => r2.sig
+      ? `<span class="who">${esc(r2.sig)}:</span> ${esc(r2.text)}` : esc(r2.text);
     if (readings.length === 1){
-      screen.innerHTML = show(readings[0]);
       $("readings").insertAdjacentHTML("beforeend",
         `<p class="note">Read straight off the drawing, with nothing to guess between.
          ${esc(name || "This file")} was written in the unambiguous dialect.</p>`);
     } else if (readings.length > 1){
-      screen.innerHTML = show(readings[0]);
       $("readings").insertAdjacentHTML("beforeend",
         readings.slice(1, 5).map(t =>
           `<div class="reading rival"><span class="tag">or</span><span class="t">${show(t)}</span></div>`).join("")
         + `<p class="note">More than one sentence fits this drawing, so it cannot be
            read with certainty.</p>`);
     } else {
-      screen.innerHTML = `<span class="idle">${esc("\u003c!\u003e No single reading \u003c!\u003e")}</span>`;
       $("readings").insertAdjacentHTML("beforeend",
         `<p class="note">The glyphs, rows and joins all came back, but no sentence
          fits them. Most likely this was drawn in the original dialect, where a
@@ -1742,6 +1805,7 @@ function translator(){
     if (e.key === " " || e.key === "Enter"){ e.preventDefault(); start(null); }
   });
   btn.addEventListener("keyup", stop);
+  selectSpiral(state.sel);
 }
 function fail(msg){
   $("stats").innerHTML = "";
@@ -1772,7 +1836,8 @@ drop.addEventListener("drop", e => takeFile(e.dataTransfer.files[0]));
 state.mode = "write";
 state.scroll = [];
 state.aim = { kind: "new", index: 0 };
-state.revealed = true;
+state.seen = new Set();
+state.sel = 0;
 state.tilt = 0;
 state.flip = 1;
 state.tight = 0.29;

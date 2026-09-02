@@ -836,3 +836,27 @@ with an index), shown in the banner, and marked on the row it points at. After a
 is added the aim moves to *that reply*, so the natural next action does the natural
 thing. Every row also gained a `rewrite` link, so any spiral in a scroll can be
 corrected, not just the first one -- which is what was really being asked for.
+
+## One spiral at a time
+
+Sweeping the whole wall in a single hold answered everything at once and left nothing
+to do. The translator points at one spiral now: pick it from the drawing's own row,
+hold until it resolves, and the beams ride that spiral and no other. What has been
+translated stays translated, and the button counts down what is left. When one
+finishes, the aim moves to the next unread spiral, so holding again just works.
+
+The beams following the selection came free -- `analyzeScroll` already returns a fit
+per spiral, so `trackFromFit` gives each one its own track.
+
+The ink was wrong in the way that matters most for a conversation: `--ink` was set on
+the whole drawing, so the moment you named yourself, the *entire* scroll turned violet
+-- including the spirals somebody else wrote. It goes on each spiral's own group now,
+from that spiral's own signature. In a conversation between two people the wall reads
+orange, violet, orange, which is the whole point of the colour. `renderSVG` wraps its
+turns in a `data-spiral` group even when there is only one, so the ink, the selection
+and the growth can all address spirals the same way whatever they are handed.
+
+Two smaller things fell out. The `me` field's handler still called
+`state.pending.readings`, which had been renamed several changes earlier and would
+have thrown the moment anyone typed their name while reading. And the reveal flag was
+per-scroll where it needed to be per-row.
