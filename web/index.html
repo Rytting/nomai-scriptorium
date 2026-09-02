@@ -195,6 +195,13 @@ footer a{color:var(--text-dim)}
         <span class="hw-read" id="hw-read"></span>
       </div>
     </div>
+    <div class="field">
+      <label class="label" for="tilt">Tilt</label>
+      <div class="hw">
+        <input type="range" id="tilt" min="0" max="355" step="5" value="0">
+        <span class="hw-read" id="tilt-read">0&deg;</span>
+      </div>
+    </div>
   </div>
 
   <div class="stats" id="stats"></div>
@@ -202,7 +209,8 @@ footer a{color:var(--text-dim)}
   <div class="readings" id="readings"></div>
 
   <div class="actions" id="write-actions">
-    <button class="btn primary" id="dl-svg">Download SVG</button>
+    <button class="btn primary" id="write">Write it</button>
+    <button class="btn" id="dl-svg">Download SVG</button>
     <button class="btn" id="surprise">Surprise me</button>
   </div>
 </div>
@@ -382,10 +390,13 @@ function upstreamCandidates(grid){
 const INK = "rgb(6.27451%,30.588235%,54.509804%)";
 const arcLen = t => Math.hypot(1, 0.29) * (164 / 0.29) * (Math.exp(0.29 * t) - 1);
 const thetaAt = L => Math.log(1 + L * 0.29 / (164 * Math.hypot(1, 0.29))) / 0.29;
-function layoutFor(ncols){
+function layoutFor(ncols, tilt){
   let period = Math.PI / 4;
   while (arcLen(period) < 3.5 * K * ncols) period += Math.PI / 24;
-  const rot = Math.PI - (period % (2 * Math.PI));
+  /* Upstream turns the finished spiral so its tail sits at the left. Adding to that
+     turns the whole drawing, glyphs and all, and costs the reader nothing: it fits a
+     global similarity anyway, so any orientation is absorbed. */
+  const rot = Math.PI - (period % (2 * Math.PI)) + (tilt || 0);
   const raw = t => {
     const r = 164 * Math.exp(0.29 * t);
     const c = Math.cos(rot), s = Math.sin(rot);
@@ -483,8 +494,8 @@ function jitter(grid, amount, seed){
   }));
   return { drawn, conns };
 }
-function renderSVG(grid, amount, seed){
-  const L = layoutFor(grid.ncols), places = new Map();
+function renderSVG(grid, amount, seed, tilt){
+  const L = layoutFor(grid.ncols, tilt), places = new Map();
   for (const key of grid.glyphs.keys()){
     const [i, j] = key.split(",").map(Number);
     places.set(key, L.place(i, j));
@@ -559,9 +570,21 @@ function setBaseUI(v){
   $("b-256").setAttribute("aria-pressed", String(v === 256));
   $("b-200000").setAttribute("aria-pressed", String(v === 200000));
 }
+/* The drawing is committed, not live: a spiral that regrows on every keystroke
+   never finishes growing, and the growth is the point. */
+function syncWrite(){
+  const changed = $("msg").value !== state.written;
+  $("write").disabled = !changed || !$("msg").value.trim();
+  $("write").textContent = changed ? "Write it" : "Written";
+}
+function commit(){
+  state.written = $("msg").value;
+  syncWrite();
+  build();
+}
 function build(){
-  const msg = $("msg").value;
-  if (!msg.trim()){ empty("waiting for words"); return; }
+  const msg = state.written;
+  if (!msg || !msg.trim()){ empty("waiting for words"); return; }
   /* Anything past Latin needs the larger alphabet. Asking the writer to know that
      and flip a switch is the wrong way round: widen it for them and say so. */
   let widened = false;
@@ -587,8 +610,8 @@ function build(){
     grid = buildGrid(x, "upstream");
     grid.readings = null;
   }
-  state.svg = renderSVG(grid, state.hw, state.seed);
-  state.track = trackFromLayout(layoutFor(grid.ncols));
+  state.svg = renderSVG(grid, state.hw, state.seed, state.tilt);
+  state.track = trackFromLayout(layoutFor(grid.ncols, state.tilt));
   beams(false);
   draw(state.svg);
   paint(grid, msg, widened);
@@ -780,13 +803,21 @@ seg("d-strict", "d-upstream", "dialect", "strict", "upstream");
 $("b-256").onclick = () => { setBaseUI(256); build(); };
 $("b-200000").onclick = () => { setBaseUI(200000); build(); };
 $("hw").oninput = e => { state.hw = +e.target.value; hwRead(); build(); };
-let typeTimer = null;
-$("msg").oninput = () => { clearTimeout(typeTimer); typeTimer = setTimeout(build, 220); };
+$("msg").oninput = syncWrite;
+$("msg").addEventListener("keydown", e => {
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)){ e.preventDefault(); commit(); }
+});
+$("write").onclick = commit;
+$("tilt").oninput = e => {
+  state.tilt = +e.target.value * Math.PI / 180;
+  $("tilt-read").textContent = e.target.value + "\u00b0";
+  build();
+};
 $("surprise").onclick = () => {
   const pool = PROMPTS.filter(p => p !== $("msg").value);
   $("msg").value = pool[Math.floor(Math.random() * pool.length)];
   state.seed = 1 + Math.floor(Math.random() * 9999);
-  build();
+  commit();
 };
 /* Two ways to hand over a file, because the page runs in two places. Inside the
    artifact viewer an ordinary download link is inert and the save has to go through
@@ -843,8 +874,8 @@ function setMode(m){
   $("read-pane").hidden = m !== "read";
   $("write-actions").hidden = m !== "write";
   $("write-controls").hidden = m !== "write";
-  if (m === "write") build();
-  else { empty("waiting for a drawing"); }
+  if (m === "write"){ build(); }
+  else { empty("waiting for a drawing"); idleTranslator(); }
 }
 $("m-write").onclick = () => setMode("write");
 $("m-read").onclick = () => setMode("read");
@@ -875,6 +906,16 @@ function readDrawing(text, name){
 /* The translator, after the one in the game: it sits on an untranslated line until
    you hold the button, then resolves the sentence from the front while the rest
    still churns, and sweeps the drawing with light the whole time. */
+/* The reader shows its screen even with nothing in front of it, the way the tool
+   in the game reads out that there is nothing to translate. */
+function idleTranslator(){
+  $("readings").innerHTML = `<div class="translator">
+    <div class="screen"><span class="idle">${esc(NOTHING)}</span></div>
+    <div class="tbar"><i></i></div>
+    <button class="btn hold" disabled>Hold to translate</button>
+  </div>`;
+}
+const NOTHING = "\u003c!\u003e No Nomai writing detected \u003c!\u003e";
 const IDLE = "\u003c!\u003e Untranslated Nomai writing \u003c!\u003e";
 const GARBLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789<>?:=|_[]!/%$#";
 const noise = k => Array.from({ length: k },
@@ -982,6 +1023,9 @@ $("file").onchange = e => takeFile(e.target.files[0]);
 drop.addEventListener("drop", e => takeFile(e.dataTransfer.files[0]));
 
 state.mode = "write";
+state.tilt = 0;
+state.written = $("msg").value;
 hwRead();
+syncWrite();
 build();
 </script>
