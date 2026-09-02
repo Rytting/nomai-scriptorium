@@ -195,6 +195,39 @@ class SpiralLayout:
             math.atan2(float(self.flip), self.b) + self.flip * theta + self.rotation
         )
 
+    @property
+    def centre(self) -> Point:
+        """The point the path winds into, in the coordinates `place` returns --
+        what "away from the spiral" is measured against."""
+        return (-self.anchor[0], -self.anchor[1])
+
+    def col_at(self, k: float) -> float:
+        """Which column, as a real number, sits at path fraction k -- `fraction`
+        inverted, so a reply can attach part way along its parent."""
+        n = self.ncols - 1
+        if n <= 0:
+            return 1.0
+        total = n + 0.5 * n * n * self.delta
+        if self.delta == 0:
+            return 1 + k * total
+        return 1 + (-1 + math.sqrt(1 + 2 * self.delta * k * total)) / self.delta
+
+    def point_at(self, k: float, j: int) -> dict:
+        """The point on row j at an arbitrary fraction along the path, and the row
+        axis there -- which is perpendicular to the spiral by construction."""
+        theta = theta_at_length(max(0.0, min(1.0, k)) * self.total_len,
+                                SPIRAL_A, self.b)
+        base = self._raw(theta)
+        slope = (math.atan2(float(self.flip), self.b) + self.flip * theta
+                 + self.rotation)
+        scale_here = 1 + (self.col_at(k) - 1) * self.delta
+        d = (j - GRID_ROWS) * 3 * GLYPH_K * scale_here
+        return {
+            "x": base[0] - d * math.sin(slope) - self.anchor[0],
+            "y": base[1] + d * math.cos(slope) - self.anchor[1],
+            "ux": -math.sin(slope), "uy": math.cos(slope), "scale": scale_here,
+        }
+
     def fraction(self, i: int) -> float:
         n = self.ncols - 1
         if n <= 0:
@@ -278,23 +311,43 @@ def handwrite(grid, glyphs, amount: float, seed: int = 47):
     return drawn, conns
 
 
-def render_grid(grid, glyphs, handwriting: float = 0.0, seed: int = 47,
-                tilt: float = 0.0, flip: int = 1, tight: float = SPIRAL_B) -> str:
-    """A GlyphGrid -> a complete SVG, laid out on the spiral."""
-    layout = SpiralLayout(grid.ncols, tilt, flip, tight)
-    places = {c: layout.place(*c) for c in grid.glyphs}
-    els = []
+def spiral_elements(grid, glyphs, handwriting: float, seed: int, layout,
+                    shift: Point = (0.0, 0.0)):
+    """One spiral's SVG elements, and where each glyph's points landed.
+
+    Split out of `render_grid` so a scroll can put several spirals on one sheet
+    without any of the handwriting or connection code needing to know about it:
+    `shift` moves this spiral into its place, and everything downstream is unchanged.
+    """
+    dx, dy = shift
+
+    def place_for(coord):
+        base = layout.place(*coord)
+        return lambda pt: (lambda q: (q[0] + dx, q[1] + dy))(base(pt))
+
+    places = {c: place_for(c) for c in grid.glyphs}
+    drawn_at: dict = {c: [] for c in grid.glyphs}
+    els: list[str] = []
+
+    def part(points, closed, coord):
+        world = [places[coord](pt) for pt in points]
+        els.extend(polyspec_svg(points, closed, places[coord]))
+        drawn_at[coord].extend(world)
+
     if handwriting > 0:
         drawn, conns = handwrite(grid, glyphs, handwriting, seed)
         for coord, (core, ann) in drawn.items():
-            els.extend(polyspec_svg(core[0], core[1], places[coord]))
+            part(core[0], core[1], coord)
             if ann is not None:
-                els.extend(polyspec_svg(ann[0], ann[1], places[coord]))
+                part(ann[0], ann[1], coord)
         for c1, p1, c2, p2 in conns:
             els.extend(connection_svg(places[c1](p1), places[c2](p2)))
     else:
         for coord, gid in grid.glyphs.items():
-            els.extend(glyph_svg(glyphs[gid - 1], places[coord]))
+            g = glyphs[gid - 1]
+            part(g.core.points, g.core.close, coord)
+            if g.annotation is not None:
+                part(g.annotation.points, g.annotation.close, coord)
         for conn in grid.connections:
             els.extend(
                 connection_svg(
@@ -302,5 +355,13 @@ def render_grid(grid, glyphs, handwriting: float = 0.0, seed: int = 47,
                     places[conn.coord2](conn.point2),
                 )
             )
+    return els, drawn_at
+
+
+def render_grid(grid, glyphs, handwriting: float = 0.0, seed: int = 47,
+                tilt: float = 0.0, flip: int = 1, tight: float = SPIRAL_B) -> str:
+    """A GlyphGrid -> a complete SVG, laid out on the spiral."""
+    layout = SpiralLayout(grid.ncols, tilt, flip, tight)
+    els, _ = spiral_elements(grid, glyphs, handwriting, seed, layout)
     vx, vy, w, h = layout.canvas()
     return document(els, w, h, origin=(vx, vy))

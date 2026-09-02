@@ -128,9 +128,12 @@ ways.
   that's the ambiguity above, and it's a property of the drawing, not a weakness of
   the reader. On the modified numbering there is exactly one reading.
 * Works in the browser with no server: write, render, read, translate.
-* Reference implementation in Python, plus a JS port for the page.
-* Known limits: some drawings still fail to read when mirrored; multi-spiral rendering
-  exists only in the JS side so far.
+* Reference implementation in Python, including scrolls, plus a JS port for the page.
+  `python tools/check_scroll.py` writes four conversation shapes across both windings
+  and three tightnesses and reads them back: 21 of 24, the three failures being the
+  same per-drawing limits the single-spiral reader has.
+* Known limits: a few drawings still fail to read at one winding — the page warns you
+  when it has made one of those, since it can tell — and heavy handwriting degrades it.
 
 Thanks for building the thing in the first place — the alphabet and the spiral are
 yours, and none of this would exist without them. Enjoy the leave.

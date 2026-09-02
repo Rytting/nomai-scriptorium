@@ -894,9 +894,18 @@ MAX_SCALE_ = 2.0
 
 def analyze(path) -> "Observation":
     """A NomaiText SVG -> the Observation the replay decoder consumes."""
+    strokes, _circles = parse_svg(path)
+    return observe(strokes)
+
+
+def observe(strokes) -> "Observation":
+    """One spiral's strokes -> its Observation.
+
+    Split out of `analyze` so a scroll can hand this each of its spirals in turn once
+    it has cut them apart; a plain drawing takes exactly the path it always did.
+    """
     from .decode import Observation
 
-    strokes, _circles = parse_svg(path)
     clusters, connections = decompose(strokes)
     fits = {k: fit_cluster(c) for k, c in clusters.items()}
     empty = [k for k, f in fits.items() if not f]

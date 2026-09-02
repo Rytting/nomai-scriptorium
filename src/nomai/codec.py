@@ -1,7 +1,9 @@
 """Public read/write API.
 
-    write(message, base)  -> GlyphGrid          (strict dialect, uniquely readable)
-    read(observation)     -> list of readings   (either dialect)
+    write(message, base)   -> GlyphGrid          (strict dialect, uniquely readable)
+    read(observation)      -> list of readings   (either dialect)
+    write_scroll(turns)    -> SVG                (a conversation on one sheet)
+    read_scroll(svg)       -> list of records + whether the tree checks out
 
 Use STRICT for messages we write ourselves: the drawing has exactly one reading and
 decoding is a linear replay. Use UPSTREAM to read anything produced by
@@ -44,3 +46,49 @@ def read(obs: Observation, bases=(256, 200_000), dialect: str = STRICT):
     if dialect == STRICT:
         return decode_strict(obs, bases=bases)
     return decode_backward(obs, bases=bases, dialect=UPSTREAM)
+
+
+def write_scroll(turns, base: int = 256, handwriting: float = 0.0, seed: int = 47,
+                 flip: int = 1, tight: float = 0.29) -> str:
+    """A conversation -> one SVG holding all of it.
+
+    `turns` is a list of `(text, signature or None, parent index or None)`, in the
+    order they were written; exactly one of them is a root. Only the root is plugged
+    into the wall, and each reply records which spiral it answers so that a reader can
+    check the tree it sees against the tree that was written.
+    """
+    from .glyphs import KNOWN_GLYPHS
+    from .scroll import Spiral, render_scroll
+
+    if not turns:
+        raise ValueError("a scroll needs at least one spiral")
+    roots = [i for i, (_, _, p) in enumerate(turns) if p is None]
+    if len(roots) != 1 or roots[0] != 0:
+        raise ValueError("a scroll has exactly one root, and it comes first")
+    spirals = [Spiral(write(t, base, STRICT, s or None, p), p) for t, s, p in turns]
+    return render_scroll(spirals, KNOWN_GLYPHS, handwriting, seed, flip, tight)
+
+
+def read_scroll(text_or_path, base: int = 256):
+    """One SVG -> `(records, tree_ok, why)`.
+
+    Each record is `(signature or None, text, parent or None)`, numbered in the order
+    the spirals were written. `tree_ok` says whether the way they are drawn agrees
+    with what each one claims to answer -- the parent index is a check on the
+    segmentation, never its source.
+    """
+    from .decode import x_to_record
+    from .scroll import analyze_scroll, check_tree
+
+    obs, edges, _joins = analyze_scroll(text_or_path)
+    records = []
+    for o in obs:
+        got = decode_strict(o, bases=(base,))
+        records.append(
+            x_to_record(got[0][1], base, False, STRICT) if len(got) == 1 else None
+        )
+    if len(records) == 1:
+        return records, True, ""
+    parents = [r[2] if r else None for r in records]
+    ok, why = check_tree(edges, parents, len(records))
+    return records, ok, why
