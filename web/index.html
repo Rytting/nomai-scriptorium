@@ -99,23 +99,17 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
   stroke-linejoin:round}
 .socket .key{fill:none;stroke:var(--slot-core);stroke-width:4.5;stroke-linejoin:round;
   filter:drop-shadow(0 0 3px var(--slot-core)) drop-shadow(0 0 9px var(--slot))}
-/* the filament that runs from the socket out to the writing */
-.stem{fill:none;stroke:var(--slot);stroke-width:2.6;opacity:.75;
-  stroke-linecap:round;filter:drop-shadow(0 0 5px var(--slot))}
 .socket.inserting .key{animation:slot-in .62s cubic-bezier(.2,.86,.3,1) both}
 .socket.inserting .slot{animation:slot-lock .62s ease-out both}
-.socket-layer.inserting .stem{animation:stem-out .26s .62s ease-out both}
 @keyframes slot-in{
   0%{opacity:0;transform:rotate(-165deg) scale(2.7)}
   72%{opacity:1;transform:rotate(7deg) scale(1.05)}
   100%{opacity:1;transform:rotate(0deg) scale(1)}
 }
 @keyframes slot-lock{0%,62%{opacity:.1}80%{opacity:.8}100%{opacity:.2}}
-@keyframes stem-out{from{stroke-dashoffset:var(--len)}to{stroke-dashoffset:0}}
 @media (prefers-reduced-motion: reduce){
   .plate svg g[data-turn].lit{transition:none}
-  .socket.inserting .key,.socket.inserting .slot,
-  .socket-layer.inserting .stem{animation:none}
+  .socket.inserting .key,.socket.inserting .slot{animation:none}
 }
 .plate svg{max-width:100%;height:auto;display:block}
 .plate.empty{color:#8a7f6d;font-family:var(--serif);font-size:20px;font-style:italic}
@@ -527,11 +521,13 @@ function layoutFor(ncols, tilt, flip, tight){
   const b = tight || SPIRAL_B;
   let period = Math.PI / 4;
   while (arcLen(period, b) < 3.5 * K * ncols) period += Math.PI / 24;
-  /* Upstream turns the finished spiral so its tail sits at the left. Adding to that
-     turns the whole drawing, glyphs and all, and costs the reader nothing: it fits a
-     global similarity anyway, so any orientation is absorbed. Winding is different --
-     a similarity has no reflection in it, so the reader has to try both. */
-  const rot = Math.PI - (period % (2 * Math.PI)) + (tilt || 0);
+  /* Turned so the tail's outward tangent points straight down. The socket is a
+     fixture at the bottom of the panel and the writing comes out of it, so the tail
+     is the end whose direction we fix; `tilt` then leans the whole spiral about it.
+     Orientation costs the reader nothing either way -- it fits a global similarity,
+     so any rotation is absorbed. Winding is the exception: a similarity has no
+     reflection in it, so the reader has to try both. */
+  const rot = Math.PI / 2 + (tilt || 0) - Math.atan2(f, b) - f * period;
   const raw = t => {
     const r = SPIRAL_A * Math.exp(b * t);
     const c = Math.cos(rot), s = Math.sin(rot);
@@ -540,9 +536,17 @@ function layoutFor(ncols, tilt, flip, tight){
   };
   let xs = [], ys = [];
   for (let n = 0; n <= 800; n++){ const p = raw(period * n / 800); xs.push(p[0]); ys.push(p[1]); }
-  const mid = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
   const box = [Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)];
   const total = arcLen(period, b), delta = ncols > 1 ? (MAX_SCALE - 1) / (ncols - 1) : 0;
+  /* Anchored on the tail rather than the centre: that is the point the socket holds,
+     so it is the point whose position has to be known. */
+  const tailScale = 1 + (ncols - 1) * delta;
+  const tailSlope = Math.atan2(f, b) + f * period + rot;
+  const tailRaw = raw(period), dRow = (2 - ROWS) * 3 * K * tailScale;
+  const anchor = [tailRaw[0] - dRow * Math.sin(tailSlope),
+                  tailRaw[1] + dRow * Math.cos(tailSlope)];
+  const ext = [Math.min(...xs) - anchor[0], Math.max(...xs) - anchor[0],
+               Math.min(...ys) - anchor[1], Math.max(...ys) - anchor[1]];
   const fraction = i => {
     const n = ncols - 1;
     return n <= 0 ? 0 : ((i - 1) + 0.5 * (i - 1) * (i - 1) * delta) / (n + 0.5 * n * n * delta);
@@ -565,20 +569,25 @@ function layoutFor(ncols, tilt, flip, tight){
       const slope = Math.atan2(f, b) + f * th + rot;
       const scaleHere = 1 + (colAt(k) - 1) * delta;
       const d = (j - ROWS) * 3 * K * scaleHere;
-      return { x: base[0] - d * Math.sin(slope) - mid[0],
-               y: base[1] + d * Math.cos(slope) - mid[1],
+      return { x: base[0] - d * Math.sin(slope) - anchor[0],
+               y: base[1] + d * Math.cos(slope) - anchor[1],
                ux: -Math.sin(slope), uy: Math.cos(slope), scale: scaleHere };
     },
+    /* The viewBox is not centred on the drawing: it is centred on the *socket*,
+       which sits at the bottom middle of the panel with the tail in it. */
     canvas(){
       const pad = Math.max(12 * K + (ROWS - 1) * 4 * K * 2 * MAX_SCALE, 0.05 * box[0], 0.05 * box[1]);
-      return [pad + box[0], pad + box[1]];
+      const m = pad / 2, R = SOCKET_R * K * tailScale;
+      const W = 2 * Math.max(ext[1] + m, m - ext[0]);
+      const Y = ext[2] - m, H = (ext[3] + 2.2 * R + 0.15 * m) - Y;
+      return [-W / 2, Y, W, H];
     },
     place(i, j){
       const k = fraction(i), th = thetaAt(k * total, b), base = raw(th);
       const slope = Math.atan2(f, b) + f * th + rot;
       const d = (j - ROWS) * 3 * K * (1 + (i - 1) * delta);
-      const px = base[0] - d * Math.sin(slope) - mid[0];
-      const py = base[1] + d * Math.cos(slope) - mid[1];
+      const px = base[0] - d * Math.sin(slope) - anchor[0];
+      const py = base[1] + d * Math.cos(slope) - anchor[1];
       const s = (MAX_SCALE - 1) * k + 1, c = Math.cos(slope) * s, sn = Math.sin(slope) * s;
       return p => [p[0] * c - p[1] * sn + px, p[0] * sn + p[1] * c + py];
     }
@@ -674,10 +683,11 @@ function renderSVG(grid, amount, seed, tilt, flip, tight){
   }
   const el = [...byCol.keys()].sort((a, b) => a - b)
     .map(c => '<g data-turn="' + c + '">' + byCol.get(c).join("") + "</g>");
-  const [w, h] = L.canvas();
+  const [vx, vy, w, h] = L.canvas();
+  const vb = f(vx) + " " + f(vy) + " " + f(w) + " " + f(h);
   return '<svg xmlns="http://www.w3.org/2000/svg" width="' + f(w) + '" height="' + f(h)
-    + '" viewBox="' + f(-w / 2) + " " + f(-h / 2) + " " + f(w) + " " + f(h) + '">'
-    + '<rect x="' + f(-w / 2) + '" y="' + f(-h / 2) + '" width="' + f(w) + '" height="' + f(h)
+    + '" viewBox="' + vb + '">'
+    + '<rect x="' + f(vx) + '" y="' + f(vy) + '" width="' + f(w) + '" height="' + f(h)
     + '" fill="rgb(98.039216%,92.156863%,84.313725%)"/>' + el.join("") + "</svg>";
 }
 
@@ -815,9 +825,9 @@ function draw(svg, grow){
   groups.sort((a, b) => +b.dataset.turn - +a.dataset.turn);
   const step = Math.min(85, 1000 / groups.length);
   /* the scroll turns into its socket first, and the spiral unwinds out of it */
-  const sock = art.querySelector(".socket-layer");
-  const wait = sock ? INSERT_MS + STEM_MS : 0;
-  if (sock){ sock.classList.add("inserting"); sock.firstChild.classList.add("inserting"); }
+  const sock = art.querySelector(".socket");
+  const wait = sock ? INSERT_MS : 0;
+  if (sock) sock.classList.add("inserting");
   groups.forEach((g, i) => setTimeout(() => g.classList.add("lit"), wait + i * step));
   setTimeout(() => plate.classList.remove("growing"), wait + groups.length * step + 400);
 }
@@ -917,16 +927,16 @@ function trackFromLayout(L){
    back, since trackFromFit has already put the fitted similarity into those points.
    The row axis (ux, uy) is perpendicular to the path, so the tangent is (uy, -ux). */
 /* In the game the socket is a fixture on the wall -- a dark triangular housing with
-   a lit triangle inside it, always the same way up -- and the writing runs out of it
-   along a thin filament. So this does not turn with the spiral; only the filament
-   knows which way the writing went. */
-const SOCKET_R = 1.9, SOCKET_OUT = 6.2, INSERT_MS = 620, STEM_MS = 260;
+   a lit triangle inside it, always apex down -- and the writing comes straight out of
+   it. There is no connecting line: what looks like one is the spiral itself, part way
+   through growing. So the socket does not turn with the drawing, and the drawing is
+   laid out to put its tail in the socket rather than the socket wherever the tail
+   happened to fall. */
+const SOCKET_R = 1.5, INSERT_MS = 620;
 function socketFor(track){
   if (!track) return null;
-  const p = track.at(1), tx = p.uy, ty = -p.ux;
-  const R = SOCKET_R * K * p.scale, out = SOCKET_OUT * K * p.scale;
-  return { cx: p.x + tx * out, cy: p.y + ty * out, R: R, tipX: p.x, tipY: p.y,
-           ux: tx, uy: ty };
+  const p = track.at(1), R = SOCKET_R * K * p.scale;
+  return { cx: p.x, cy: p.y + R * 0.5, R: R };
 }
 /* Mounted separately from the drawing, because a spiral we read arrives on the
    plate before it has been analysed and the socket is not known until the fit is. */
@@ -942,21 +952,16 @@ function mountSocket(){
     base.getAttribute("preserveAspectRatio") || "xMidYMid meet");
   sk.innerHTML = socketSVG(state.socket);
   art.appendChild(sk);
-  return sk;
+  return sk.querySelector(".socket");
 }
 function socketSVG(s2){
   const tri = r => [[0, 1], [-0.866, -0.5], [0.866, -0.5]]
     .map(p => f(p[0] * r) + "," + f(p[1] * r)).join(" ");
   const inner = tri(s2.R), outer = tri(s2.R * 1.42);
-  /* the filament starts clear of the housing and ends at the outermost glyph */
-  const sx = s2.cx - s2.ux * s2.R * 1.1, sy = s2.cy - s2.uy * s2.R * 1.1;
-  const len = Math.hypot(s2.tipX - sx, s2.tipY - sy);
   return '<g class="socket" transform="translate(' + f(s2.cx) + ',' + f(s2.cy) + ')">'
     + '<polygon class="housing" points="' + outer + '"/>'
     + '<polygon class="slot" points="' + inner + '"/>'
-    + '<polygon class="key" points="' + inner + '"/></g>'
-    + '<path class="stem" style="--len:' + f(len) + ';stroke-dasharray:' + f(len)
-    + '" d="M' + f(sx) + ' ' + f(sy) + 'L' + f(s2.tipX) + ' ' + f(s2.tipY) + '"/>';
+    + '<polygon class="key" points="' + inner + '"/></g>';
 }
 /* the spiral of a drawing we read, put back through the fit that matched it */
 function trackFromFit(ncols, fit){

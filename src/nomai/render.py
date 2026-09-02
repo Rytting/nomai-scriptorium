@@ -102,6 +102,8 @@ def document(elements, width: float, height: float, origin: Point = (0.0, 0.0)) 
 
 SPIRAL_A = 164.0
 SPIRAL_B = 0.29
+# the scroll socket the drawing is anchored in; see the page for how it is drawn
+SOCKET_R = 1.5
 MAX_SCALE = 2.0
 GLYPH_K = 20.0
 GRID_ROWS = 3
@@ -133,7 +135,14 @@ class SpiralLayout:
         self.flip = -1 if flip == -1 else 1
         self.b = tight
         self.period = spiral_period(ncols, self.b)
-        self.rotation = math.pi - (self.period % (2 * math.pi)) + tilt
+        # Turned so the tail's outward tangent points straight down: the socket is a
+        # fixture at the bottom of the panel and the writing comes out of it, so the
+        # tail is the end whose direction is fixed and `tilt` leans the rest about it.
+        self.rotation = (
+            math.pi / 2 + tilt
+            - math.atan2(float(self.flip), self.b)
+            - self.flip * self.period
+        )
         self.total_len = arc_length(self.period, SPIRAL_A, self.b)
         self.delta = (MAX_SCALE - 1) / (ncols - 1) if ncols > 1 else 0.0
         xs, ys = [], []
@@ -141,8 +150,18 @@ class SpiralLayout:
             p = self._raw(self.period * n / 800)
             xs.append(p[0])
             ys.append(p[1])
-        self.mid = ((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2)
         self.box = (max(xs) - min(xs), max(ys) - min(ys))
+        # Anchored on the tail, not the centre: that is the point the socket holds.
+        self.tail_scale = 1 + (ncols - 1) * self.delta
+        tail_raw, tail_slope = self._raw(self.period), (
+            math.atan2(float(self.flip), self.b) + self.flip * self.period
+            + self.rotation
+        )
+        d_row = (2 - GRID_ROWS) * 3 * GLYPH_K * self.tail_scale
+        self.anchor = (tail_raw[0] - d_row * math.sin(tail_slope),
+                       tail_raw[1] + d_row * math.cos(tail_slope))
+        self.ext = (min(xs) - self.anchor[0], max(xs) - self.anchor[0],
+                    min(ys) - self.anchor[1], max(ys) - self.anchor[1])
 
     def _raw(self, theta: float) -> Point:
         """A point on the path.
@@ -189,17 +208,29 @@ class SpiralLayout:
         scale_here = 1 + (i - 1) * self.delta
         d = (j - GRID_ROWS) * 3 * GLYPH_K * scale_here
         off = complex(0, d) * complex(math.cos(slope), math.sin(slope))
-        pt = (base[0] + off.real - self.mid[0], base[1] + off.imag - self.mid[1])
+        pt = (base[0] + off.real - self.anchor[0],
+              base[1] + off.imag - self.anchor[1])
         return similarity((MAX_SCALE - 1) * k + 1, slope, pt)
 
     def canvas(self):
+        """The viewBox, which is centred on the *socket* rather than the drawing.
+
+        The socket sits at the bottom middle of the panel with the tail in it, so the
+        box is built outwards from the tail: wide enough to hold the drawing either
+        side of it, and deep enough to leave the socket room below.
+        """
         bw, bh = self.box
         pad = max(
             12 * GLYPH_K + (GRID_ROWS - 1) * 4 * GLYPH_K * 2 * MAX_SCALE,
             0.05 * bw,
             0.05 * bh,
         )
-        return pad + bw, pad + bh
+        m = pad / 2
+        r = SOCKET_R * GLYPH_K * self.tail_scale
+        x0, x1, y0, y1 = self.ext
+        w = 2 * max(x1 + m, m - x0)
+        y = y0 - m
+        return -w / 2, y, w, (y1 + 2.2 * r + 0.15 * m) - y
 
 
 def handwrite(grid, glyphs, amount: float, seed: int = 47):
@@ -271,5 +302,5 @@ def render_grid(grid, glyphs, handwriting: float = 0.0, seed: int = 47,
                     places[conn.coord2](conn.point2),
                 )
             )
-    w, h = layout.canvas()
-    return document(els, w, h, origin=(-w / 2, -h / 2))
+    vx, vy, w, h = layout.canvas()
+    return document(els, w, h, origin=(vx, vy))

@@ -643,3 +643,27 @@ reader stays the drawing alone, and still reads back.
 Reading does not play the insertion. A drawing we opened is already on the wall, and
 playing the scroll into its socket after the writing has appeared tells the story
 backwards; the socket is simply seated. The insertion belongs to writing.
+
+### The filament was not a filament
+
+The thin line running out of the socket in the reference shots is the spiral itself,
+part way through growing -- not a separate thing to draw. The writing comes straight
+out of the socket, and the socket is a fixture at the bottom middle of the panel.
+
+That reversed which end is free. The socket had been placed wherever the tail
+happened to fall; now the tail is placed in the socket. Two changes:
+
+* the base rotation is chosen so the tail's outward tangent points straight down,
+  `rot = pi/2 + tilt - atan2(f, b) - f*period`, instead of upstream's "tail to the
+  left". `tilt` then leans the whole spiral about the socket, which is a better
+  defined meaning than it had.
+* the layout is anchored on the tail instead of the bounding-box centre, and
+  `canvas()` returns a full viewBox built outwards from that anchor -- wide enough
+  either side, and only deep enough below for the socket. Anchoring on the centre and
+  then shifting would have needed an unbounded box whenever the tail was not already
+  near the bottom.
+
+Neither costs the reader anything: both are rigid motions of the whole drawing, and
+the fit is a similarity, which absorbs them. Confirmed rather than assumed -- 36
+combinations of message, winding, tightness and tilt read back in the page, 72 in
+Python, and validate.py still passes twelve of twelve.
