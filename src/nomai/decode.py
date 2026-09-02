@@ -383,13 +383,30 @@ def x_to_codepoints(x: int, base: int) -> list[int]:
     return out
 
 
+def x_to_record(x: int, base: int, strict: bool = False, dialect: str = UPSTREAM):
+    """(signature, body) for a strict integer, or (None, text) for an upstream one."""
+    got = decode_int(x, base, dialect)
+    if got is None:
+        return None
+    sig_cps, body_cps = got if dialect == STRICT else (None, got)
+    if not body_cps:
+        return None
+    for cp in list(body_cps) + list(sig_cps or []):
+        if not _plausible(cp, strict):
+            return None
+    sig = "".join(chr(c) for c in sig_cps) if sig_cps else None
+    return sig, "".join(chr(c) for c in body_cps)
+
+
 def x_to_text(
     x: int, base: int, strict: bool = False, dialect: str = UPSTREAM
 ) -> Optional[str]:
-    cps = decode_int(x, base, dialect)
-    if not cps or any(not _plausible(cp, strict) for cp in cps):
+    """The reading as one line, signed ones rendered the way the game shows them."""
+    rec = x_to_record(x, base, strict, dialect)
+    if rec is None:
         return None
-    return "".join(chr(cp) for cp in cps)
+    sig, body = rec
+    return f"{sig}: {body}" if sig else body
 
 
 # Codepoint ranges real messages actually live in. Printability alone is far too

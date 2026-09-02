@@ -692,8 +692,8 @@ function readStrict(obs, base){
     acc += BigInt(seq[i][1] - 1) * M[i];
     if (i < last || seen.has(acc)) continue;
     seen.add(acc);
-    const t = toText(decodeInt(acc, base, "strict"));
-    if (t !== null && sameGrid(buildGrid(acc, "strict"), obs)) out.push(t);
+    const r = toRecord(acc, base, "strict");
+    if (r !== null && sameGrid(buildGrid(acc, "strict"), obs)) out.push(r);
   }
   return out;
 }

@@ -32,49 +32,82 @@ def evalpoly(base: int, digits) -> int:
     return x
 
 
+# A strict-dialect integer is a framed record, not a bare run of codepoints. The
+# leading digit says which frame, so the format can grow without the reader having to
+# guess: the obvious next one is a reply, carrying which spiral it answers, which is
+# how a conversation branches.
+PLAIN = 1
+SIGNED = 2
+
+
 def encode(
-    message: str, base: int = 256, dialect: str = UPSTREAM, nonce: int = 1
+    message: str,
+    base: int = 256,
+    dialect: str = UPSTREAM,
+    nonce: int = 1,
+    signature: str | None = None,
 ) -> int:
     """Message -> the integer an Oracle consumes.
 
-    STRICT wraps the codepoints in two extra digits: a length at the bottom and a
-    `nonce` at the top. The length alone is not enough -- rival readings differ by a
-    multiple of some M, and at base 200000 (= 2^6 * 5^5) M often *is* divisible by
-    the base, which carries the low digit through unchanged. The nonce is the knob
-    `codec.write` turns until the drawing it produces has exactly one reading, so
-    uniqueness is constructed rather than hoped for.
+    STRICT frames the codepoints: a format tag and the lengths at the bottom, a
+    `nonce` at the top. The lengths alone are not enough to pin the reading -- rival
+    readings differ by a multiple of some M, and at base 200000 (= 2^6 * 5^5) M often
+    *is* divisible by the base, which carries the low digits through unchanged. The
+    nonce is the knob `codec.write` turns until the drawing it produces has exactly
+    one reading, so uniqueness is constructed rather than hoped for.
     """
     cps = [ord(c) for c in message]
     if not cps:
         raise ValueError("empty message")
-    if max(cps) >= base:
-        raise ValueError(f"codepoint {max(cps)} does not fit in base {base}")
-    if dialect == STRICT:
-        if len(cps) >= base:
-            raise ValueError(f"strict dialect: message longer than base {base}")
-        if not 1 <= nonce < base:
-            raise ValueError(f"nonce {nonce} out of range for base {base}")
-        cps = [len(cps)] + cps + [nonce]
-    return evalpoly(base, cps)
+    sig = [ord(c) for c in (signature or "")]
+    if max(cps + sig) >= base:
+        raise ValueError(f"codepoint {max(cps + sig)} does not fit in base {base}")
+    if dialect != STRICT:
+        if signature:
+            raise ValueError("only the strict dialect carries a signature")
+        return evalpoly(base, cps)
+    if len(cps) >= base or len(sig) >= base:
+        raise ValueError(f"strict dialect: text longer than base {base}")
+    if not 1 <= nonce < base:
+        raise ValueError(f"nonce {nonce} out of range for base {base}")
+    if sig:
+        digits = [SIGNED, len(sig), len(cps)] + sig + cps + [nonce]
+    else:
+        digits = [PLAIN, len(cps)] + cps + [nonce]
+    return evalpoly(base, digits)
 
 
 def decode_int(x: int, base: int, dialect: str = UPSTREAM):
-    """The integer -> codepoints, or None if it cannot be a message in this dialect."""
+    """The integer -> codepoints, or None if it cannot be a message in this dialect.
+
+    STRICT returns `(signature codepoints or None, body codepoints)`.
+    """
     cps = []
     while x > 0:
         x, r = divmod(x, base)
         cps.append(r)
     if not cps:
         return None
-    if dialect == STRICT:
-        if len(cps) < 3:
-            return None
-        body, nonce = cps[:-1], cps[-1]
-        declared, body = body[0], body[1:]
-        if nonce < 1 or not body or declared != len(body):
-            return None
-        return body
-    return cps
+    if dialect != STRICT:
+        return cps
+    if len(cps) < 3 or cps[-1] < 1:
+        return None
+    body = cps[:-1]
+    fmt = body[0]
+    if fmt == PLAIN and len(body) >= 2:
+        n_body, rest = body[1], body[2:]
+        if rest and n_body == len(rest):
+            return None, rest
+    elif fmt == SIGNED and len(body) >= 4:
+        n_sig, n_body, rest = body[1], body[2], body[3:]
+        if rest and n_sig >= 1 and n_sig + n_body == len(rest):
+            return rest[:n_sig], rest[n_sig:]
+    # Drawings written before the frame existed carry the length alone. Falling back
+    # keeps them readable rather than orphaning them for a format change.
+    n_body, rest = body[0], body[1:]
+    if rest and n_body == len(rest):
+        return None, rest
+    return None
 
 
 class Oracle:

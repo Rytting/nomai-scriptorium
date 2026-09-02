@@ -15,7 +15,8 @@ from .oracle import STRICT, UPSTREAM, Oracle, encode
 MAX_NONCE = 64
 
 
-def write(message: str, base: int = 256, dialect: str = STRICT) -> GlyphGrid:
+def write(message: str, base: int = 256, dialect: str = STRICT,
+          signature: str | None = None) -> GlyphGrid:
     """Message -> drawing. In STRICT, guarantees the drawing has exactly one reading.
 
     Rival readings are a deterministic function of X, so the encoder can simply check
@@ -25,10 +26,12 @@ def write(message: str, base: int = 256, dialect: str = STRICT) -> GlyphGrid:
     """
     if dialect != STRICT:
         return grid_from_oracle(Oracle(encode(message, base, dialect)), dialect)
+    want = f"{signature}: {message}" if signature else message
     for nonce in range(1, MAX_NONCE + 1):
-        gg = grid_from_oracle(Oracle(encode(message, base, STRICT, nonce)), STRICT)
+        x = encode(message, base, STRICT, nonce, signature)
+        gg = grid_from_oracle(Oracle(x), STRICT)
         readings = decode_strict(Observation.from_grid(gg), bases=(base,))
-        if len(readings) == 1 and readings[0][2] == message:
+        if len(readings) == 1 and readings[0][2] == want:
             return gg
     raise RuntimeError(
         f"no nonce below {MAX_NONCE} yields a uniquely readable drawing for "

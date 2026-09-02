@@ -46,6 +46,13 @@ h1 em{font-style:italic;color:var(--amber)}
   color:var(--text-faint);font-weight:500}
 
 .composer{display:flex;flex-direction:column;gap:10px}
+.sigrow{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.sigrow input{background:var(--rock-2);color:var(--text);border:1px solid var(--edge);
+  border-radius:3px;padding:7px 12px;font-family:var(--sans);font-size:14px;width:200px}
+.sigrow input:focus{outline:2px solid var(--ink-soft);outline-offset:1px;
+  border-color:transparent}
+.hint{color:var(--text-faint);font-size:12.5px;flex:1 1 260px;min-width:0}
+.who{font-style:italic;color:var(--amber-soft);font-family:var(--mono)}
 textarea{width:100%;min-height:76px;resize:vertical;background:var(--rock-2);
   color:var(--text);border:1px solid var(--edge);border-radius:3px;padding:14px 16px;
   font-family:var(--sans);font-size:17px;line-height:1.5}
@@ -156,6 +163,15 @@ footer a{color:var(--text-dim)}
 </div>
 
 <div class="composer" id="write-pane">
+  <div class="sigrow">
+    <div class="seg" role="group" aria-label="Signature">
+      <button id="s-anon" aria-pressed="true">Unsigned</button>
+      <button id="s-signed" aria-pressed="false">Signed</button>
+    </div>
+    <input id="sig" placeholder="who is writing" maxlength="24" spellcheck="false" hidden>
+    <span class="hint">Nomai spirals are nearly always signed. The unsigned ones are
+    notices, and questions put to whoever passes.</span>
+  </div>
   <label class="label" for="msg">Your text</label>
   <textarea id="msg" spellcheck="false">The Eye of the Universe</textarea>
 </div>
@@ -238,28 +254,51 @@ function evalpoly(base, digits){
   for (let i = digits.length - 1; i >= 0; i--) x = x * B + BigInt(digits[i]);
   return x;
 }
-function encode(msg, base, dialect, nonce){
+/* A strict integer is a framed record, not a bare run of codepoints: the leading
+   digit says which frame. That is what makes room for the next one -- a reply, which
+   would carry the spiral it answers, and that is how a conversation branches. */
+const PLAIN = 1, SIGNED = 2;
+function encode(msg, base, dialect, nonce, signature){
   const cps = Array.from(msg).map(c => c.codePointAt(0));
   if (!cps.length) return null;
-  if (Math.max(...cps) >= base) return "big";
-  const d = dialect === "strict" ? [cps.length].concat(cps, [nonce]) : cps;
+  const sig = Array.from(signature || "").map(c => c.codePointAt(0));
+  if (Math.max(...cps.concat(sig)) >= base) return "big";
+  if (dialect !== "strict") return evalpoly(base, cps);
+  const d = sig.length
+    ? [SIGNED, sig.length, cps.length].concat(sig, cps, [nonce])
+    : [PLAIN, cps.length].concat(cps, [nonce]);
   return evalpoly(base, d);
 }
 function decodeInt(x, base, dialect){
   const B = BigInt(base), cps = [];
   while (x > 0n){ cps.push(Number(x % B)); x = x / B; }
   if (!cps.length) return null;
-  if (dialect === "strict"){
-    if (cps.length < 3) return null;
-    const nonce = cps[cps.length - 1], declared = cps[0], body = cps.slice(1, -1);
-    if (nonce < 1 || !body.length || declared !== body.length) return null;
-    return body;
+  if (dialect !== "strict") return { sig: null, body: cps };
+  if (cps.length < 3 || cps[cps.length - 1] < 1) return null;
+  const body = cps.slice(0, -1), fmt = body[0];
+  if (fmt === PLAIN && body.length >= 2){
+    const nb = body[1], rest = body.slice(2);
+    if (rest.length && nb === rest.length) return { sig: null, body: rest };
+  } else if (fmt === SIGNED && body.length >= 4){
+    const ns = body[1], nb = body[2], rest = body.slice(3);
+    if (rest.length && ns >= 1 && ns + nb === rest.length)
+      return { sig: rest.slice(0, ns), body: rest.slice(ns) };
   }
-  return cps;
+  /* drawings written before the frame existed carry the length alone; keep them
+     readable rather than orphaning them for a format change */
+  const nb = body[0], rest = body.slice(1);
+  if (rest.length && nb === rest.length) return { sig: null, body: rest };
+  return null;
 }
-const toText = cps => cps === null ? null :
-  cps.every(c => c > 0 && c <= 0x10ffff && !(c >= 0xd800 && c <= 0xdfff))
-    ? cps.map(c => String.fromCodePoint(c)).join("") : null;
+const okCps = c2 => c2.every(c => c > 0 && c <= 0x10ffff && !(c >= 0xd800 && c <= 0xdfff));
+const str = c2 => c2.map(c => String.fromCodePoint(c)).join("");
+function toRecord(x, base, dialect){
+  const r = decodeInt(x, base, dialect);
+  if (!r || !r.body.length || !okCps(r.body)) return null;
+  if (r.sig && !okCps(r.sig)) return null;
+  return { sig: r.sig ? str(r.sig) : null, text: str(r.body) };
+}
+const toLine = r => r ? (r.sig ? r.sig + ": " + r.text : r.text) : null;
 
 class Oracle {
   constructor(x){ this.state = x; this.orig = x; this.done = false; this.log = []; }
@@ -347,8 +386,8 @@ function strictReadings(grid, base){
     acc += BigInt(grid.log[i][1] - 1) * M[i];
     if (i < last || seen.has(acc)) continue;
     seen.add(acc);
-    const t = toText(decodeInt(acc, base, "strict"));
-    if (t !== null && sameGrid(buildGrid(acc, "strict"), grid)) out.push(t);
+    const r = toRecord(acc, base, "strict");
+    if (r !== null && sameGrid(buildGrid(acc, "strict"), grid)) out.push(r);
   }
   return out;
 }
@@ -1240,8 +1279,8 @@ function readStrict(obs, base){
     acc += BigInt(seq[i][1] - 1) * M[i];
     if (i < last || seen.has(acc)) continue;
     seen.add(acc);
-    const t = toText(decodeInt(acc, base, "strict"));
-    if (t !== null && sameGrid(buildGrid(acc, "strict"), obs)) out.push(t);
+    const r = toRecord(acc, base, "strict");
+    if (r !== null && sameGrid(buildGrid(acc, "strict"), obs)) out.push(r);
   }
   return out;
 }
@@ -1272,12 +1311,16 @@ function setBaseUI(v){
 /* The drawing is committed, not live: a spiral that regrows on every keystroke
    never finishes growing, and the growth is the point. */
 function syncWrite(){
-  const changed = $("msg").value !== state.written;
-  $("write").disabled = !changed || !$("msg").value.trim();
-  $("write").textContent = changed ? "Write it" : "Written";
+  const sig = state.signed ? $("sig").value.trim() : "";
+  const changed = $("msg").value !== state.written || sig !== state.signedAs;
+  const ready = !!$("msg").value.trim() && (!state.signed || !!sig);
+  $("write").disabled = !changed || !ready;
+  $("write").textContent = state.signed && !sig ? "Needs a name"
+    : changed ? "Write it" : "Written";
 }
 function commit(){
   state.written = $("msg").value;
+  state.signedAs = state.signed ? $("sig").value.trim() : "";
   syncWrite();
   build();
 }
@@ -1292,14 +1335,18 @@ function build(){
     widened = true;
   }
   let grid = null, x = null;
+  const sig = state.signed ? $("sig").value.trim() : "";
   if (state.dialect === "strict"){
     for (let nonce = 1; nonce <= 48; nonce++){
-      const cand = encode(msg, state.base, "strict", nonce);
+      const cand = encode(msg, state.base, "strict", nonce, sig);
       if (cand === "big"){ empty("that character needs the larger alphabet"); return; }
       if (cand === null){ empty("waiting for words"); return; }
       const g = buildGrid(cand, "strict");
       const readings = strictReadings(g, state.base);
-      if (readings.length === 1 && readings[0] === msg){ grid = g; x = cand; grid.readings = readings; break; }
+      if (readings.length === 1 && readings[0].text === msg
+          && (readings[0].sig || "") === sig){
+        grid = g; x = cand; grid.readings = readings; break;
+      }
     }
     if (!grid){ empty("could not find a unique numbering for this text"); return; }
   } else {
@@ -1455,8 +1502,10 @@ function paint(grid, msg, widened){
        256 characters. Every language works here; the spiral just runs longer, because
        each character now takes more of the drawing to pin down.</p>` : "";
   if (state.dialect === "strict"){
+    const rec = grid.readings[0];
     r.innerHTML = `<div class="reading only"><span class="tag">reading</span>`
-      + `<span class="t">${esc(grid.readings[0])}</span></div>`
+      + `<span class="t">${rec.sig ? `<span class="who">` + esc(rec.sig) + `:</span> ` : ""}`
+      + `${esc(rec.text)}</span></div>`
       + `<p class="note">Exactly one reading. Every question this drawing answers has a single
          possible answer, so anyone with the decoder recovers <b>this sentence and no other</b>.</p>`
       + wide;
@@ -1502,6 +1551,17 @@ seg("d-strict", "d-upstream", "dialect", "strict", "upstream");
 $("b-256").onclick = () => { setBaseUI(256); build(); };
 $("b-200000").onclick = () => { setBaseUI(200000); build(); };
 $("hw").oninput = e => { state.hw = +e.target.value; hwRead(); build(); };
+function setSigned(on){
+  state.signed = on;
+  $("s-signed").setAttribute("aria-pressed", String(on));
+  $("s-anon").setAttribute("aria-pressed", String(!on));
+  $("sig").hidden = !on;
+  if (on) $("sig").focus();
+  syncWrite();
+}
+$("s-signed").onclick = () => setSigned(true);
+$("s-anon").onclick = () => setSigned(false);
+$("sig").oninput = syncWrite;
 $("msg").oninput = syncWrite;
 $("msg").addEventListener("keydown", e => {
   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)){ e.preventDefault(); commit(); }
@@ -1609,7 +1669,7 @@ function readDrawing(text, name){
    in the game reads out that there is nothing to translate. */
 function idleTranslator(){
   $("readings").innerHTML = `<div class="translator">
-    <div class="screen"><span class="idle">${esc(NOTHING)}</span></div>
+    <div class="screen"><span class="line"><span class="idle">${esc(NOTHING)}</span></span></div>
     <div class="tbar"><i></i></div>
     <button class="btn hold" disabled>Hold to translate</button>
   </div>`;
@@ -1622,12 +1682,13 @@ const noise = k => Array.from({ length: k },
 
 function translator(){
   $("readings").innerHTML = `<div class="translator">
-    <div class="screen" id="screen"><span class="idle">${esc(IDLE)}</span></div>
+    <div class="screen"><span class="line" id="line"><span class="idle">${esc(IDLE)}</span></span></div>
     <div class="tbar"><i id="tfill"></i></div>
     <button class="btn hold" id="translate" aria-pressed="false">Hold to translate</button>
   </div>`;
-  const target = state.pending.readings[0] || null;
-  const screen = $("screen"), fill = $("tfill"), btn = $("translate");
+  const rec0 = state.pending.readings[0] || null;
+  const target = toLine(rec0);
+  const screen = $("line"), fill = $("tfill"), btn = $("translate");
   let prog = 0, holding = false, raf = null, last = 0, done = false;
 
   const paintScreen = () => {
@@ -1667,16 +1728,18 @@ function translator(){
     btn.textContent = "Translated";
     btn.disabled = true;
     const { readings, name } = state.pending;
+    const show = r2 => r2.sig
+      ? `<span class="who">${esc(r2.sig)}:</span> ${esc(r2.text)}` : esc(r2.text);
     if (readings.length === 1){
-      screen.textContent = readings[0];
+      screen.innerHTML = show(readings[0]);
       $("readings").insertAdjacentHTML("beforeend",
         `<p class="note">Read straight off the drawing, with nothing to guess between.
          ${esc(name || "This file")} was written in the unambiguous dialect.</p>`);
     } else if (readings.length > 1){
-      screen.textContent = readings[0];
+      screen.innerHTML = show(readings[0]);
       $("readings").insertAdjacentHTML("beforeend",
         readings.slice(1, 5).map(t =>
-          `<div class="reading rival"><span class="tag">or</span><span class="t">${esc(t)}</span></div>`).join("")
+          `<div class="reading rival"><span class="tag">or</span><span class="t">${show(t)}</span></div>`).join("")
         + `<p class="note">More than one sentence fits this drawing, so it cannot be
            read with certainty.</p>`);
     } else {
@@ -1723,6 +1786,8 @@ drop.addEventListener("drop", e => takeFile(e.dataTransfer.files[0]));
 
 state.mode = "write";
 state.tilt = 0;
+state.signed = false;
+state.signedAs = "";
 state.written = $("msg").value;
 hwRead();
 syncWrite();
