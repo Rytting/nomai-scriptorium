@@ -85,13 +85,34 @@ def _spike_table_cached():
     return _SPIKE_TABLE
 
 
-def spike_residual(body_strokes, stroke) -> float:
-    """How well a two-point stroke fits as this glyph's spike; inf if impossible.
+def _joint_similarity(parts):
+    """One similarity fitted across several point sets, each free to shift on its own.
 
-    Fit the body to the canonical core, push the canonical spike through the same
-    similarity, and measure. The spike's own jitter translation is left free, since
-    `handwrite` draws one per PolySpec rather than one per glyph.
+    `handwrite` draws a translation per PolySpec, so a glyph's parts sit slightly
+    apart from where a single shared transform would put them -- but they share one
+    rotation and one scale. Centring each part before solving absorbs the offsets and
+    lets every point contribute to the estimate, instead of pinning the transform on
+    the core alone and projecting the rest from it, which amplifies the core's own
+    fitting error out at the far end of a spike.
     """
+    src, dst = [], []
+    for canon, obs in parts:
+        n = len(canon)
+        a = [complex(*p) for p in canon]
+        b = [complex(*p) for p in obs]
+        ma, mb = sum(a) / n, sum(b) / n
+        src.extend(z - ma for z in a)
+        dst.extend(z - mb for z in b)
+    den = sum(abs(z) ** 2 for z in src)
+    if den == 0:
+        return None
+    w = sum(d * s.conjugate() for s, d in zip(src, dst)) / den
+    resid = math.sqrt(sum(abs(d - w * s) ** 2 for s, d in zip(src, dst)) / len(src))
+    return w, resid
+
+
+def spike_residual(body_strokes, stroke) -> float:
+    """How well a two-point stroke fits as this glyph's spike; inf if impossible."""
     sig = tuple(sorted((len(s.points), s.closed) for s in body_strokes))
     best = math.inf
     for (core_pts, core_closed), spike_pts in _spike_table_cached().get(sig, []):
@@ -99,13 +120,13 @@ def spike_residual(body_strokes, stroke) -> float:
             if len(bs.points) != len(core_pts) or bs.closed != core_closed:
                 continue
             for r in (range(len(core_pts)) if core_closed else [0]):
-                fit = procrustes(core_pts[r:] + core_pts[:r], bs.points)
-                if fit is None:
-                    continue
-                scale, theta, _res, _sh = fit
-                w = complex(math.cos(theta), math.sin(theta)) * scale
+                rolled = core_pts[r:] + core_pts[:r]
                 for pts in (stroke.points, stroke.points[::-1]):
-                    best = min(best, _resid_fixed(w, spike_pts, pts))
+                    fit = _joint_similarity(
+                        [(rolled, bs.points), (spike_pts, pts)]
+                    )
+                    if fit is not None:
+                        best = min(best, fit[1])
     return best
 
 

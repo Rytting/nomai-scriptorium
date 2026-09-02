@@ -33,6 +33,29 @@ Two dialects share every glyph and every drawing rule:
 * **strict** — the same drawings, numbered differently so the map is injective.
   Decoding is then a linear replay with no search and no language prior.
 
+## Handwriting
+
+`handwriting` jitters the strokes to look hand drawn. It also costs accuracy when
+the drawing is read back, so there is a ceiling (`tools/hw_sweep.py`, strict dialect
+round trip):
+
+| handwriting | exact round trip |
+|---|---|
+| 0 | 20/20 |
+| 0.1 | 20/20 |
+| **0.2** | **19/20** |
+| 0.3 | 16/20 |
+| 0.6 | 15/20 |
+
+**Keep it at 0.2 or below** for anything meant to be read back. Note that
+nomai-writing.com sends 0.3, right at the edge -- part of why reading its output is
+harder than reading our own.
+
+The ceiling is a limitation of this decoder, not of the drawing. At 0.6 each point
+moves about 0.6 units against glyph features of 20 to 40, so the shape is still
+plainly there; the losses come from fitting each glyph independently instead of
+using the fact that every glyph in a column shares one scale and one rotation.
+
 ## Running things
 
 Julia is needed only to regenerate fixtures; everything else is Python.
