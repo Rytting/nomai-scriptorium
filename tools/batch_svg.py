@@ -73,6 +73,23 @@ print(f"message found: {sum(1 for r in rows if r.get('found'))}/{n}")
 fails = Counter(r["why"] for r in rows if not r.get("vision"))
 if fails:
     print(f"vision failure modes: {dict(fails)}")
-by_hw = Counter((r["hw"], bool(r.get("vision"))) for r in rows)
-print(f"by handwriting: "
-      f"{ {hw: f'{by_hw[(hw, True)]}/{by_hw[(hw, True)] + by_hw[(hw, False)]}' for hw in (0.0, 0.3, 0.6)} }")
+for label, key in (("vision", "vision"), ("top-1", "top1"), ("found", "found")):
+    c = Counter((r["hw"], bool(r.get(key))) for r in rows)
+    line = "  ".join(
+        f"hw={hw}: {c[(hw, True)]}/{c[(hw, True)] + c[(hw, False)]}"
+        for hw in (0.0, 0.3, 0.6)
+    )
+    print(f"{label:>7} by handwriting:  {line}")
+for label, key in (("vision", "vision"), ("top-1", "top1")):
+    c = Counter((r["base"], bool(r.get(key))) for r in rows)
+    line = "  ".join(
+        f"base {b}: {c[(b, True)]}/{c[(b, True)] + c[(b, False)]}"
+        for b in (256, 200000)
+    )
+    print(f"{label:>7} by base:         {line}")
+print()
+print("handwriting=0 failures:")
+for r in rows:
+    if r["hw"] == 0.0 and not (r.get("vision") and r.get("top1")):
+        print(f"  {r['file']}  base={r['base']} len={r['len']} "
+              f"vision={r.get('vision')} top1={r.get('top1')}  {r.get('why','')}")
