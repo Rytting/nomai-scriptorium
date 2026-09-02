@@ -1187,14 +1187,27 @@ const BANDS = [
 const PROMPTS = [
   "The Eye of the Universe", "Come to the Ash Twin Project",
   "We were not the first", "The Nomai were here",
-  "Hearthians make excellent marshmallows", "hi"
+  "Hearthians make excellent marshmallows", "hi",
+  "宇宙之眼", "挪麦人到过这里"
 ];
 
 function band(v){ return BANDS.find(b => v <= b[0] + 1e-9) || BANDS[2]; }
 
+function setBaseUI(v){
+  state.base = v;
+  $("b-256").setAttribute("aria-pressed", String(v === 256));
+  $("b-200000").setAttribute("aria-pressed", String(v === 200000));
+}
 function build(){
   const msg = $("msg").value;
   if (!msg.trim()){ empty("waiting for words"); return; }
+  /* Anything past Latin needs the larger alphabet. Asking the writer to know that
+     and flip a switch is the wrong way round: widen it for them and say so. */
+  let widened = false;
+  if (state.base === 256 && Array.from(msg).some(c => c.codePointAt(0) >= 256)){
+    setBaseUI(200000);
+    widened = true;
+  }
   let grid = null, x = null;
   if (state.dialect === "strict"){
     for (let nonce = 1; nonce <= 48; nonce++){
@@ -1217,13 +1230,13 @@ function build(){
   const plate = $("plate");
   plate.className = "plate";
   plate.innerHTML = state.svg;
-  paint(grid, msg);
+  paint(grid, msg, widened);
 }
 function empty(text){
   const p = $("plate"); p.className = "plate empty"; p.textContent = text;
   $("stats").innerHTML = ""; $("readings").innerHTML = ""; state.svg = "";
 }
-function paint(grid, msg){
+function paint(grid, msg, widened){
   const digits = String(grid.x).length;
   $("stats").innerHTML = [
     ["characters", Array.from(msg).length],
@@ -1233,11 +1246,16 @@ function paint(grid, msg){
   ].map(([n, v]) => `<div class="stat"><span class="v">${v}</span><span class="n">${n}</span></div>`).join("");
 
   const r = $("readings");
+  const wide = widened
+    ? `<p class="note">Switched to the larger alphabet — Latin covers only the first
+       256 characters. Every language works here; the spiral just runs longer, because
+       each character now takes more of the drawing to pin down.</p>` : "";
   if (state.dialect === "strict"){
     r.innerHTML = `<div class="reading only"><span class="tag">reading</span>`
       + `<span class="t">${esc(grid.readings[0])}</span></div>`
       + `<p class="note">Exactly one reading. Every question this drawing answers has a single
-         possible answer, so anyone with the decoder recovers <b>this sentence and no other</b>.</p>`;
+         possible answer, so anyone with the decoder recovers <b>this sentence and no other</b>.</p>`
+      + wide;
   } else {
     const n = upstreamCandidates(grid);
     r.innerHTML = `<div class="reading rival"><span class="tag">intended</span>`
@@ -1249,7 +1267,8 @@ function paint(grid, msg){
          of two questions was asked first, ties between identical join points, and where inside
          the last turn the integer ran out. Every combination is a different sentence that draws
          <b>this exact picture</b> — the two-letter word <b>hi</b> draws the same thing as
-         <b>&amp;i</b>. A decoder has to guess, and it can guess wrong without telling you.</p>`;
+         <b>&amp;i</b>. A decoder has to guess, and it can guess wrong without telling you.</p>`
+      + wide;
   }
 }
 function fmtBig(n){
@@ -1276,7 +1295,8 @@ function seg(a, b, key, va, vb){
   $(b).onclick = () => set(vb);
 }
 seg("d-strict", "d-upstream", "dialect", "strict", "upstream");
-seg("b-256", "b-200000", "base", 256, 200000);
+$("b-256").onclick = () => { setBaseUI(256); build(); };
+$("b-200000").onclick = () => { setBaseUI(200000); build(); };
 $("hw").oninput = e => { state.hw = +e.target.value; hwRead(); build(); };
 $("msg").oninput = () => build();
 $("surprise").onclick = () => {
