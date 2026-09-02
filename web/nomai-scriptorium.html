@@ -1338,13 +1338,22 @@ function draw(svg){
 
    `state.track` is the spiral in the drawing's own coordinates: taken from the
    layout when we drew it ourselves, and from the fit when we read someone else's. */
-const TICKS = 6;
-const BEAM_MODES = { idle: { period: 4.2, alpha: 0.42 }, scan: { period: 2.2, alpha: 1 } };
-let beamRaf = null, beamT = 0, beamMode = null;
+const TICKS = 5;
+const BEAM_MODES = { idle: { rate: 1, alpha: 0.5 }, scan: { rate: 1.9, alpha: 1 } };
+let beamRaf = null, beamLast = 0, beamMode = null, walkers = [];
 
-/* The scanner runs over any drawing the reader is holding, the way the tool in the
-   game keeps sweeping whatever it is pointed at. Holding the translate button only
-   makes it quicken and brighten. */
+/* Several ticks, each patrolling the spiral on its own: they start apart, some
+   heading outward and some in, they run at slightly different speeds so they drift
+   out of step, and each turns around when it reaches an end. Nothing chases anything
+   -- they cross and pass like several readers working the same line from different
+   places. Holding translate just quickens and brightens them. */
+function seedWalkers(){
+  walkers = Array.from({ length: TICKS }, (_, i) => ({
+    k: (i + 0.5) / TICKS + (Math.random() - 0.5) * 0.1,
+    dir: Math.random() < 0.5 ? -1 : 1,
+    speed: 0.075 + Math.random() * 0.065      /* a full pass in 8 to 14 seconds */
+  }));
+}
 function beams(mode){
   const svg = document.querySelector("svg.beams");
   if (!mode){
@@ -1355,42 +1364,41 @@ function beams(mode){
   }
   if (!state.track || !svg) return;
   svg.classList.add("on");
+  if (!walkers.length) seedWalkers();
   if (matchMedia("(prefers-reduced-motion: reduce)").matches){
     beamMode = mode;
-    paintTicks(svg, 0.5, BEAM_MODES[mode].alpha);
+    paintTicks(svg, BEAM_MODES[mode].alpha);
     return;
   }
-  const restart = beamMode === null;
+  const wasStopped = beamMode === null;
   beamMode = mode;
-  if (!restart) return;          /* already running: the new mode is picked up live */
-  beamT = 0;
+  if (!wasStopped) return;        /* already running; the new mode is picked up live */
+  beamLast = 0;
   const step = ts => {
-    if (!beamT) beamT = ts;
     const cfg = BEAM_MODES[beamMode] || BEAM_MODES.idle;
-    const secs = (ts - beamT) / 1000;
-    const sweep = (1 - Math.cos(secs * 2 * Math.PI / cfg.period)) / 2;
-    paintTicks(svg, sweep, cfg.alpha);
+    const dt = Math.min(0.05, (ts - (beamLast || ts)) / 1000);
+    beamLast = ts;
+    for (const w of walkers){
+      w.k += w.dir * w.speed * cfg.rate * dt;
+      if (w.k > 1){ w.k = 2 - w.k; w.dir = -1; }
+      if (w.k < 0){ w.k = -w.k; w.dir = 1; }
+    }
+    paintTicks(svg, cfg.alpha);
     beamRaf = requestAnimationFrame(step);
   };
   beamRaf = requestAnimationFrame(step);
 }
-function paintTicks(svg, head, alpha){
-  const t = state.track;
+function paintTicks(svg, alpha){
   const out = [];
-  for (let i = 0; i < TICKS; i++){
-    const k = head - i * 0.035;
-    if (k < 0 || k > 1) continue;
-    const p = t.at(k);
+  for (const w of walkers){
+    const p = state.track.at(w.k);
     const half = 4.4 * K * p.scale;
-    const o = (alpha * (1 - i / TICKS)).toFixed(3);
-    out.push('<line x1="' + (p.x - p.ux * half) + '" y1="' + (p.y - p.uy * half)
-      + '" x2="' + (p.x + p.ux * half) + '" y2="' + (p.y + p.uy * half)
-      + '" stroke="var(--beam)" stroke-width="' + (7 * p.scale) + '" stroke-linecap="round"'
-      + ' opacity="' + (o * 0.22).toFixed(3) + '"/>');
-    out.push('<line x1="' + (p.x - p.ux * half) + '" y1="' + (p.y - p.uy * half)
-      + '" x2="' + (p.x + p.ux * half) + '" y2="' + (p.y + p.uy * half)
-      + '" stroke="var(--beam)" stroke-width="' + (1.8 * p.scale) + '" stroke-linecap="round"'
-      + ' opacity="' + o + '"/>');
+    const x1 = p.x - p.ux * half, y1 = p.y - p.uy * half;
+    const x2 = p.x + p.ux * half, y2 = p.y + p.uy * half;
+    const line = (width, op) => '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2
+      + '" y2="' + y2 + '" stroke="var(--beam)" stroke-width="' + width
+      + '" stroke-linecap="round" opacity="' + op.toFixed(3) + '"/>';
+    out.push(line(7 * p.scale, alpha * 0.2), line(1.8 * p.scale, alpha));
   }
   svg.innerHTML = out.join("");
 }
@@ -1542,6 +1550,7 @@ $("m-read").onclick = () => setMode("read");
 
 function readDrawing(text, name){
   state.track = null;
+  walkers = [];
   draw(text);
   let obs;
   try { obs = analyze(text); }
