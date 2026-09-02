@@ -31,6 +31,7 @@
   --edge:#2a3542; --edge-soft:#212a35;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;background:var(--rock);color:var(--text);font-family:var(--sans);
   font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
 .wrap{max-width:940px;margin:0 auto;padding:40px 24px 72px;
@@ -104,6 +105,12 @@ input[type=range]{width:190px;accent-color:var(--ink-soft);background:transparen
 footer{color:var(--text-faint);font-size:12.5px;border-top:1px solid var(--edge-soft);
   padding-top:18px;display:flex;flex-direction:column;gap:5px}
 footer a{color:var(--text-dim)}
+.drop{display:flex;align-items:center;justify-content:center;min-height:96px;
+  border:1px dashed var(--edge);border-radius:3px;background:var(--rock-2);
+  color:var(--text-dim);cursor:pointer;padding:16px;text-align:center}
+.drop:hover,.drop.over{border-color:var(--ink-soft);color:var(--text)}
+.drop:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.reading.bad{border-left-color:var(--warn)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media (prefers-reduced-motion: no-preference){
   .plate svg{transition:opacity .12s ease}
@@ -119,15 +126,28 @@ footer a{color:var(--text-dim)}
   what the answers look like.</p>
 </header>
 
-<div class="composer">
+<div class="seg" role="group" aria-label="Mode" style="align-self:flex-start">
+  <button id="m-write" aria-pressed="true">Write</button>
+  <button id="m-read" aria-pressed="false">Read a drawing</button>
+</div>
+
+<div class="composer" id="write-pane">
   <label class="label" for="msg">Your text</label>
   <textarea id="msg" spellcheck="false">The Eye of the Universe</textarea>
+</div>
+
+<div class="composer" id="read-pane" hidden>
+  <span class="label">A Nomai SVG</span>
+  <label class="drop" id="drop" tabindex="0">
+    <input type="file" id="file" accept=".svg,image/svg+xml" hidden>
+    <span id="drop-text">Drop an SVG here, or click to choose one</span>
+  </label>
 </div>
 
 <div class="plate empty" id="plate">waiting for words</div>
 
 <div class="panel">
-  <div class="row">
+  <div class="row" id="write-controls">
     <div class="field">
       <span class="label" id="dl">Dialect</span>
       <div class="seg" role="group" aria-labelledby="dl">
@@ -155,7 +175,7 @@ footer a{color:var(--text-dim)}
 
   <div class="readings" id="readings"></div>
 
-  <div class="actions">
+  <div class="actions" id="write-actions">
     <button class="btn primary" id="dl-svg">Download SVG</button>
     <button class="btn" id="surprise">Surprise me</button>
   </div>
@@ -355,8 +375,9 @@ function layoutFor(ncols){
     const n = ncols - 1;
     return n <= 0 ? 0 : ((i - 1) + 0.5 * (i - 1) * (i - 1) * delta) / (n + 0.5 * n * n * delta);
   };
+  const slopeAt = k => Math.atan2(1, 0.29) + thetaAt(k * total) + rot;
   return {
-    box, canvas(){
+    box, fraction, slopeAt, canvas(){
       const pad = Math.max(12 * K + (ROWS - 1) * 4 * K * 2 * MAX_SCALE, 0.05 * box[0], 0.05 * box[1]);
       return [pad + box[0], pad + box[1]];
     },
@@ -455,6 +476,8 @@ function renderSVG(grid, amount, seed){
     + '<rect x="' + f(-w / 2) + '" y="' + f(-h / 2) + '" width="' + f(w) + '" height="' + f(h)
     + '" fill="rgb(98.039216%,92.156863%,84.313725%)"/>' + el.join("") + "</svg>";
 }
+
+/*__READ__*/
 
 /* ---- page ---- */
 const $ = id => document.getElementById(id);
@@ -592,6 +615,87 @@ dlBtn.onclick = async () => {
   }
   setTimeout(() => { dlBtn.textContent = was; dlBtn.disabled = false; }, 1600);
 };
+/* ---- reading a drawing ---- */
+function setMode(m){
+  state.mode = m;
+  $("m-write").setAttribute("aria-pressed", String(m === "write"));
+  $("m-read").setAttribute("aria-pressed", String(m === "read"));
+  $("write-pane").hidden = m !== "write";
+  $("read-pane").hidden = m !== "read";
+  $("write-actions").hidden = m !== "write";
+  $("write-controls").hidden = m !== "write";
+  if (m === "write") build();
+  else { empty("waiting for a drawing"); $("readings").innerHTML = ""; }
+}
+$("m-write").onclick = () => setMode("write");
+$("m-read").onclick = () => setMode("read");
+
+function readDrawing(text, name){
+  const plate = $("plate");
+  plate.className = "plate";
+  plate.innerHTML = text;
+  const svg = plate.querySelector("svg");
+  if (svg){ svg.removeAttribute("style"); }
+  let obs;
+  try { obs = analyze(text); }
+  catch (err){ return fail(err.message); }
+  let readings = [], base = null;
+  for (const b of [256, 200000]){
+    try { const r = readStrict(obs, b); if (r.length){ readings = r; base = b; break; } }
+    catch (err){ /* try the other alphabet */ }
+  }
+  $("stats").innerHTML = [
+    ["glyphs", obs.glyphs.size],
+    ["turns", obs.ncols],
+    ["joins", obs.conns.length],
+    ["alphabet", base === null ? "-" : (base === 256 ? "Latin" : "any")]
+  ].map(([n2, v]) => `<div class="stat"><span class="v">${v}</span><span class="n">${n2}</span></div>`).join("");
+  const r = $("readings");
+  if (readings.length === 1){
+    r.innerHTML = `<div class="reading only"><span class="tag">reads</span>`
+      + `<span class="t">${esc(readings[0])}</span></div>`
+      + `<p class="note">Read straight off the drawing, with nothing to guess between.
+         ${esc(name || "This file")} was written in the unambiguous dialect.</p>`;
+  } else if (readings.length > 1){
+    r.innerHTML = readings.slice(0, 6).map(t =>
+      `<div class="reading rival"><span class="tag">could be</span><span class="t">${esc(t)}</span></div>`).join("")
+      + `<p class="note">More than one sentence fits, so this drawing cannot be read
+         with certainty.</p>`;
+  } else {
+    r.innerHTML = `<div class="reading bad"><span class="tag">no reading</span>`
+      + `<span class="t">the structure came back, but no sentence fits it</span></div>`
+      + `<p class="note">Most likely this was written in the original dialect, which
+         this reader does not resolve yet, or the handwriting is heavy enough to have
+         blurred a glyph past recognition.</p>`;
+  }
+}
+function fail(msg){
+  $("stats").innerHTML = "";
+  $("readings").innerHTML = `<div class="reading bad"><span class="tag">stuck</span>`
+    + `<span class="t">${esc(msg)}</span></div>`
+    + `<p class="note">Heavy handwriting is the usual cause — above about 0.4 the
+       shapes move far enough that a join can be misread.</p>`;
+}
+const drop = $("drop");
+const takeFile = f => {
+  if (!f) return;
+  $("drop-text").textContent = f.name;
+  const rd = new FileReader();
+  rd.onload = () => readDrawing(String(rd.result), f.name);
+  rd.readAsText(f);
+};
+drop.onclick = () => $("file").click();
+drop.onkeydown = e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); $("file").click(); } };
+$("file").onchange = e => takeFile(e.target.files[0]);
+["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); drop.classList.add("over");
+}));
+["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); drop.classList.remove("over");
+}));
+drop.addEventListener("drop", e => takeFile(e.dataTransfer.files[0]));
+
+state.mode = "write";
 hwRead();
 build();
 </script>

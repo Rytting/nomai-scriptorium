@@ -8,5 +8,8 @@ data = (ROOT / "web" / "glyphs.min.json").read_text(encoding="utf-8")
 marker = "/*__GLYPHS__*/null"
 assert src.count(marker) == 1, "glyph placeholder missing (already built?)"
 out = ROOT / "web" / "nomai-scriptorium.html"
-out.write_text(src.replace(marker, data), encoding="utf-8")
+read_js = (ROOT / "web" / "read.js").read_text(encoding="utf-8")
+assert src.count("/*__READ__*/") == 1, "read placeholder missing"
+built = src.replace(marker, data).replace("/*__READ__*/", read_js)
+out.write_text(built, encoding="utf-8")
 print(f"wrote {out.relative_to(ROOT)}  {len(out.read_text(encoding='utf-8')):,} bytes")
