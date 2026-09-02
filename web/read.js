@@ -131,8 +131,11 @@ function spikeResidual(bodyStrokes, stroke){
 }
 
 /* ---------- SVG in ---------- */
+/* Dots used to be dropped on sight. They are kept now because the bead marking a
+   reply's join is one, and because a dot's bounding box centre is exactly the vertex
+   it sits on however the circle was serialised. */
 function parseSVG(text){
-  const strokes = [];
+  const strokes = [], dots = [];
   const re = /<path([^>]*)>/g;
   let m;
   while ((m = re.exec(text)) !== null){
@@ -148,7 +151,12 @@ function parseSVG(text){
       for (let i = 0; i + 1 < nums.length; i += 2) pts.push([nums[i], nums[i + 1]]);
     }
     if (!pts.length) continue;
-    if (!/stroke-width/.test(attrs)) continue;  /* a filled vertex dot */
+    if (!/stroke-width/.test(attrs)){
+      const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+      dots.push([(Math.min(...xs) + Math.max(...xs)) / 2,
+                 (Math.min(...ys) + Math.max(...ys)) / 2]);
+      continue;
+    }
     let closed = /[Zz]/.test(body);
     let p = pts;
     if (closed && p.length > 1 &&
@@ -156,7 +164,61 @@ function parseSVG(text){
         Math.abs(p[0][1] - p[p.length - 1][1]) < 1e-6) p = p.slice(0, -1);
     strokes.push({ pts: p, closed });
   }
-  return strokes;
+  return { strokes, dots };
+}
+
+/* ---------- one drawing, several spirals ---------- */
+/* A scroll is a conversation in one drawing: a root spiral and the replies hanging
+   off it, each joined to the one it answers by a beaded line. Cutting those lines
+   leaves the spirals as separate components, and the existing reader then runs on
+   each of them untouched. */
+function splitScroll(strokes, dots){
+  const beaded = new Set();
+  for (let i = 0; i < strokes.length; i++){
+    const s = strokes[i];
+    if (s.pts.length !== 2 || s.closed) continue;
+    const mx = (s.pts[0][0] + s.pts[1][0]) / 2, my = (s.pts[0][1] + s.pts[1][1]) / 2;
+    if (dots.some(d => Math.abs(d[0] - mx) < 0.05 && Math.abs(d[1] - my) < 0.05))
+      beaded.add(i);
+  }
+  const keep = strokes.map((s, i) => [s, i]).filter(([, i]) => !beaded.has(i));
+  /* everything that shares an exact coordinate belongs together: handwriting moves
+     shared points through one map, so touching strokes stay bit-identical */
+  const dsu = new DSU(keep.length);
+  const owner = new Map();
+  keep.forEach(([s], i) => {
+    for (const p of s.pts){
+      const k = pkey(p);
+      if (owner.has(k)) dsu.union(i, owner.get(k)); else owner.set(k, i);
+    }
+  });
+  const groups = new Map();
+  keep.forEach(([s, orig], i) => {
+    const r = dsu.find(i);
+    if (!groups.has(r)) groups.set(r, { strokes: [], first: orig });
+    const g = groups.get(r);
+    g.strokes.push(s);
+    if (orig < g.first) g.first = orig;
+  });
+  /* a stroke touching nothing is a spike whose tip missed; hand it to the nearest
+     group rather than letting it stand as a spiral of its own */
+  const big = [...groups.values()].filter(g => g.strokes.length > 2);
+  for (const g of groups.values()){
+    if (g.strokes.length > 2) continue;
+    let best = null;
+    for (const h of big){
+      const d = Math.min(...g.strokes.flatMap(a => a.pts.flatMap(p =>
+        h.strokes.flatMap(b => b.pts.map(q => (p[0]-q[0])**2 + (p[1]-q[1])**2)))));
+      if (!best || d < best.d) best = { d, h };
+    }
+    if (best) best.strokes.push(...g.strokes);
+  }
+  /* Document order, not whatever order the union-find happened to root them in. The
+     writer emits spiral 0 first, so the first stroke of each group recovers the
+     numbering the parent indices are written against. */
+  const out = (big.length ? big : [...groups.values()]).sort((a, b) => a.first - b.first);
+  const joins = [...beaded].map(i => strokes[i]);
+  return { groups: out.map(g => g.strokes), joins };
 }
 
 /* ---------- clustering, and telling spikes from connections ---------- */
@@ -600,7 +662,55 @@ const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
 /* ---------- the whole thing ---------- */
 function analyze(svgText){
-  const strokes = parseSVG(svgText);
+  return observe(parseSVG(svgText).strokes);
+}
+/* Every spiral in a scroll, innermost-rooted first, with the joins that held them
+   together. One spiral in, one observation out -- so a plain drawing takes the same
+   path it always did. */
+function analyzeScroll(svgText){
+  const { strokes, dots } = parseSVG(svgText);
+  if (strokes.length < 2) throw new Error("no Nomai strokes found in that file");
+  const { groups, joins } = splitScroll(strokes, dots);
+  return { spirals: groups.map(observe), joins, groups, edges: joinEdges(groups, joins) };
+}
+/* Which two spirals each join actually holds together. Its endpoints sit on glyph
+   vertices, bit-identically, so this is a lookup and not a nearest-neighbour guess. */
+function joinEdges(groups, joins){
+  const owner = new Map();
+  groups.forEach((g, i) => { for (const st of g) for (const p of st.pts) owner.set(pkey(p), i); });
+  const edges = [];
+  for (const j of joins){
+    const a = owner.get(pkey(j.pts[0])), b = owner.get(pkey(j.pts[1]));
+    if (a !== undefined && b !== undefined && a !== b) edges.push([a, b]);
+  }
+  return edges;
+}
+/* The tree the picture shows, checked against the tree the writer wrote down.
+   `parents` comes from frame 3, one entry per spiral, null for a root. */
+function checkTree(edges, parents, count){
+  const adj = new Map();
+  for (const [a, b] of edges){
+    if (!adj.has(a)) adj.set(a, []); if (!adj.has(b)) adj.set(b, []);
+    adj.get(a).push(b); adj.get(b).push(a);
+  }
+  const roots = parents.map((p, i) => p === null || p === undefined ? i : -1)
+    .filter(i => i >= 0);
+  if (roots.length !== 1) return { ok: false, why: "a scroll has exactly one root" };
+  const seen = new Map([[roots[0], null]]), q = [roots[0]];
+  while (q.length){
+    const u = q.shift();
+    for (const v of (adj.get(u) || [])) if (!seen.has(v)){ seen.set(v, u); q.push(v); }
+  }
+  if (seen.size !== count) return { ok: false, why: "the joins do not reach every spiral" };
+  for (let i = 0; i < count; i++){
+    const want = parents[i] === undefined ? null : parents[i];
+    if (seen.get(i) !== want)
+      return { ok: false, why: "spiral " + i + " is drawn on " + seen.get(i)
+                            + " but says it answers " + want };
+  }
+  return { ok: true };
+}
+function observe(strokes){
   if (strokes.length < 2) throw new Error("no Nomai strokes found in that file");
   const { clusters, conns } = decompose(strokes);
   const fits = new Map();

@@ -718,7 +718,7 @@ function renderSVG(grid, amount, seed, tilt, flip, tight){
    real connection carries a dot at each end, so a dotless line is unambiguous without
    inventing a symbol for it -- and the parent index in frame 3 then verifies the tree
    the geometry gives rather than having to supply it. */
-function attach(parentL, parentShift, t, side, flip, tight, childNcols){
+function attach(parentL, parentShift, t, side, reach, flip, tight, childNcols){
   /* Which way is away from the parent: the normal that points away from the centre
      the parent winds into. `side` then picks one of the two for this child, so
      several replies to the same spiral fan to alternate sides instead of piling up
@@ -728,7 +728,7 @@ function attach(parentL, parentShift, t, side, flip, tight, childNcols){
   const nx = p.ux * out * side, ny = p.uy * out * side;
   /* clear of the parent's band, and no further: the join should read as a connection,
      which is a short line, not a tether */
-  const gap = (3 * (ROWS - 1) + 3.5) * K * p.scale;
+  const gap = (3 * (ROWS - 1) + 3.5) * K * p.scale * (reach || 1);
   const at = [p.x + nx * gap + parentShift[0], p.y + ny * gap + parentShift[1]];
   /* The child's tail tangent must point back at the parent. tilt adds straight to
      that angle -- it is pi/2 at tilt 0 -- so the whole placement is one translation. */
@@ -758,17 +758,22 @@ function clearance(pts, taken){
    the layout's problem, not the writer's, so this tries the outer end first -- where
    the turns are furthest apart and the parent has just finished speaking -- and works
    inward, taking the first spot that clears everything already on the sheet. */
+/* Where along the parent, and how far out. Distance is the degree of freedom that
+   was missing: with the gap fixed, a spiral with no room simply had to be crammed in,
+   and two overlapping spirals are read as one, which fails outright rather than
+   quietly. Letting a reply stand further off costs nothing but paper. */
 const SPOTS = [0.92, 0.78, 0.64, 0.5, 0.36, 0.22, 0.99, 0.1];
+const REACH = [1, 1.5, 2.2, 3.2];
 function chooseSpot(laid, parentIdx, ncols, flip, tight){
   const par = laid[parentIdx];
   const keys = [...par.sp.grid.glyphs.keys()];       /* shape only; any grid this size */
   const taken = [];
   for (const it of laid)
     taken.push(...centres(it.L.ncols, [...it.sp.grid.glyphs.keys()], it.L, it.shift));
-  const want = 7 * K * MAX_SCALE;
+  const want = 11 * K * MAX_SCALE;
   let best = null;
-  for (const t of SPOTS) for (const side of [1, -1]){
-    const pl = attach(par.L, par.shift, t, side, flip, tight, ncols);
+  for (const reach of REACH) for (const t of SPOTS) for (const side of [1, -1]){
+    const pl = attach(par.L, par.shift, t, side, reach, flip, tight, ncols);
     const pts = centres(ncols, keys, pl.L, pl.shift);
     /* nothing hangs below the socket: the scroll is plugged into the wall at its
        lowest point, and a reply drooping past it reads as falling off */
@@ -787,8 +792,18 @@ function nearestPair(a, b){
   }
   return best;
 }
-/* the join: a plain line, and deliberately no dots */
-const joinLine = (p, q) => polyline([p, q], false);
+/* The join between a reply and the spiral it answers: an ordinary connection line
+   with one bead on it, at the midpoint.
+
+   Leaving the dots *off* was the first idea and it does not work: a join lands on
+   glyph vertices, and those already carry dots of their own, so a dotless join is
+   indistinguishable from a spike. A bead is a positive signal instead. Nothing else
+   in the drawing puts a dot at the middle of a two-point stroke -- connections dot
+   their ends, glyphs dot their vertices -- and across 268 two-point strokes in
+   ordinary drawings not one had a midpoint dot. So it costs no new vocabulary and
+   reads exactly. */
+const joinLine = (p, q) =>
+  polyline([p, q], false) + dot([(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]);
 /* Lay the scroll out once to see which way it grew, then turn the whole thing about
    its socket so it grows upward and stays balanced over it. The root's own tilt is
    exactly that rotation -- the layout is anchored on the tail, so tilting the root
@@ -979,8 +994,11 @@ function spikeResidual(bodyStrokes, stroke){
 }
 
 /* ---------- SVG in ---------- */
+/* Dots used to be dropped on sight. They are kept now because the bead marking a
+   reply's join is one, and because a dot's bounding box centre is exactly the vertex
+   it sits on however the circle was serialised. */
 function parseSVG(text){
-  const strokes = [];
+  const strokes = [], dots = [];
   const re = /<path([^>]*)>/g;
   let m;
   while ((m = re.exec(text)) !== null){
@@ -996,7 +1014,12 @@ function parseSVG(text){
       for (let i = 0; i + 1 < nums.length; i += 2) pts.push([nums[i], nums[i + 1]]);
     }
     if (!pts.length) continue;
-    if (!/stroke-width/.test(attrs)) continue;  /* a filled vertex dot */
+    if (!/stroke-width/.test(attrs)){
+      const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+      dots.push([(Math.min(...xs) + Math.max(...xs)) / 2,
+                 (Math.min(...ys) + Math.max(...ys)) / 2]);
+      continue;
+    }
     let closed = /[Zz]/.test(body);
     let p = pts;
     if (closed && p.length > 1 &&
@@ -1004,7 +1027,61 @@ function parseSVG(text){
         Math.abs(p[0][1] - p[p.length - 1][1]) < 1e-6) p = p.slice(0, -1);
     strokes.push({ pts: p, closed });
   }
-  return strokes;
+  return { strokes, dots };
+}
+
+/* ---------- one drawing, several spirals ---------- */
+/* A scroll is a conversation in one drawing: a root spiral and the replies hanging
+   off it, each joined to the one it answers by a beaded line. Cutting those lines
+   leaves the spirals as separate components, and the existing reader then runs on
+   each of them untouched. */
+function splitScroll(strokes, dots){
+  const beaded = new Set();
+  for (let i = 0; i < strokes.length; i++){
+    const s = strokes[i];
+    if (s.pts.length !== 2 || s.closed) continue;
+    const mx = (s.pts[0][0] + s.pts[1][0]) / 2, my = (s.pts[0][1] + s.pts[1][1]) / 2;
+    if (dots.some(d => Math.abs(d[0] - mx) < 0.05 && Math.abs(d[1] - my) < 0.05))
+      beaded.add(i);
+  }
+  const keep = strokes.map((s, i) => [s, i]).filter(([, i]) => !beaded.has(i));
+  /* everything that shares an exact coordinate belongs together: handwriting moves
+     shared points through one map, so touching strokes stay bit-identical */
+  const dsu = new DSU(keep.length);
+  const owner = new Map();
+  keep.forEach(([s], i) => {
+    for (const p of s.pts){
+      const k = pkey(p);
+      if (owner.has(k)) dsu.union(i, owner.get(k)); else owner.set(k, i);
+    }
+  });
+  const groups = new Map();
+  keep.forEach(([s, orig], i) => {
+    const r = dsu.find(i);
+    if (!groups.has(r)) groups.set(r, { strokes: [], first: orig });
+    const g = groups.get(r);
+    g.strokes.push(s);
+    if (orig < g.first) g.first = orig;
+  });
+  /* a stroke touching nothing is a spike whose tip missed; hand it to the nearest
+     group rather than letting it stand as a spiral of its own */
+  const big = [...groups.values()].filter(g => g.strokes.length > 2);
+  for (const g of groups.values()){
+    if (g.strokes.length > 2) continue;
+    let best = null;
+    for (const h of big){
+      const d = Math.min(...g.strokes.flatMap(a => a.pts.flatMap(p =>
+        h.strokes.flatMap(b => b.pts.map(q => (p[0]-q[0])**2 + (p[1]-q[1])**2)))));
+      if (!best || d < best.d) best = { d, h };
+    }
+    if (best) best.strokes.push(...g.strokes);
+  }
+  /* Document order, not whatever order the union-find happened to root them in. The
+     writer emits spiral 0 first, so the first stroke of each group recovers the
+     numbering the parent indices are written against. */
+  const out = (big.length ? big : [...groups.values()]).sort((a, b) => a.first - b.first);
+  const joins = [...beaded].map(i => strokes[i]);
+  return { groups: out.map(g => g.strokes), joins };
 }
 
 /* ---------- clustering, and telling spikes from connections ---------- */
@@ -1448,7 +1525,55 @@ const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
 /* ---------- the whole thing ---------- */
 function analyze(svgText){
-  const strokes = parseSVG(svgText);
+  return observe(parseSVG(svgText).strokes);
+}
+/* Every spiral in a scroll, innermost-rooted first, with the joins that held them
+   together. One spiral in, one observation out -- so a plain drawing takes the same
+   path it always did. */
+function analyzeScroll(svgText){
+  const { strokes, dots } = parseSVG(svgText);
+  if (strokes.length < 2) throw new Error("no Nomai strokes found in that file");
+  const { groups, joins } = splitScroll(strokes, dots);
+  return { spirals: groups.map(observe), joins, groups, edges: joinEdges(groups, joins) };
+}
+/* Which two spirals each join actually holds together. Its endpoints sit on glyph
+   vertices, bit-identically, so this is a lookup and not a nearest-neighbour guess. */
+function joinEdges(groups, joins){
+  const owner = new Map();
+  groups.forEach((g, i) => { for (const st of g) for (const p of st.pts) owner.set(pkey(p), i); });
+  const edges = [];
+  for (const j of joins){
+    const a = owner.get(pkey(j.pts[0])), b = owner.get(pkey(j.pts[1]));
+    if (a !== undefined && b !== undefined && a !== b) edges.push([a, b]);
+  }
+  return edges;
+}
+/* The tree the picture shows, checked against the tree the writer wrote down.
+   `parents` comes from frame 3, one entry per spiral, null for a root. */
+function checkTree(edges, parents, count){
+  const adj = new Map();
+  for (const [a, b] of edges){
+    if (!adj.has(a)) adj.set(a, []); if (!adj.has(b)) adj.set(b, []);
+    adj.get(a).push(b); adj.get(b).push(a);
+  }
+  const roots = parents.map((p, i) => p === null || p === undefined ? i : -1)
+    .filter(i => i >= 0);
+  if (roots.length !== 1) return { ok: false, why: "a scroll has exactly one root" };
+  const seen = new Map([[roots[0], null]]), q = [roots[0]];
+  while (q.length){
+    const u = q.shift();
+    for (const v of (adj.get(u) || [])) if (!seen.has(v)){ seen.set(v, u); q.push(v); }
+  }
+  if (seen.size !== count) return { ok: false, why: "the joins do not reach every spiral" };
+  for (let i = 0; i < count; i++){
+    const want = parents[i] === undefined ? null : parents[i];
+    if (seen.get(i) !== want)
+      return { ok: false, why: "spiral " + i + " is drawn on " + seen.get(i)
+                            + " but says it answers " + want };
+  }
+  return { ok: true };
+}
+function observe(strokes){
   if (strokes.length < 2) throw new Error("no Nomai strokes found in that file");
   const { clusters, conns } = decompose(strokes);
   const fits = new Map();

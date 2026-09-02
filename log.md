@@ -705,3 +705,40 @@ and 0.891 down, no overlaps, joins as short as ordinary connections.
 
 Still to do: the reader has to segment a scroll back into spirals, which is where the
 dotless join earns its keep, and none of this is wired to the page yet.
+
+## Reading a scroll back
+
+The dotless join did not survive contact. A join lands on glyph vertices, and those
+already carry dots of their own, so "no dots" picked out spikes as well and the two
+could not be told apart -- 3 joins hidden among 10 candidates.
+
+The marker that works is a bead: an ordinary connection line with **one dot at its
+midpoint**. It is a positive signal rather than an absence, and nothing else in the
+drawing puts a dot in the middle of a two-point stroke -- connections dot their ends,
+glyphs dot their vertices. Measured before relying on it: across 268 two-point strokes
+in ordinary drawings, and 129 in a scroll, not one had a midpoint dot.
+
+So the reader keeps the dots it used to discard, cuts every beaded line, and unions
+the rest by exact shared coordinates. What falls out is one component per spiral, and
+`observe` -- the old `analyze` body, unchanged -- then runs on each. Groups come back
+in document order (by the index of their first stroke), which recovers the numbering
+the parent indices are written against.
+
+`joinEdges` maps each cut line back to the two spirals it held together, by exact
+vertex lookup rather than nearest-neighbour, and `checkTree` compares that tree with
+the one the integers claim. That is the parent index finally doing the job it was put
+there for.
+
+Measured over 24 scrolls -- four shapes (a fan of three, a pair, a chain of five, one
+spiral with four replies) across both windings and three tightnesses:
+
+* splitting was **exact every time**: the right number of spirals, the right stroke
+  counts, the right number of joins.
+* 19 of 24 round-tripped completely, tree verified.
+* of the 5 failures, **4 involve a spiral that also fails to read on its own** at the
+  same winding and tightness -- the reader's own long-known per-drawing limit, not
+  anything the scroll did. One grid in particular ("Come to the Ash Twin Project"
+  signed by Poke, 30 turns) fails at every tilt when mirrored and reads fine
+  unmirrored.
+* exactly **one** failure is the scroll's own: a five-deep chain at the open end of
+  the tightness range, where the last reply reads alone but not in place. Still open.
