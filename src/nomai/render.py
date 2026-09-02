@@ -189,18 +189,73 @@ class SpiralLayout:
         return pad + bw, pad + bh
 
 
-def render_grid(grid, glyphs) -> str:
+def handwrite(grid, glyphs, amount: float, seed: int = 47):
+    """Perturb a grid's glyphs as if hand drawn, mirroring upstream's `handwrite`.
+
+    Two details matter and both cost us time to find the hard way. Points shared
+    between a glyph's core and its annotation go through one map per glyph, so they
+    move together -- which is why a connection endpoint stays bit-identical to the
+    vertex it attaches to. And the shift is drawn once per PolySpec, not once per
+    glyph, so a glyph's annotation sits slightly apart from where its core alone
+    would put it.
+    """
+    import random as _random
+
+    rng = _random.Random(seed)
+    maps: dict = {}
+
+    def shift_poly(points, pmap):
+        tx = GLYPH_K * amount / 8 * rng.gauss(0, 1)
+        ty = GLYPH_K * amount / 8 * rng.gauss(0, 1)
+        out = []
+        for p in points:
+            if p not in pmap:
+                pmap[p] = (
+                    p[0] + GLYPH_K * amount / 20 * rng.gauss(0, 1) + tx,
+                    p[1] + GLYPH_K * amount / 20 * rng.gauss(0, 1) + ty,
+                )
+            out.append(pmap[p])
+        return tuple(out)
+
+    drawn = {}
+    for coord, gid in grid.glyphs.items():
+        g = glyphs[gid - 1]
+        pmap = maps.setdefault(coord, {})
+        core = (shift_poly(g.core.points, pmap), g.core.close)
+        ann = None
+        if g.annotation is not None:
+            ann = (shift_poly(g.annotation.points, pmap), g.annotation.close)
+        drawn[coord] = (core, ann)
+
+    conns = [
+        (c.coord1, maps[c.coord1][c.point1], c.coord2, maps[c.coord2][c.point2])
+        for c in grid.connections
+    ]
+    return drawn, conns
+
+
+def render_grid(grid, glyphs, handwriting: float = 0.0, seed: int = 47) -> str:
     """A GlyphGrid -> a complete SVG, laid out on the spiral."""
     layout = SpiralLayout(grid.ncols)
     places = {c: layout.place(*c) for c in grid.glyphs}
     els = []
-    for coord, gid in grid.glyphs.items():
-        els.extend(glyph_svg(glyphs[gid - 1], places[coord]))
-    for conn in grid.connections:
-        els.extend(
-            connection_svg(
-                places[conn.coord1](conn.point1), places[conn.coord2](conn.point2)
+    if handwriting > 0:
+        drawn, conns = handwrite(grid, glyphs, handwriting, seed)
+        for coord, (core, ann) in drawn.items():
+            els.extend(polyspec_svg(core[0], core[1], places[coord]))
+            if ann is not None:
+                els.extend(polyspec_svg(ann[0], ann[1], places[coord]))
+        for c1, p1, c2, p2 in conns:
+            els.extend(connection_svg(places[c1](p1), places[c2](p2)))
+    else:
+        for coord, gid in grid.glyphs.items():
+            els.extend(glyph_svg(glyphs[gid - 1], places[coord]))
+        for conn in grid.connections:
+            els.extend(
+                connection_svg(
+                    places[conn.coord1](conn.point1),
+                    places[conn.coord2](conn.point2),
+                )
             )
-        )
     w, h = layout.canvas()
     return document(els, w, h, origin=(-w / 2, -h / 2))

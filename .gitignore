@@ -14,3 +14,4 @@ data/svg/
 
 __pycache__/
 *.pyc
+data/strict_svg/
