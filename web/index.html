@@ -9,6 +9,7 @@
   --text:#dfe6ee; --text-dim:#93a3b5; --text-faint:#65758a;
   --edge:#2a3542; --edge-soft:#212a35;
   --ok:#4f9d69; --warn:#c9973f; --off:#6d7c8d;
+  --beam:#6ef2c0; --screen-1:#0c3038; --screen-2:#061c23; --screen-ink:#8ff0d4;
   --sans:'Archivo',system-ui,sans-serif;
   --serif:'Instrument Serif',Georgia,serif;
   --mono:'IBM Plex Mono',ui-monospace,monospace;
@@ -50,9 +51,27 @@ textarea{width:100%;min-height:76px;resize:vertical;background:var(--rock-2);
   font-family:var(--sans);font-size:17px;line-height:1.5}
 textarea:focus{outline:2px solid var(--ink-soft);outline-offset:1px;border-color:transparent}
 
-.plate{background:var(--stone);border-radius:3px;padding:8px;
+.plate{background:var(--stone);border-radius:3px;padding:8px;position:relative;
   display:flex;align-items:center;justify-content:center;min-height:340px;
   border:1px solid var(--edge);overflow:hidden}
+.plate svg g[data-turn]{opacity:1}
+.plate.growing svg g[data-turn]{opacity:0}
+.plate svg g[data-turn].lit{opacity:1;transition:opacity .22s ease-out}
+.scan{position:absolute;inset:0;pointer-events:none;overflow:hidden;opacity:0;
+  transition:opacity .25s ease}
+.scan.on{opacity:1}
+.scan i{position:absolute;top:-8%;height:116%;width:3px;left:0;
+  background:linear-gradient(transparent,var(--beam),transparent);
+  filter:blur(.4px);transform:translateX(-40px)}
+.scan.on i{animation:sweep 1.15s linear infinite}
+.scan i:nth-child(2){animation-delay:.38s;width:2px;opacity:.75}
+.scan i:nth-child(3){animation-delay:.76s;width:2px;opacity:.55}
+@keyframes sweep{from{transform:translateX(-40px)}to{transform:translateX(calc(100% + 40px))}}
+@media (prefers-reduced-motion: reduce){
+  .scan.on i{animation:none;opacity:.4;transform:none;width:100%;height:2px;top:50%;
+    background:linear-gradient(90deg,transparent,var(--beam),transparent)}
+  .plate svg g[data-turn].lit{transition:none}
+}
 .plate svg{max-width:100%;height:auto;display:block}
 .plate.empty{color:#8a7f6d;font-family:var(--serif);font-size:20px;font-style:italic}
 
@@ -75,7 +94,7 @@ input[type=range]{width:190px;accent-color:var(--ink-soft);background:transparen
 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;
   margin-right:7px;vertical-align:1px}
 
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:1px;
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:1px;
   background:var(--edge-soft);border:1px solid var(--edge-soft);border-radius:3px}
 .stat{background:var(--rock-2);padding:12px 14px;display:flex;flex-direction:column;gap:3px}
 .stat .v{font-family:var(--mono);font-size:20px;font-variant-numeric:tabular-nums;
@@ -111,6 +130,19 @@ footer a{color:var(--text-dim)}
 .drop:hover,.drop.over{border-color:var(--ink-soft);color:var(--text)}
 .drop:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .reading.bad{border-left-color:var(--warn)}
+.translator{display:flex;flex-direction:column;gap:12px}
+.screen{border:2px solid #cfd6dc;border-radius:6px;padding:20px 22px;min-height:104px;
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  background:radial-gradient(ellipse at 50% 55%,var(--screen-1) 0%,var(--screen-2) 78%);
+  font-family:var(--mono);font-size:14px;line-height:1.75;color:var(--screen-ink);
+  text-shadow:0 0 9px rgba(110,242,192,.45);word-break:break-word}
+.screen .idle{opacity:.85}
+.screen .garble{color:#5fbfa4;opacity:.9}
+.tbar{height:3px;background:var(--edge-soft);border-radius:2px;overflow:hidden}
+.tbar i{display:block;height:100%;width:0;background:var(--beam);
+  transition:width .06s linear}
+.hold{align-self:flex-start;user-select:none;-webkit-user-select:none;touch-action:none}
+.hold[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media (prefers-reduced-motion: no-preference){
   .plate svg{transition:opacity .12s ease}
@@ -144,7 +176,10 @@ footer a{color:var(--text-dim)}
   </label>
 </div>
 
-<div class="plate empty" id="plate">waiting for words</div>
+<div class="plate empty" id="plate"><span id="plate-msg">waiting for words</span>
+  <div id="art"></div>
+  <div class="scan" id="scan" aria-hidden="true"><i></i><i></i><i></i></div>
+</div>
 
 <div class="panel">
   <div class="row" id="write-controls">
@@ -443,33 +478,45 @@ function renderSVG(grid, amount, seed){
     const [i, j] = key.split(",").map(Number);
     places.set(key, L.place(i, j));
   }
-  const el = [];
-  const part = (pts, closed, place) => {
+  /* Group by turn: the drawing is emitted ring by ring so it can be revealed the
+     same way. A connection belongs to the outer of the two turns it joins, so it
+     arrives with the ring it reaches. */
+  const byCol = new Map();
+  const push = (col, s2) => {
+    if (!byCol.has(col)) byCol.set(col, []);
+    byCol.get(col).push(s2);
+  };
+  const part = (pts, closed, place, col) => {
     const w = pts.map(place);
-    el.push(polyline(w, !!closed));
-    (closed ? w : w.slice(1, -1)).forEach(p => el.push(dot(p)));
+    push(col, polyline(w, !!closed));
+    (closed ? w : w.slice(1, -1)).forEach(p => push(col, dot(p)));
   };
   if (amount > 0){
     const { drawn, conns } = jitter(grid, amount, seed);
     for (const [key, g] of drawn){
-      part(g.c, g.cc, places.get(key));
-      if (g.a) part(g.a, g.ac, places.get(key));
+      const col = +key.split(",")[0];
+      part(g.c, g.cc, places.get(key), col);
+      if (g.a) part(g.a, g.ac, places.get(key), col);
     }
     for (const c of conns){
       const A = places.get(c.a.join(","))(c.pa), B = places.get(c.b.join(","))(c.pb);
-      el.push(polyline([A, B], false), dot(A), dot(B));
+      const col = Math.max(c.a[0], c.b[0]);
+      push(col, polyline([A, B], false)); push(col, dot(A)); push(col, dot(B));
     }
   } else {
     for (const [key, gid] of grid.glyphs){
-      const g = G.glyphs[gid - 1];
-      part(core(g), g.cc, places.get(key));
-      if (ann(g)) part(ann(g), g.ac, places.get(key));
+      const g = G.glyphs[gid - 1], col = +key.split(",")[0];
+      part(core(g), g.cc, places.get(key), col);
+      if (ann(g)) part(ann(g), g.ac, places.get(key), col);
     }
     for (const c of grid.conns){
       const A = places.get(c.a.join(","))(c.pa), B = places.get(c.b.join(","))(c.pb);
-      el.push(polyline([A, B], false), dot(A), dot(B));
+      const col = Math.max(c.a[0], c.b[0]);
+      push(col, polyline([A, B], false)); push(col, dot(A)); push(col, dot(B));
     }
   }
+  const el = [...byCol.keys()].sort((a, b) => a - b)
+    .map(c => '<g data-turn="' + c + '">' + byCol.get(c).join("") + "</g>");
   const [w, h] = L.canvas();
   return '<svg xmlns="http://www.w3.org/2000/svg" width="' + f(w) + '" height="' + f(h)
     + '" viewBox="' + f(-w / 2) + " " + f(-h / 2) + " " + f(w) + " " + f(h) + '">'
@@ -530,15 +577,37 @@ function build(){
     grid.readings = null;
   }
   state.svg = renderSVG(grid, state.hw, state.seed);
-  const plate = $("plate");
-  plate.className = "plate";
-  plate.innerHTML = state.svg;
+  draw(state.svg);
   paint(grid, msg, widened);
 }
 function empty(text){
-  const p = $("plate"); p.className = "plate empty"; p.textContent = text;
+  $("plate").className = "plate empty";
+  $("plate-msg").textContent = text;
+  $("plate-msg").hidden = false;
+  $("art").innerHTML = "";
   $("stats").innerHTML = ""; $("readings").innerHTML = ""; state.svg = "";
+  beams(false);
 }
+/* Reveal the drawing the way it grows: turn by turn, from the wide outer ring
+   inward. The SVG is already grouped by turn, so this only has to light them in
+   order. Reading order is the other way round -- the first glyph is the small one
+   at the centre -- so this deliberately runs the spiral backwards. */
+function draw(svg){
+  const plate = $("plate"), art = $("art");
+  plate.className = "plate growing";
+  $("plate-msg").hidden = true;
+  art.innerHTML = svg;
+  const groups = [...art.querySelectorAll("g[data-turn]")];
+  if (!groups.length || matchMedia("(prefers-reduced-motion: reduce)").matches){
+    plate.className = "plate";
+    return;
+  }
+  groups.sort((a, b) => +b.dataset.turn - +a.dataset.turn);
+  const step = Math.min(85, 1000 / groups.length);
+  groups.forEach((g, i) => setTimeout(() => g.classList.add("lit"), i * step));
+  setTimeout(() => plate.classList.remove("growing"), groups.length * step + 400);
+}
+function beams(on){ $("scan").classList.toggle("on", !!on); }
 function paint(grid, msg, widened){
   const digits = String(grid.x).length;
   $("stats").innerHTML = [
@@ -601,7 +670,8 @@ seg("d-strict", "d-upstream", "dialect", "strict", "upstream");
 $("b-256").onclick = () => { setBaseUI(256); build(); };
 $("b-200000").onclick = () => { setBaseUI(200000); build(); };
 $("hw").oninput = e => { state.hw = +e.target.value; hwRead(); build(); };
-$("msg").oninput = () => build();
+let typeTimer = null;
+$("msg").oninput = () => { clearTimeout(typeTimer); typeTimer = setTimeout(build, 220); };
 $("surprise").onclick = () => {
   const pool = PROMPTS.filter(p => p !== $("msg").value);
   $("msg").value = pool[Math.floor(Math.random() * pool.length)];
@@ -664,17 +734,13 @@ function setMode(m){
   $("write-actions").hidden = m !== "write";
   $("write-controls").hidden = m !== "write";
   if (m === "write") build();
-  else { empty("waiting for a drawing"); $("readings").innerHTML = ""; }
+  else { empty("waiting for a drawing"); }
 }
 $("m-write").onclick = () => setMode("write");
 $("m-read").onclick = () => setMode("read");
 
 function readDrawing(text, name){
-  const plate = $("plate");
-  plate.className = "plate";
-  plate.innerHTML = text;
-  const svg = plate.querySelector("svg");
-  if (svg){ svg.removeAttribute("style"); }
+  draw(text);
   let obs;
   try { obs = analyze(text); }
   catch (err){ return fail(err.message); }
@@ -689,24 +755,92 @@ function readDrawing(text, name){
     ["joins", obs.conns.length],
     ["alphabet", base === null ? "-" : (base === 256 ? "Latin" : "any")]
   ].map(([n2, v]) => `<div class="stat"><span class="v">${v}</span><span class="n">${n2}</span></div>`).join("");
-  const r = $("readings");
-  if (readings.length === 1){
-    r.innerHTML = `<div class="reading only"><span class="tag">reads</span>`
-      + `<span class="t">${esc(readings[0])}</span></div>`
-      + `<p class="note">Read straight off the drawing, with nothing to guess between.
-         ${esc(name || "This file")} was written in the unambiguous dialect.</p>`;
-  } else if (readings.length > 1){
-    r.innerHTML = readings.slice(0, 6).map(t =>
-      `<div class="reading rival"><span class="tag">could be</span><span class="t">${esc(t)}</span></div>`).join("")
-      + `<p class="note">More than one sentence fits, so this drawing cannot be read
-         with certainty.</p>`;
-  } else {
-    r.innerHTML = `<div class="reading bad"><span class="tag">no reading</span>`
-      + `<span class="t">the structure came back, but no sentence fits it</span></div>`
-      + `<p class="note">Most likely this was written in the original dialect, which
-         this reader does not resolve yet, or the handwriting is heavy enough to have
-         blurred a glyph past recognition.</p>`;
+  state.pending = { readings, name };
+  translator();
+}
+
+/* The translator, after the one in the game: it sits on an untranslated line until
+   you hold the button, then resolves the sentence from the front while the rest
+   still churns, and sweeps the drawing with light the whole time. */
+const IDLE = "\u003c!\u003e Untranslated Nomai writing \u003c!\u003e";
+const GARBLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789<>?:=|_[]!/%$#";
+const noise = k => Array.from({ length: k },
+  () => GARBLE[Math.floor(Math.random() * GARBLE.length)]).join("");
+
+function translator(){
+  $("readings").innerHTML = `<div class="translator">
+    <div class="screen" id="screen"><span class="idle">${esc(IDLE)}</span></div>
+    <div class="tbar"><i id="tfill"></i></div>
+    <button class="btn hold" id="translate" aria-pressed="false">Hold to translate</button>
+  </div>`;
+  const target = state.pending.readings[0] || null;
+  const screen = $("screen"), fill = $("tfill"), btn = $("translate");
+  let prog = 0, holding = false, raf = null, last = 0, done = false;
+
+  const paintScreen = () => {
+    if (!target){ screen.innerHTML = `<span class="garble">${esc(noise(46))}</span>`; return; }
+    const chars = Array.from(target);
+    const cut = Math.floor(prog * chars.length);
+    screen.innerHTML = esc(chars.slice(0, cut).join(""))
+      + `<span class="garble">${esc(noise(chars.length - cut))}</span>`;
+  };
+  const frame = ts => {
+    const dt = Math.min(0.05, (ts - (last || ts)) / 1000);
+    last = ts;
+    prog = Math.max(0, Math.min(1, prog + dt * (holding ? 1 / 2.5 : -1 / 0.8)));
+    fill.style.width = (prog * 100) + "%";
+    if (prog >= 1 && !done){ done = true; finish(); return; }
+    if (prog <= 0 && !holding){
+      raf = null; beams(false);
+      screen.innerHTML = `<span class="idle">${esc(IDLE)}</span>`;
+      return;
+    }
+    paintScreen();
+    raf = requestAnimationFrame(frame);
+  };
+  const start = e => {
+    if (done) return;
+    if (e && e.preventDefault) e.preventDefault();
+    holding = true; btn.setAttribute("aria-pressed", "true"); beams(true);
+    if (!raf){ last = 0; raf = requestAnimationFrame(frame); }
+  };
+  const stop = () => {
+    holding = false; btn.setAttribute("aria-pressed", "false");
+    if (!done) beams(false);
+  };
+  function finish(){
+    raf = null; beams(false); fill.style.width = "100%";
+    btn.setAttribute("aria-pressed", "false");
+    btn.textContent = "Translated";
+    btn.disabled = true;
+    const { readings, name } = state.pending;
+    if (readings.length === 1){
+      screen.textContent = readings[0];
+      $("readings").insertAdjacentHTML("beforeend",
+        `<p class="note">Read straight off the drawing, with nothing to guess between.
+         ${esc(name || "This file")} was written in the unambiguous dialect.</p>`);
+    } else if (readings.length > 1){
+      screen.textContent = readings[0];
+      $("readings").insertAdjacentHTML("beforeend",
+        readings.slice(1, 5).map(t =>
+          `<div class="reading rival"><span class="tag">or</span><span class="t">${esc(t)}</span></div>`).join("")
+        + `<p class="note">More than one sentence fits this drawing, so it cannot be
+           read with certainty.</p>`);
+    } else {
+      screen.innerHTML = `<span class="idle">${esc("\u003c!\u003e No single reading \u003c!\u003e")}</span>`;
+      $("readings").insertAdjacentHTML("beforeend",
+        `<p class="note">The glyphs, rows and joins all came back, but no sentence
+         fits them. Most likely this was drawn in the original dialect, where a
+         drawing has many readings and none of them is the reading.</p>`);
+    }
   }
+  btn.addEventListener("pointerdown", start);
+  ["pointerup", "pointerleave", "pointercancel", "blur"].forEach(ev =>
+    btn.addEventListener(ev, stop));
+  btn.addEventListener("keydown", e => {
+    if (e.key === " " || e.key === "Enter"){ e.preventDefault(); start(null); }
+  });
+  btn.addEventListener("keyup", stop);
 }
 function fail(msg){
   $("stats").innerHTML = "";
