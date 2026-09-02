@@ -1384,23 +1384,41 @@ function setBaseUI(v){
   $("b-256").setAttribute("aria-pressed", String(v === 256));
   $("b-200000").setAttribute("aria-pressed", String(v === 200000));
 }
-/* The drawing is committed, not live: a spiral that regrows on every keystroke
-   never finishes growing, and the growth is the point. */
+/* Two kinds of control, and they must not behave alike.
+   Content -- the words, the name, the dialect, the alphabet -- decides which glyphs
+   exist at all, and is committed, not live: a spiral that regrows on every keystroke
+   never finishes growing, and the growth is the point.
+   Shape -- tilt, curl, wind, the unsteadiness of the hand -- decides only how that
+   same content is drawn. It applies at once, and deliberately without the growth
+   animation: replaying three seconds of growth on every tick of a slider makes the
+   thing impossible to aim, and growth is what the Write button means. */
+function contentNow(){
+  return JSON.stringify([$("msg").value,
+    state.signed ? $("sig").value.trim() : "", state.dialect, state.base]);
+}
 function syncWrite(){
-  const sig = state.signed ? $("sig").value.trim() : "";
-  const changed = $("msg").value !== state.written || sig !== state.signedAs;
-  const ready = !!$("msg").value.trim() && (!state.signed || !!sig);
+  const ready = !!$("msg").value.trim()
+    && (!state.signed || !!$("sig").value.trim());
+  const changed = contentNow() !== state.committed;
   $("write").disabled = !changed || !ready;
-  $("write").textContent = state.signed && !sig ? "Needs a name"
+  $("write").textContent = state.signed && !$("sig").value.trim() ? "Needs a name"
     : changed ? "Write it" : "Written";
 }
 function commit(){
   state.written = $("msg").value;
   state.signedAs = state.signed ? $("sig").value.trim() : "";
+  build(true);
+  /* after the build, because widening the alphabet for a non-Latin message is part
+     of what got committed */
+  state.committed = contentNow();
   syncWrite();
-  build();
 }
-function build(){
+/* Redraw what is already written, in whatever shape the controls now say. Does
+   nothing before anything has been written -- that is the Write button's job. */
+function reshape(){
+  if (state.written && state.written.trim()) build(false);
+}
+function build(grow){
   const msg = state.written;
   if (!msg || !msg.trim()){ empty("waiting for words"); return; }
   /* Anything past Latin needs the larger alphabet. Asking the writer to know that
@@ -1411,7 +1429,7 @@ function build(){
     widened = true;
   }
   let grid = null, x = null;
-  const sig = state.signed ? $("sig").value.trim() : "";
+  const sig = state.signedAs;
   if (state.dialect === "strict"){
     for (let nonce = 1; nonce <= 48; nonce++){
       const cand = encode(msg, state.base, "strict", nonce, sig);
@@ -1436,7 +1454,7 @@ function build(){
   applyInk(inkFor(sig));
   state.track = trackFromLayout(layoutFor(grid.ncols, state.tilt, state.flip, state.tight));
   beams(false);
-  draw(state.svg);
+  draw(state.svg, grow);
   paint(grid, msg, widened);
 }
 function empty(text){
@@ -1451,7 +1469,7 @@ function empty(text){
    inward. The SVG is already grouped by turn, so this only has to light them in
    order. Reading order is the other way round -- the first glyph is the small one
    at the centre -- so this deliberately runs the spiral backwards. */
-function draw(svg){
+function draw(svg, grow){
   const plate = $("plate"), art = $("art");
   plate.className = "plate growing";
   $("plate-msg").hidden = true;
@@ -1465,7 +1483,9 @@ function draw(svg){
     art.appendChild(over);
   }
   const groups = [...art.querySelectorAll("g[data-turn]")];
-  if (!groups.length || matchMedia("(prefers-reduced-motion: reduce)").matches){
+  if (!grow || !groups.length
+      || matchMedia("(prefers-reduced-motion: reduce)").matches){
+    groups.forEach(g => g.classList.add("lit"));
     plate.className = "plate";
     return;
   }
@@ -1631,22 +1651,22 @@ function seg(a, b, key, va, vb){
     state[key] = v;
     $(a).setAttribute("aria-pressed", String(v === va));
     $(b).setAttribute("aria-pressed", String(v === vb));
-    build();
+    syncWrite();
   };
   $(a).onclick = () => set(va);
   $(b).onclick = () => set(vb);
 }
 seg("d-strict", "d-upstream", "dialect", "strict", "upstream");
-$("b-256").onclick = () => { setBaseUI(256); build(); };
-$("b-200000").onclick = () => { setBaseUI(200000); build(); };
-$("hw").oninput = e => { state.hw = +e.target.value; hwRead(); build(); };
+$("b-256").onclick = () => { setBaseUI(256); syncWrite(); };
+$("b-200000").onclick = () => { setBaseUI(200000); syncWrite(); };
+$("hw").oninput = e => { state.hw = +e.target.value; hwRead(); reshape(); };
 function rememberMe(){
   try { localStorage.setItem("nomai.me", state.me); } catch (e) { /* private window */ }
 }
 $("me").oninput = e => {
   state.me = e.target.value;
   rememberMe();
-  if (state.mode === "write") build();
+  if (state.mode === "write") reshape();
   else if (state.pending) applyInk(inkFor(state.pending.readings.length
     ? state.pending.readings[0].sig : null));
 };
@@ -1670,7 +1690,7 @@ function setFlip(f){
   state.flip = f;
   $("c-cw").setAttribute("aria-pressed", String(f === 1));
   $("c-ccw").setAttribute("aria-pressed", String(f === -1));
-  build();
+  reshape();
 }
 $("c-cw").onclick = () => setFlip(1);
 $("c-ccw").onclick = () => setFlip(-1);
@@ -1678,12 +1698,12 @@ $("tight").oninput = e => {
   state.tight = +e.target.value;
   $("tight-read").textContent = state.tight <= 0.22 ? "very tight"
     : state.tight <= 0.34 ? "tight" : state.tight <= 0.46 ? "open" : "very open";
-  build();
+  reshape();
 };
 $("tilt").oninput = e => {
   state.tilt = +e.target.value * Math.PI / 180;
   $("tilt-read").textContent = e.target.value + "\u00b0";
-  build();
+  reshape();
 };
 $("surprise").onclick = () => {
   const pool = PROMPTS.filter(p => p !== $("msg").value);
@@ -1746,7 +1766,7 @@ function setMode(m){
   $("read-pane").hidden = m !== "read";
   $("write-actions").hidden = m !== "write";
   $("write-controls").hidden = m !== "write";
-  if (m === "write"){ build(); }
+  if (m === "write"){ build(false); }
   else { empty("waiting for a drawing"); idleTranslator(); }
 }
 $("m-write").onclick = () => setMode("write");
@@ -1908,8 +1928,6 @@ try { state.me = localStorage.getItem("nomai.me") || ""; } catch (e) { state.me 
 $("me").value = state.me;
 state.signed = false;
 state.signedAs = "";
-state.written = $("msg").value;
 hwRead();
-syncWrite();
-build();
+commit();
 </script>
