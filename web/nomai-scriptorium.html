@@ -9,7 +9,7 @@
   --text:#dfe6ee; --text-dim:#93a3b5; --text-faint:#65758a;
   --edge:#2a3542; --edge-soft:#212a35;
   --ok:#4f9d69; --warn:#c9973f; --off:#6d7c8d;
-  --beam:#6ef2c0; --screen-1:#0c3038; --screen-2:#061c23; --screen-ink:#8ff0d4;
+  --beam:#6ef2c0; --beam-deep:#0d9c78; --beam-core:#f0fff9; --screen-1:#0c3038; --screen-2:#061c23; --screen-ink:#8ff0d4;
   --slot:#8f86ff; --slot-core:#e6e2ff; --slot-frame:#3a3550;
   --ink-none:#104e8b; --ink-mine:#5c47b8; --ink-theirs:#c26610;
   --sans:'Archivo',system-ui,sans-serif;
@@ -2015,7 +2015,7 @@ function draw(svg, grow, growIdx){
    `state.track` is the spiral in the drawing's own coordinates: taken from the
    layout when we drew it ourselves, and from the fit when we read someone else's. */
 const TICKS = 5;
-const BEAM_MODES = { idle: { rate: 1, alpha: 0.5 }, scan: { rate: 1.9, alpha: 1 } };
+const BEAM_MODES = { idle: { rate: 1, alpha: 0.78 }, scan: { rate: 1.9, alpha: 1 } };
 let beamRaf = null, beamLast = 0, beamMode = null, walkers = [];
 
 /* Several ticks, each patrolling the spiral on its own: they start apart, some
@@ -2097,10 +2097,17 @@ function paintTicks(svg, alpha){
     const half = 4.4 * K * p.scale;
     const x1 = p.x - p.ux * half, y1 = p.y - p.uy * half;
     const x2 = p.x + p.ux * half, y2 = p.y + p.uy * half;
-    const line = (width, op) => '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2
-      + '" y2="' + y2 + '" stroke="var(--beam)" stroke-width="' + width
+    /* Three layers, because the paper is light. A single mint stroke on cream is
+       almost the same value as the paper and disappears unless you look for it: a
+       halo to spread the light, a deeper green that actually has contrast against
+       the page, and a pale core so it still reads as something lit rather than
+       drawn. */
+    const line = (width, colour, op) => '<line x1="' + x1 + '" y1="' + y1 + '" x2="'
+      + x2 + '" y2="' + y2 + '" stroke="' + colour + '" stroke-width="' + width
       + '" stroke-linecap="round" opacity="' + op.toFixed(3) + '"/>';
-    out.push(line(7 * p.scale, alpha * 0.2), line(1.8 * p.scale, alpha));
+    out.push(line(13 * p.scale, "var(--beam)", alpha * 0.26),
+             line(5.2 * p.scale, "var(--beam-deep)", alpha * 0.9),
+             line(1.9 * p.scale, "var(--beam-core)", alpha));
   }
   svg.innerHTML = out.join("");
 }
