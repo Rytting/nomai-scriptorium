@@ -742,3 +742,37 @@ spiral with four replies) across both windings and three tightnesses:
   unmirrored.
 * exactly **one** failure is the scroll's own: a five-deep chain at the open end of
   the tightness range, where the last reply reads alone but not in place. Still open.
+
+## The scroll, in the page
+
+Writing now holds a scroll rather than a spiral. Every row under the drawing is one
+spiral in the conversation, indented by depth, its name in the ink that says whose it
+is, and each row has a `reply` beside it. Pressing it aims the composer at that
+spiral -- a banner says what is being answered -- and the next Write appends a reply
+instead of replacing the root.
+
+Three things fell out of that which are worth keeping:
+
+* **only the reply grows.** `draw` takes the index of the spiral that just arrived
+  and lights only its turns; the rest of the scroll is simply already there, and the
+  socket does not replay its insertion. A scroll that has been plugged in stays
+  plugged in.
+* **tilt steps aside once there are replies.** A scroll turns itself upright about
+  its socket, so there is nothing left for the control to mean; it disables itself and
+  says so rather than silently doing nothing.
+* **a scroll that reads completely becomes one you can answer.** The reader rebuilds
+  `state.scroll` from what it read, so a file dropped in can be replied to. The grids
+  are regenerated from the text, so the drawing is redrawn rather than patched -- it
+  does not come out stroke for stroke the same, and it does not need to.
+
+The translator resolves the whole wall at once: every line churns and clears together,
+which is what the beams sweeping all of it implies. When the tree check passes it says
+so; when it does not, it says the conversation cannot be trusted to be the one that
+was written, which is the honest thing to print.
+
+One number needed fixing along the way. Joins were coming out 7 to 19 times longer
+than the longest real connection -- they read as tethers, not connections. The gap
+that clears the parent's band is about one band, not two and a half, and two spirals
+only actually collide when their bands do; with both numbers brought down to what the
+geometry actually needs, joins land at 2 to 9 times a connection, and the 24-scroll
+suite is unchanged at 19.

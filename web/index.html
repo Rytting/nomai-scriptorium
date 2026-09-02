@@ -113,6 +113,23 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
 }
 .plate svg{max-width:100%;height:auto;display:block}
 .plate.empty{color:#8a7f6d;font-family:var(--serif);font-size:20px;font-style:italic}
+/* the conversation the drawing holds, one row per spiral */
+.thread{display:flex;flex-direction:column;gap:2px}
+.trow{display:flex;gap:10px;align-items:baseline;padding:7px 10px;border-radius:3px;
+  background:var(--rock-2);border:1px solid var(--edge-soft)}
+.trow .depth{color:var(--text-faint);font-family:var(--mono);font-size:12px;
+  white-space:pre;flex:none}
+.trow .said{flex:1;min-width:0;word-break:break-word}
+.trow .said b{font-weight:500;font-family:var(--mono);font-size:13px;font-style:italic}
+.trow .mine b{color:var(--ink-mine)} .trow .theirs b{color:var(--ink-theirs)}
+.linky{background:none;border:0;padding:0;color:var(--ink-soft);cursor:pointer;
+  font:inherit;font-size:13px;text-decoration:underline;text-underline-offset:2px}
+.linky:hover{color:var(--amber)}
+.trow .linky{flex:none}
+.answering{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;
+  padding:8px 11px;border-radius:3px;background:var(--rock-3);
+  border-left:2px solid var(--amber)}
+.answering .q{flex:1;min-width:0;color:var(--text-dim);font-style:italic}
 
 .panel{background:var(--rock-2);border:1px solid var(--edge);border-radius:3px;
   padding:18px 20px;display:flex;flex-direction:column;gap:16px}
@@ -175,6 +192,7 @@ footer a{color:var(--text-dim)}
   background:radial-gradient(ellipse at 50% 55%,var(--screen-1) 0%,var(--screen-2) 78%);
   font-family:var(--mono);font-size:14px;line-height:1.75;color:var(--screen-ink);
   text-shadow:0 0 9px rgba(110,242,192,.45);word-break:break-word}
+.screen.many{text-align:left;line-height:1.9}
 .screen .idle{opacity:.85}
 .screen .garble{color:#5fbfa4;opacity:.9}
 .tbar{height:3px;background:var(--edge-soft);border-radius:2px;overflow:hidden}
@@ -219,6 +237,11 @@ footer a{color:var(--text-dim)}
     <span class="hint">Nomai spirals are nearly always signed. The unsigned ones are
     notices, and questions put to whoever passes.</span>
   </div>
+  <div class="answering" id="answering" hidden>
+    <span class="label">Answering</span>
+    <span class="q" id="answering-what"></span>
+    <button class="linky" id="answering-off">write a new scroll instead</button>
+  </div>
   <label class="label" for="msg">Your text</label>
   <textarea id="msg" spellcheck="false">The Eye of the Universe</textarea>
 </div>
@@ -234,6 +257,8 @@ footer a{color:var(--text-dim)}
 <div class="plate empty" id="plate"><span id="plate-msg">waiting for words</span>
   <div id="art"></div>
 </div>
+
+<div class="thread" id="thread" hidden></div>
 
 <div class="panel">
   <div class="row" id="write-controls">
@@ -728,7 +753,7 @@ function attach(parentL, parentShift, t, side, reach, flip, tight, childNcols){
   const nx = p.ux * out * side, ny = p.uy * out * side;
   /* clear of the parent's band, and no further: the join should read as a connection,
      which is a short line, not a tether */
-  const gap = (3 * (ROWS - 1) + 3.5) * K * p.scale * (reach || 1);
+  const gap = (3 * (ROWS - 1) + 1.5) * K * p.scale * (reach || 1);
   const at = [p.x + nx * gap + parentShift[0], p.y + ny * gap + parentShift[1]];
   /* The child's tail tangent must point back at the parent. tilt adds straight to
      that angle -- it is pi/2 at tilt 0 -- so the whole placement is one translation. */
@@ -770,7 +795,7 @@ function chooseSpot(laid, parentIdx, ncols, flip, tight){
   const taken = [];
   for (const it of laid)
     taken.push(...centres(it.L.ncols, [...it.sp.grid.glyphs.keys()], it.L, it.shift));
-  const want = 11 * K * MAX_SCALE;
+  const want = 6 * K * MAX_SCALE;
   let best = null;
   for (const reach of REACH) for (const t of SPOTS) for (const side of [1, -1]){
     const pl = attach(par.L, par.shift, t, side, reach, flip, tight, ncols);
@@ -858,7 +883,7 @@ function renderScroll(spirals, amount, seed, flip, tight){
   const m = 8 * K * MAX_SCALE, R = SOCKET_R * K * MAX_SCALE;
   const W = 2 * Math.max(x1 + m, m - x0);
   const Y = y0 - m, H = (Math.max(y1, 0) + 2.2 * R + 0.4 * m) - Y;
-  return document_(groups, -W / 2, Y, W, H);
+  return { svg: document_(groups, -W / 2, Y, W, H), root: laid[0].L, tilt0 };
 }
 
 /*__READ__*/
@@ -894,21 +919,36 @@ function setBaseUI(v){
    animation: replaying three seconds of growth on every tick of a slider makes the
    thing impossible to aim, and growth is what the Write button means. */
 function contentNow(){
-  return JSON.stringify([$("msg").value,
-    state.signed ? $("sig").value.trim() : "", state.dialect, state.base]);
+  return JSON.stringify([$("msg").value, state.signed ? $("sig").value.trim() : "",
+    state.dialect, state.base, state.replyTo]);
 }
 function syncWrite(){
   const ready = !!$("msg").value.trim()
     && (!state.signed || !!$("sig").value.trim());
   const changed = contentNow() !== state.committed;
+  const replying = state.replyTo !== null;
   $("write").disabled = !changed || !ready;
   $("write").textContent = state.signed && !$("sig").value.trim() ? "Needs a name"
+    : replying ? "Add this reply"
+    : state.scroll.length > 1 ? (changed ? "Rewrite the first spiral" : "Written")
     : changed ? "Write it" : "Written";
 }
 function commit(){
-  state.written = $("msg").value;
-  state.signedAs = state.signed ? $("sig").value.trim() : "";
-  build(true);
+  const text = $("msg").value, sig = state.signed ? $("sig").value.trim() : "";
+  state.signedAs = sig;
+  let growIdx = null;
+  if (state.replyTo !== null){
+    state.scroll.push({ text, sig, parent: state.replyTo });
+    growIdx = state.scroll.length - 1;
+  } else if (state.scroll.length){
+    state.scroll[0].text = text;
+    state.scroll[0].sig = sig;
+  } else {
+    state.scroll = [{ text, sig, parent: null }];
+  }
+  state.written = state.scroll[0].text;
+  build(true, growIdx);
+  if (state.replyTo !== null){ state.replyTo = null; $("answering").hidden = true; }
   /* after the build, because widening the alphabet for a non-Latin message is part
      of what got committed */
   state.committed = contentNow();
@@ -917,47 +957,69 @@ function commit(){
 /* Redraw what is already written, in whatever shape the controls now say. Does
    nothing before anything has been written -- that is the Write button's job. */
 function reshape(){
-  if (state.written && state.written.trim()) build(false);
+  if (state.scroll.length) build(false);
 }
-function build(grow){
-  const msg = state.written;
-  if (!msg || !msg.trim()){ empty("waiting for words"); return; }
-  /* Anything past Latin needs the larger alphabet. Asking the writer to know that
-     and flip a switch is the wrong way round: widen it for them and say so. */
+/* One spiral's grid, or a string saying why not. The nonce search lives here because
+   both the root and every reply need it. */
+function gridFor(msg, sig, parent){
+  if (state.dialect !== "strict"){
+    const x = encode(msg, state.base, "upstream", 1);
+    if (x === "big") return "that character needs the larger alphabet";
+    if (x === null) return "waiting for words";
+    const g = buildGrid(x, "upstream");
+    g.readings = null;
+    return g;
+  }
+  for (let nonce = 1; nonce <= 48; nonce++){
+    const cand = encode(msg, state.base, "strict", nonce, sig, parent);
+    if (cand === "big") return "that character needs the larger alphabet";
+    if (cand === null) return "waiting for words";
+    const g = buildGrid(cand, "strict");
+    const readings = strictReadings(g, state.base);
+    if (readings.length === 1 && readings[0].text === msg
+        && (readings[0].sig || "") === sig){
+      g.readings = readings;
+      return g;
+    }
+  }
+  return "could not find a unique numbering for this text";
+}
+/* Draw whatever the scroll currently holds. `growIdx` is the spiral that just
+   arrived: it unwinds, and everything already on the sheet is simply there. */
+function build(grow, growIdx){
+  const sc = state.scroll;
+  if (!sc.length){ empty("waiting for words"); return; }
   let widened = false;
-  if (state.base === 256 && Array.from(msg).some(c => c.codePointAt(0) >= 256)){
+  if (state.base === 256 && sc.some(sp => Array.from(sp.text + (sp.sig || ""))
+        .some(c => c.codePointAt(0) >= 256))){
     setBaseUI(200000);
     widened = true;
   }
-  let grid = null, x = null;
-  const sig = state.signedAs;
-  if (state.dialect === "strict"){
-    for (let nonce = 1; nonce <= 48; nonce++){
-      const cand = encode(msg, state.base, "strict", nonce, sig);
-      if (cand === "big"){ empty("that character needs the larger alphabet"); return; }
-      if (cand === null){ empty("waiting for words"); return; }
-      const g = buildGrid(cand, "strict");
-      const readings = strictReadings(g, state.base);
-      if (readings.length === 1 && readings[0].text === msg
-          && (readings[0].sig || "") === sig){
-        grid = g; x = cand; grid.readings = readings; break;
-      }
-    }
-    if (!grid){ empty("could not find a unique numbering for this text"); return; }
-  } else {
-    x = encode(msg, state.base, "upstream", 1);
-    if (x === "big"){ empty("that character needs the larger alphabet"); return; }
-    if (x === null){ empty("waiting for words"); return; }
-    grid = buildGrid(x, "upstream");
-    grid.readings = null;
+  for (const sp of sc){
+    const g = gridFor(sp.text, sp.sig || "", sp.parent);
+    if (typeof g === "string"){ empty(g); return; }
+    sp.grid = g;
   }
-  state.svg = renderSVG(grid, state.hw, state.seed, state.tilt, state.flip, state.tight);
-  applyInk(inkFor(sig));
-  state.track = trackFromLayout(layoutFor(grid.ncols, state.tilt, state.flip, state.tight));
+  let L;
+  if (sc.length === 1){
+    state.svg = renderSVG(sc[0].grid, state.hw, state.seed, state.tilt, state.flip,
+                          state.tight);
+    L = layoutFor(sc[0].grid.ncols, state.tilt, state.flip, state.tight);
+  } else {
+    /* a scroll turns itself upright about its socket, so the tilt control steps
+       aside -- there is nothing sensible for it to mean once replies are attached */
+    const out = renderScroll(sc, state.hw, state.seed, state.flip, state.tight);
+    state.svg = out.svg;
+    L = out.root;
+  }
+  applyInk(inkFor(sc[0].sig || ""));
+  state.track = trackFromLayout(L);
   state.socket = socketFor(state.track);
   beams(false);
-  draw(state.svg, grow);
-  paint(grid, msg, widened);
+  draw(state.svg, grow, growIdx);
+  paintThread();
+  syncTilt();
+  paint(sc, widened);
 }
 function empty(text){
   $("plate").className = "plate empty";
@@ -971,7 +1033,7 @@ function empty(text){
    inward. The SVG is already grouped by turn, so this only has to light them in
    order. Reading order is the other way round -- the first glyph is the small one
    at the centre -- so this deliberately runs the spiral backwards. */
-function draw(svg, grow){
+function draw(svg, grow, growIdx){
   const plate = $("plate"), art = $("art");
   plate.className = "plate growing";
   $("plate-msg").hidden = true;
@@ -985,17 +1047,23 @@ function draw(svg, grow){
     art.appendChild(over);
     mountSocket();
   }
-  const groups = [...art.querySelectorAll("g[data-turn]")];
+  const all = [...art.querySelectorAll("g[data-turn]")];
+  /* a reply grows on its own; the rest of the scroll is already on the wall */
+  const only = growIdx == null ? null : art.querySelector('[data-spiral="' + growIdx + '"]');
+  const groups = only ? [...only.querySelectorAll("g[data-turn]")] : all;
+  if (only) all.forEach(g => { if (!groups.includes(g)) g.classList.add("lit"); });
+  art.querySelectorAll('[data-joins] path').forEach(p => p.classList.add("joinline"));
   if (!grow || !groups.length
       || matchMedia("(prefers-reduced-motion: reduce)").matches){
-    groups.forEach(g => g.classList.add("lit"));
+    all.forEach(g => g.classList.add("lit"));
     plate.className = "plate";
     return;
   }
   groups.sort((a, b) => +b.dataset.turn - +a.dataset.turn);
   const step = Math.min(85, 1000 / groups.length);
   /* the scroll turns into its socket first, and the spiral unwinds out of it */
-  const sock = art.querySelector(".socket");
+  /* the scroll is already plugged in when a reply arrives */
+  const sock = growIdx == null ? art.querySelector(".socket") : null;
   const wait = sock ? INSERT_MS : 0;
   if (sock) sock.classList.add("inserting");
   groups.forEach((g, i) => setTimeout(() => g.classList.add("lit"), wait + i * step));
@@ -1144,22 +1212,69 @@ function trackFromFit(ncols, fit){
              scale: p.scale * Math.hypot(fit.wr, fit.wi) };
   } };
 }
-function paint(grid, msg, widened){
-  const digits = String(grid.x).length;
+/* The conversation the scroll holds. Depth is drawn rather than numbered, because
+   what matters at a glance is who is answering whom. */
+function paintThread(){
+  const sc = state.scroll, box = $("thread");
+  if (sc.length < 1){ box.hidden = true; return; }
+  const depth = sc.map(() => 0);
+  sc.forEach((sp, k) => { if (sp.parent != null) depth[k] = depth[sp.parent] + 1; });
+  box.hidden = false;
+  box.innerHTML = sc.map((sp, k) => {
+    const kind = inkFor(sp.sig || "");
+    const who = sp.sig ? `<b>${esc(sp.sig)}:</b> ` : "";
+    return `<div class="trow"><span class="depth">${"\u2502 ".repeat(depth[k])}</span>`
+      + `<span class="said ${kind}">${who}${esc(sp.text)}</span>`
+      + `<button class="linky" data-reply="${k}">reply</button></div>`;
+  }).join("");
+  box.querySelectorAll("[data-reply]").forEach(b =>
+    b.onclick = () => setReplyTo(+b.dataset.reply));
+}
+function setReplyTo(k){
+  state.replyTo = k;
+  const sp = state.scroll[k];
+  $("answering").hidden = k === null;
+  if (k !== null){
+    $("answering-what").textContent = (sp.sig ? sp.sig + ": " : "") + sp.text;
+    $("msg").value = "";
+    $("msg").focus();
+  }
+  syncWrite();
+}
+$("answering-off").onclick = () => { setReplyTo(null); };
+
+function paint(sc, widened){
+  const glyphs = sc.reduce((a, sp) => a + sp.grid.glyphs.size, 0);
+  const turns = sc.reduce((a, sp) => a + sp.grid.ncols, 0);
+  const chars = sc.reduce((a, sp) => a + Array.from(sp.text).length, 0);
   $("stats").innerHTML = [
-    ["characters", Array.from(msg).length],
-    ["glyphs", grid.glyphs.size],
-    ["turns", grid.ncols],
-    ["integer digits", digits]
-  ].map(([n, v]) => `<div class="stat"><span class="v">${v}</span><span class="n">${n}</span></div>`).join("");
+    sc.length > 1 ? ["spirals", sc.length] : ["characters", chars],
+    ["glyphs", glyphs],
+    ["turns", turns],
+    sc.length > 1 ? ["characters", chars]
+                  : ["integer digits", String(sc[0].grid.x).length]
+  ].map(([n2, v]) => `<div class="stat"><span class="v">${v}</span><span class="n">${n2}</span></div>`).join("");
 
   const r = $("readings");
   const wide = widened
     ? `<p class="note">Switched to the larger alphabet — Latin covers only the first
        256 characters. Every language works here; the spiral just runs longer, because
        each character now takes more of the drawing to pin down.</p>` : "";
-  if (state.dialect === "strict"){
-    const rec = grid.readings[0];
+  if (state.dialect !== "strict"){
+    const n2 = upstreamCandidates(sc[0].grid);
+    r.innerHTML = `<div class="reading rival"><span class="tag">intended</span>`
+      + `<span class="t">${esc(sc[0].text)}</span></div>`
+      + `<div class="reading rival"><span class="tag">also fits</span>`
+      + `<span class="t">${fmtBig(n2)} other numbering${n2 === 2n ? "" : "s"} of this same drawing`
+      + `</span></div>`
+      + `<p class="note">The original numbering throws information away in three places: which
+         of two rows was asked first, tied connection pairs, and where the message ends. Any
+         of those numberings draws this same picture, so the drawing does not say which one
+         was meant.</p>` + wide;
+    return;
+  }
+  if (sc.length === 1){
+    const rec = sc[0].grid.readings[0];
     r.innerHTML = `<div class="reading only"><span class="tag">reading</span>`
       + `<span class="t">${rec.sig ? `<span class="who">` + esc(rec.sig) + `:</span> ` : ""}`
       + `${esc(rec.text)}</span></div>`
@@ -1167,20 +1282,15 @@ function paint(grid, msg, widened){
          possible answer, so anyone with the decoder recovers <b>this sentence and no other</b>.</p>`
       + wide;
   } else {
-    const n = upstreamCandidates(grid);
-    r.innerHTML = `<div class="reading rival"><span class="tag">intended</span>`
-      + `<span class="t">${esc(msg)}</span></div>`
-      + `<div class="reading rival"><span class="tag">also fits</span>`
-      + `<span class="t">${fmtBig(n)} other numbering${n === 2n ? "" : "s"} of this same drawing`
-      + `</span></div>`
-      + `<p class="note">The original numbering throws information away in three places: which
-         of two questions was asked first, ties between identical join points, and where inside
-         the last turn the integer ran out. Every combination is a different sentence that draws
-         <b>this exact picture</b> — the two-letter word <b>hi</b> draws the same thing as
-         <b>&amp;i</b>. A decoder has to guess, and it can guess wrong without telling you.</p>`
-      + wide;
+    r.innerHTML = `<div class="reading only"><span class="tag">scroll</span>`
+      + `<span class="t">${sc.length} spirals, ${sc.length - 1} of them replies</span></div>`
+      + `<p class="note">One drawing holding the whole conversation, plugged into its wall at
+         a single socket. Each reply records which spiral it answers, so a reader can check
+         the tree it sees against the tree that was written. Tilt steps aside here: a scroll
+         turns itself upright about its socket.</p>` + wide;
   }
 }
+
 function fmtBig(n){
   const s = n.toString();
   if (s.length <= 6) return Number(s).toLocaleString();
@@ -1253,6 +1363,12 @@ $("tilt").oninput = e => {
   $("tilt-read").textContent = e.target.value + "\u00b0";
   reshape();
 };
+function syncTilt(){
+  const many = state.scroll.length > 1;
+  $("tilt").disabled = many;
+  $("tilt-read").textContent = many ? "set by the scroll"
+    : Math.round(state.tilt * 180 / Math.PI) + "\u00b0";
+}
 $("surprise").onclick = () => {
   const pool = PROMPTS.filter(p => p !== $("msg").value);
   $("msg").value = pool[Math.floor(Math.random() * pool.length)];
@@ -1325,8 +1441,11 @@ function readDrawing(text, name){
   state.socket = null;
   walkers = [];
   draw(text);
-  let obs;
-  try { obs = analyze(text); }
+  let scroll, obs;
+  try {
+    scroll = analyzeScroll(text);
+    obs = scroll.spirals[0];
+  }
   catch (err){ return fail(err.message); }
   if (obs.fit){
     state.track = trackFromFit(obs.ncols, obs.fit);
@@ -1339,21 +1458,41 @@ function readDrawing(text, name){
     mountSocket();
     beams("idle");
   }
-  let readings = [], base = null;
+  /* one alphabet for the whole scroll: they were written together */
+  let base = null, per = scroll.spirals.map(() => []);
   for (const b of [256, 200000]){
-    try { const r = readStrict(obs, b); if (r.length){ readings = r; base = b; break; } }
-    catch (err){ /* try the other alphabet */ }
+    const got = scroll.spirals.map(o => { try { return readStrict(o, b); } catch (err){ return []; } });
+    if (got.some(r => r.length)){ per = got; base = b; break; }
   }
+  const firsts = per.map(r => r[0] || null);
+  const parents = firsts.map(r => r && r.parent !== undefined ? r.parent : null);
+  const tree = firsts.every(Boolean) && scroll.spirals.length > 1
+    ? checkTree(scroll.edges, parents, firsts.length) : null;
   $("stats").innerHTML = [
-    ["glyphs", obs.glyphs.size],
-    ["turns", obs.ncols],
-    ["joins", obs.conns.length],
+    scroll.spirals.length > 1 ? ["spirals", scroll.spirals.length] : null,
+    ["glyphs", scroll.spirals.reduce((a, o) => a + o.glyphs.size, 0)],
+    ["turns", scroll.spirals.reduce((a, o) => a + o.ncols, 0)],
+    scroll.spirals.length > 1 ? ["replies", scroll.joins.length]
+                              : ["joins", obs.conns.length],
     ["alphabet", base === null ? "-" : (base === 256 ? "Latin" : "any")]
-  ].map(([n2, v]) => `<div class="stat"><span class="v">${v}</span><span class="n">${n2}</span></div>`).join("");
+  ].filter(Boolean)
+   .map(([n2, v]) => `<div class="stat"><span class="v">${v}</span><span class="n">${n2}</span></div>`).join("");
   /* the colour goes on before the text does: on a wall you can see whose a spiral
      is without translating it */
-  applyInk(inkFor(readings.length ? readings[0].sig : null));
-  state.pending = { readings, name };
+  applyInk(inkFor(firsts[0] ? firsts[0].sig : null));
+  /* A scroll that read completely becomes one you can answer: the grids are rebuilt
+     from the text when a reply is added, so the drawing is redrawn rather than
+     patched. It will not come out stroke for stroke the same, and it does not need
+     to -- what it says is what was read. */
+  if (firsts.every(Boolean) && (!tree || tree.ok)){
+    state.scroll = firsts.map((r, i) => ({ text: r.text, sig: r.sig || "",
+                                           parent: parents[i] }));
+    paintThread();
+  } else {
+    state.scroll = [];
+    $("thread").hidden = true;
+  }
+  state.pending = { per, name, tree };
   translator();
 }
 
@@ -1381,17 +1520,24 @@ function translator(){
     <div class="tbar"><i id="tfill"></i></div>
     <button class="btn hold" id="translate" aria-pressed="false">Hold to translate</button>
   </div>`;
-  const rec0 = state.pending.readings[0] || null;
-  const target = toLine(rec0);
+  const per = state.pending.per;
+  const targets = per.map(r => toLine(r[0] || null));
   const screen = $("line"), fill = $("tfill"), btn = $("translate");
+  /* a single sentence sits centred the way the tool in the game shows it; a
+     conversation is a list, and lists read from the left */
+  if (targets.length > 1) screen.parentElement.classList.add("many");
   let prog = 0, holding = false, raf = null, last = 0, done = false;
 
+  /* Every spiral on the wall resolves at once, from the front, while the rest of
+     each line still churns -- the beams are sweeping all of it, not one line. */
   const paintScreen = () => {
-    if (!target){ screen.innerHTML = `<span class="garble">${esc(noise(46))}</span>`; return; }
-    const chars = Array.from(target);
-    const cut = Math.floor(prog * chars.length);
-    screen.innerHTML = esc(chars.slice(0, cut).join(""))
-      + `<span class="garble">${esc(noise(chars.length - cut))}</span>`;
+    screen.innerHTML = targets.map(t => {
+      if (!t) return `<span class="garble">${esc(noise(46))}</span>`;
+      const chars = Array.from(t);
+      const cut = Math.floor(prog * chars.length);
+      return esc(chars.slice(0, cut).join(""))
+        + `<span class="garble">${esc(noise(chars.length - cut))}</span>`;
+    }).join("<br>");
   };
   const frame = ts => {
     const dt = Math.min(0.05, (ts - (last || ts)) / 1000);
@@ -1422,9 +1568,22 @@ function translator(){
     btn.setAttribute("aria-pressed", "false");
     btn.textContent = "Translated";
     btn.disabled = true;
-    const { readings, name } = state.pending;
+    const { per, name, tree } = state.pending;
     const show = r2 => r2.sig
       ? `<span class="who">${esc(r2.sig)}:</span> ${esc(r2.text)}` : esc(r2.text);
+    if (per.length > 1){
+      screen.innerHTML = per.map(r => r[0] ? show(r[0])
+        : `<span class="idle">${esc("<!> unreadable <!>")}</span>`).join("<br>");
+      $("readings").insertAdjacentHTML("beforeend", tree && tree.ok
+        ? `<p class="note">A scroll: ${per.length} spirals, ${per.length - 1} of them
+           replies. Which spiral each one answers is written into its own numbering,
+           and it agrees with the way they are drawn.</p>`
+        : `<p class="note">A scroll of ${per.length} spirals. ${tree ? esc(tree.why)
+           : "Not every spiral could be read"}, so the conversation cannot be
+           trusted to be the one that was written.</p>`);
+      return;
+    }
+    const readings = per[0] || [];
     if (readings.length === 1){
       screen.innerHTML = show(readings[0]);
       $("readings").insertAdjacentHTML("beforeend",
@@ -1480,6 +1639,8 @@ $("file").onchange = e => takeFile(e.target.files[0]);
 drop.addEventListener("drop", e => takeFile(e.dataTransfer.files[0]));
 
 state.mode = "write";
+state.scroll = [];
+state.replyTo = null;
 state.tilt = 0;
 state.flip = 1;
 state.tight = 0.29;
