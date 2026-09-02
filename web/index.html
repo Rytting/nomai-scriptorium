@@ -230,7 +230,7 @@ footer a{color:var(--text-dim)}
 
 <div class="seg" role="group" aria-label="Mode" style="align-self:flex-start">
   <button id="m-write" aria-pressed="true">Write</button>
-  <button id="m-read" aria-pressed="false">Read a drawing</button>
+  <button id="m-read" aria-pressed="false">Read a scroll</button>
 </div>
 
 <div class="composer" id="write-pane">
@@ -253,10 +253,10 @@ footer a{color:var(--text-dim)}
 </div>
 
 <div class="composer" id="read-pane" hidden>
-  <span class="label">A Nomai SVG</span>
+  <span class="label">Someone else's scroll</span>
   <label class="drop" id="drop" tabindex="0">
     <input type="file" id="file" accept=".svg,image/svg+xml" hidden>
-    <span id="drop-text">Drop an SVG here, or click to choose one</span>
+    <span id="drop-text">Drop a Nomai SVG here, or click to choose one</span>
   </label>
 </div>
 
@@ -318,7 +318,7 @@ footer a{color:var(--text-dim)}
 
   <div class="actions" id="write-actions">
     <button class="btn primary" id="write">Write it</button>
-    <button class="btn" id="dl-svg">Download SVG</button>
+    <button class="btn" id="dl-svg" title="Saves the drawing as an SVG file">Etch the scroll</button>
     <button class="btn" id="surprise">Surprise me</button>
   </div>
 </div>
@@ -1557,8 +1557,10 @@ dlBtn.disabled = true;
   }
 })();
 function slug(){
-  const t = $("msg").value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
-  return (t.replace(/^-|-$/g, "") || "nomai") + ".svg";
+  const root = state.scroll[0] ? state.scroll[0].text : $("msg").value;
+  const t = root.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
+  return (t.replace(/^-|-$/g, "") || "nomai")
+    + (state.scroll.length > 1 ? "-scroll" : "") + ".svg";
 }
 dlBtn.onclick = async () => {
   if (!state.svg) return;
