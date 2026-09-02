@@ -237,6 +237,13 @@ footer a{color:var(--text-dim)}
       </div>
     </div>
     <div class="field">
+      <span class="label" id="cl">Curl</span>
+      <div class="seg" role="group" aria-labelledby="cl">
+        <button id="c-cw" aria-pressed="true">Clockwise</button>
+        <button id="c-ccw" aria-pressed="false">The other way</button>
+      </div>
+    </div>
+    <div class="field">
       <label class="label" for="tilt">Tilt</label>
       <div class="hw">
         <input type="range" id="tilt" min="0" max="355" step="5" value="0">
@@ -454,17 +461,27 @@ function upstreamCandidates(grid){
 const INK = "rgb(6.27451%,30.588235%,54.509804%)";
 const arcLen = t => Math.hypot(1, 0.29) * (164 / 0.29) * (Math.exp(0.29 * t) - 1);
 const thetaAt = L => Math.log(1 + L * 0.29 / (164 * Math.hypot(1, 0.29))) / 0.29;
-function layoutFor(ncols, tilt){
+/* `flip` is the winding: +1 as upstream draws it, -1 for its mirror image. Only the
+   path is mirrored, never a glyph -- a mirrored glyph is not in the alphabet at all.
+   The layout places each glyph by turning it to the local tangent, so reflecting the
+   curve leaves every glyph a plain rotation of itself, which is why this works:
+
+     z(t)   = a e^(b t) e^(i f t) e^(i rot)
+     dz/dt  = a e^(b t) (b + i f) e^(i f t) e^(i rot)
+     arg    = atan2(f, b) + f t + rot                                            */
+function layoutFor(ncols, tilt, flip){
+  const f = flip === -1 ? -1 : 1;
   let period = Math.PI / 4;
   while (arcLen(period) < 3.5 * K * ncols) period += Math.PI / 24;
   /* Upstream turns the finished spiral so its tail sits at the left. Adding to that
      turns the whole drawing, glyphs and all, and costs the reader nothing: it fits a
-     global similarity anyway, so any orientation is absorbed. */
+     global similarity anyway, so any orientation is absorbed. Winding is different --
+     a similarity has no reflection in it, so the reader has to try both. */
   const rot = Math.PI - (period % (2 * Math.PI)) + (tilt || 0);
   const raw = t => {
     const r = 164 * Math.exp(0.29 * t);
     const c = Math.cos(rot), s = Math.sin(rot);
-    const x = r * Math.cos(t), y = r * Math.sin(t);
+    const x = r * Math.cos(f * t), y = r * Math.sin(f * t);
     return [x * c - y * s, x * s + y * c];
   };
   let xs = [], ys = [];
@@ -476,7 +493,7 @@ function layoutFor(ncols, tilt){
     const n = ncols - 1;
     return n <= 0 ? 0 : ((i - 1) + 0.5 * (i - 1) * (i - 1) * delta) / (n + 0.5 * n * n * delta);
   };
-  const slopeAt = k => Math.atan2(1, 0.29) + thetaAt(k * total) + rot;
+  const slopeAt = k => Math.atan2(f, 0.29) + f * thetaAt(k * total) + rot;
   /* invert fraction(): which column, as a real number, sits at path fraction k */
   const colAt = k => {
     const nn = ncols - 1;
@@ -491,7 +508,7 @@ function layoutFor(ncols, tilt){
        there -- which is perpendicular to the spiral by construction */
     pointAt(k, j){
       const th = thetaAt(Math.max(0, Math.min(1, k)) * total), base = raw(th);
-      const slope = Math.atan2(1, 0.29) + th + rot;
+      const slope = Math.atan2(f, 0.29) + f * th + rot;
       const scaleHere = 1 + (colAt(k) - 1) * delta;
       const d = (j - ROWS) * 3 * K * scaleHere;
       return { x: base[0] - d * Math.sin(slope) - mid[0],
@@ -504,7 +521,7 @@ function layoutFor(ncols, tilt){
     },
     place(i, j){
       const k = fraction(i), th = thetaAt(k * total), base = raw(th);
-      const slope = Math.atan2(1, 0.29) + th + rot;
+      const slope = Math.atan2(f, 0.29) + f * th + rot;
       const d = (j - ROWS) * 3 * K * (1 + (i - 1) * delta);
       const px = base[0] - d * Math.sin(slope) - mid[0];
       const py = base[1] + d * Math.cos(slope) - mid[1];
@@ -558,8 +575,8 @@ function jitter(grid, amount, seed){
   }));
   return { drawn, conns };
 }
-function renderSVG(grid, amount, seed, tilt){
-  const L = layoutFor(grid.ncols, tilt), places = new Map();
+function renderSVG(grid, amount, seed, tilt, flip){
+  const L = layoutFor(grid.ncols, tilt, flip), places = new Map();
   for (const key of grid.glyphs.keys()){
     const [i, j] = key.split(",").map(Number);
     places.set(key, L.place(i, j));
@@ -682,9 +699,9 @@ function build(){
     grid = buildGrid(x, "upstream");
     grid.readings = null;
   }
-  state.svg = renderSVG(grid, state.hw, state.seed, state.tilt);
+  state.svg = renderSVG(grid, state.hw, state.seed, state.tilt, state.flip);
   applyInk(inkFor(sig));
-  state.track = trackFromLayout(layoutFor(grid.ncols, state.tilt));
+  state.track = trackFromLayout(layoutFor(grid.ncols, state.tilt, state.flip));
   beams(false);
   draw(state.svg);
   paint(grid, msg, widened);
@@ -817,7 +834,7 @@ function trackFromLayout(L){
 }
 /* the spiral of a drawing we read, put back through the fit that matched it */
 function trackFromFit(ncols, fit){
-  const L = layoutFor(ncols);
+  const L = layoutFor(ncols, 0, fit.flip);
   return { at: k => {
     const p = L.pointAt(k, 2);
     return { x: fit.wr * p.x - fit.wi * p.y + fit.tx,
@@ -916,6 +933,14 @@ $("msg").addEventListener("keydown", e => {
   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)){ e.preventDefault(); commit(); }
 });
 $("write").onclick = commit;
+function setFlip(f){
+  state.flip = f;
+  $("c-cw").setAttribute("aria-pressed", String(f === 1));
+  $("c-ccw").setAttribute("aria-pressed", String(f === -1));
+  build();
+}
+$("c-cw").onclick = () => setFlip(1);
+$("c-ccw").onclick = () => setFlip(-1);
 $("tilt").oninput = e => {
   state.tilt = +e.target.value * Math.PI / 180;
   $("tilt-read").textContent = e.target.value + "\u00b0";
@@ -1138,6 +1163,7 @@ drop.addEventListener("drop", e => takeFile(e.dataTransfer.files[0]));
 
 state.mode = "write";
 state.tilt = 0;
+state.flip = 1;
 try { state.me = localStorage.getItem("nomai.me") || ""; } catch (e) { state.me = ""; }
 $("me").value = state.me;
 state.signed = false;

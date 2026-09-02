@@ -757,14 +757,23 @@ def global_placement(columns, rows, centers, ncols):
     """
     from .render import SpiralLayout
 
-    layout = SpiralLayout(ncols)
     keys = [k for k in centers if k in columns and k in rows]
     if len(keys) < 3:
         return None
-    pred = {k: layout.place(columns[k], rows[k])((0.0, 0.0)) for k in keys}
-    fit = procrustes([pred[k] for k in keys], [centers[k] for k in keys])
+    obs = [centers[k] for k in keys]
+    # A similarity carries rotation and scale but no reflection, so a drawing wound
+    # the other way matches nothing until the mirrored layout is tried as well.
+    layout = fit = None
+    for f in (1, -1):
+        cand = SpiralLayout(ncols, 0.0, f)
+        got = procrustes(
+            [cand.place(columns[k], rows[k])((0.0, 0.0)) for k in keys], obs
+        )
+        if got is not None and (fit is None or got[2] < fit[2]):
+            layout, fit = cand, got
     if fit is None:
         return None
+    pred = {k: layout.place(columns[k], rows[k])((0.0, 0.0)) for k in keys}
     scale, theta, resid, shift = fit
     g = complex(math.cos(theta), math.sin(theta)) * scale
 

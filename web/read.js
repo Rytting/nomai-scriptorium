@@ -432,13 +432,21 @@ function solveRotations(columns, centers, fits, ncols){
   return chain;
 }
 
+/* A similarity carries rotation and scale but no reflection, so a drawing wound the
+   other way matches nothing until the mirrored layout is tried too. Both are fitted
+   and the closer one wins, which also tells the scan ticks which way to ride. */
 function globalPlacement(columns, rows, centers, ncols){
-  const L = layoutFor(ncols);
   const keys = [...columns.keys()].filter(k => rows.has(k));
   if (keys.length < 3) return null;
-  const pred = keys.map(k => L.place(columns.get(k), rows.get(k))([0, 0]));
-  const fit = procrustes(pred, keys.map(k => centers.get(k)));
+  const obs = keys.map(k => centers.get(k));
+  let L = null, fit = null;
+  for (const f of [1, -1]){
+    const cand = layoutFor(ncols, 0, f);
+    const got = procrustes(keys.map(k => cand.place(columns.get(k), rows.get(k))([0, 0])), obs);
+    if (got && (!fit || got.resid < fit.resid)){ fit = got; L = cand; fit.flip = f; }
+  }
   if (!fit) return null;
+  const pred = keys.map(k => L.place(columns.get(k), rows.get(k))([0, 0]));
   const predict = (i, j) => {
     const z = L.place(i, j)([0, 0]);
     return [fit.wr * z[0] - fit.wi * z[1] + fit.tx, fit.wr * z[1] + fit.wi * z[0] + fit.ty];
@@ -450,7 +458,7 @@ function globalPlacement(columns, rows, centers, ncols){
     wmap.set(k, [fit.wr * cr - fit.wi * ci, fit.wr * ci + fit.wi * cr]);
   }
   return { predict, wmap, resid: fit.resid,
-           fit: { wr: fit.wr, wi: fit.wi, tx: fit.tx, ty: fit.ty } };
+           fit: { wr: fit.wr, wi: fit.wi, tx: fit.tx, ty: fit.ty, flip: fit.flip } };
 }
 
 const rowStates = (n, dj) => n === 1 ? [[1, 1], [2, 2], [3, 3]]

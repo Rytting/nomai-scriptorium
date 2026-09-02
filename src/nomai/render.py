@@ -127,10 +127,11 @@ def spiral_period(ncols: int) -> float:
 class SpiralLayout:
     """Where every (column, row) cell sits, and at what angle and scale."""
 
-    def __init__(self, ncols: int):
+    def __init__(self, ncols: int, tilt: float = 0.0, flip: int = 1):
         self.ncols = ncols
+        self.flip = -1 if flip == -1 else 1
         self.period = spiral_period(ncols)
-        self.rotation = math.pi - (self.period % (2 * math.pi))
+        self.rotation = math.pi - (self.period % (2 * math.pi)) + tilt
         self.total_len = arc_length(self.period)
         self.delta = (MAX_SCALE - 1) / (ncols - 1) if ncols > 1 else 0.0
         xs, ys = [], []
@@ -142,8 +143,16 @@ class SpiralLayout:
         self.box = (max(xs) - min(xs), max(ys) - min(ys))
 
     def _raw(self, theta: float) -> Point:
+        """A point on the path.
+
+        `flip` mirrors the curve. Only the curve: a mirrored glyph is not in the
+        alphabet, and never has to be, because the layout places each glyph by
+        turning it to the local tangent -- so reflecting the path leaves every glyph
+        a plain rotation of itself.
+        """
+        a = self.flip * theta
         r = SPIRAL_A * math.exp(SPIRAL_B * theta)
-        z = complex(r * math.cos(theta), r * math.sin(theta))
+        z = complex(r * math.cos(a), r * math.sin(a))
         z *= complex(math.cos(self.rotation), math.sin(self.rotation))
         return (z.real, z.imag)
 
@@ -156,12 +165,14 @@ class SpiralLayout:
         offset and throws the last column to the far side of the spiral, with its
         connections stretched across the page to reach it.
 
-            z(theta)  = a e^(b theta) e^(i theta) e^(i rot)
-            dz/dtheta = a e^(b theta) (b + i) e^(i theta) e^(i rot)
-            arg       = atan2(1, b) + theta + rot
+            z(theta)  = a e^(b theta) e^(i f theta) e^(i rot)
+            dz/dtheta = a e^(b theta) (b + i f) e^(i f theta) e^(i rot)
+            arg       = atan2(f, b) + f theta + rot
         """
         theta = theta_at_length(max(0.0, min(1.0, k)) * self.total_len)
-        return self._raw(theta), math.atan2(1.0, SPIRAL_B) + theta + self.rotation
+        return self._raw(theta), (
+            math.atan2(float(self.flip), SPIRAL_B) + self.flip * theta + self.rotation
+        )
 
     def fraction(self, i: int) -> float:
         n = self.ncols - 1
@@ -234,9 +245,10 @@ def handwrite(grid, glyphs, amount: float, seed: int = 47):
     return drawn, conns
 
 
-def render_grid(grid, glyphs, handwriting: float = 0.0, seed: int = 47) -> str:
+def render_grid(grid, glyphs, handwriting: float = 0.0, seed: int = 47,
+                tilt: float = 0.0, flip: int = 1) -> str:
     """A GlyphGrid -> a complete SVG, laid out on the spiral."""
-    layout = SpiralLayout(grid.ncols)
+    layout = SpiralLayout(grid.ncols, tilt, flip)
     places = {c: layout.place(*c) for c in grid.glyphs}
     els = []
     if handwriting > 0:
