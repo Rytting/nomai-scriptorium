@@ -588,21 +588,40 @@ $("surprise").onclick = () => {
   state.seed = 1 + Math.floor(Math.random() * 9999);
   build();
 };
-/* Saving a file goes through the viewer's own confirmation; a plain download link
-   does nothing here. If the capability is absent the button hides itself. */
-let saver = null;
+/* Two ways to hand over a file, because the page runs in two places. Inside the
+   artifact viewer an ordinary download link is inert and the save has to go through
+   the viewer's own confirmation; opened straight from disk or a web server there is
+   no such host, and the ordinary link is exactly right. Pick by whether a host is
+   there at all -- a host that is there but withholds the capability means saving is
+   genuinely unavailable, and then the button hides rather than pretending. */
+let saver = null, plainSave = false;
 const dlBtn = $("dl-svg");
 dlBtn.disabled = true;
 (async () => {
-  saver = window.claude && claude.use ? await claude.use("downloads") : null;
-  if (saver) dlBtn.disabled = false; else dlBtn.hidden = true;
+  if (window.claude && claude.use){
+    saver = await claude.use("downloads");
+    if (saver) dlBtn.disabled = false; else dlBtn.hidden = true;
+  } else {
+    plainSave = true;
+    dlBtn.disabled = false;
+  }
 })();
 function slug(){
   const t = $("msg").value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
   return (t.replace(/^-|-$/g, "") || "nomai") + ".svg";
 }
 dlBtn.onclick = async () => {
-  if (!saver || !state.svg) return;
+  if (!state.svg) return;
+  if (plainSave){
+    const blob = new Blob([state.svg], { type: "image/svg+xml" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = slug();
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    return;
+  }
+  if (!saver) return;
   const was = dlBtn.textContent;
   dlBtn.disabled = true;
   try {
