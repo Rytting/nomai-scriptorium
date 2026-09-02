@@ -776,3 +776,17 @@ that clears the parent's band is about one band, not two and a half, and two spi
 only actually collide when their bands do; with both numbers brought down to what the
 geometry actually needs, joins land at 2 to 9 times a connection, and the 24-scroll
 suite is unchanged at 19.
+
+### Two bugs the first play-through found
+
+**Reply did nothing in read mode.** The composer lives in the writing pane, which is
+hidden while reading, so pressing reply set the state and then showed nothing at all.
+Asking to answer something *is* asking to write, so it switches panes now.
+
+**The rows spoiled the translation.** They printed every sentence in plain text
+underneath the drawing, which makes the translator ornamental -- you had already read
+the conversation before you held the button. What a drawing you opened may show for
+free is its *shape*: how many spirals, which hangs off which, and whose each one is,
+because the ink already says so. What it says is the translator's to give. So the rows
+churn, and keep churning, until the translation finishes; then they settle and the
+reply links appear. Anything you wrote yourself is never hidden from you.

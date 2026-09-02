@@ -934,6 +934,7 @@ function syncWrite(){
     : changed ? "Write it" : "Written";
 }
 function commit(){
+  state.revealed = true;
   const text = $("msg").value, sig = state.signed ? $("sig").value.trim() : "";
   state.signedAs = sig;
   let growIdx = null;
@@ -1213,24 +1214,53 @@ function trackFromFit(ncols, fit){
   } };
 }
 /* The conversation the scroll holds. Depth is drawn rather than numbered, because
-   what matters at a glance is who is answering whom. */
+   what matters at a glance is who is answering whom.
+
+   A drawing you opened is *not* shown here until you have translated it. The shape of
+   the conversation is visible from the drawing itself -- how many spirals, which
+   hangs off which -- and so is whose each one is, because the ink says so. What it
+   says is the translator's to give, and printing it in a list underneath would make
+   the translator ornamental. So the rows churn until it finishes. What you wrote
+   yourself needs no such ceremony. */
 function paintThread(){
   const sc = state.scroll, box = $("thread");
   if (sc.length < 1){ box.hidden = true; return; }
   const depth = sc.map(() => 0);
   sc.forEach((sp, k) => { if (sp.parent != null) depth[k] = depth[sp.parent] + 1; });
+  const open = state.revealed !== false;
   box.hidden = false;
   box.innerHTML = sc.map((sp, k) => {
     const kind = inkFor(sp.sig || "");
-    const who = sp.sig ? `<b>${esc(sp.sig)}:</b> ` : "";
+    const said = open
+      ? (sp.sig ? `<b>${esc(sp.sig)}:</b> ` : "") + esc(sp.text)
+      : `<span class="garble">${esc(noise(Math.min(46,
+          Array.from(sp.text).length + (sp.sig ? sp.sig.length + 2 : 0))))}</span>`;
     return `<div class="trow"><span class="depth">${"\u2502 ".repeat(depth[k])}</span>`
-      + `<span class="said ${kind}">${who}${esc(sp.text)}</span>`
-      + `<button class="linky" data-reply="${k}">reply</button></div>`;
+      + `<span class="said ${kind}">${said}</span>`
+      + (open ? `<button class="linky" data-reply="${k}">reply</button>`
+              : `<span class="depth">untranslated</span>`)
+      + `</div>`;
   }).join("");
   box.querySelectorAll("[data-reply]").forEach(b =>
     b.onclick = () => setReplyTo(+b.dataset.reply));
+  if (!open) scrambleRows();
+}
+/* keep the unread rows moving, so they read as writing rather than as damage */
+let scrambleTimer = null;
+function scrambleRows(){
+  if (scrambleTimer) clearInterval(scrambleTimer);
+  scrambleTimer = setInterval(() => {
+    const spans = document.querySelectorAll("#thread .garble");
+    if (!spans.length || state.revealed !== false){
+      clearInterval(scrambleTimer); scrambleTimer = null; return;
+    }
+    spans.forEach(sp => { sp.textContent = noise(sp.textContent.length); });
+  }, 90);
 }
 function setReplyTo(k){
+  /* the composer lives in the writing pane, so asking to answer something is asking
+     to write -- doing it silently while that pane is hidden looks like a dead button */
+  if (k !== null && state.mode !== "write") setMode("write");
   state.replyTo = k;
   const sp = state.scroll[k];
   $("answering").hidden = k === null;
@@ -1430,8 +1460,8 @@ function setMode(m){
   $("read-pane").hidden = m !== "read";
   $("write-actions").hidden = m !== "write";
   $("write-controls").hidden = m !== "write";
-  if (m === "write"){ build(false); }
-  else { empty("waiting for a drawing"); idleTranslator(); }
+  if (m === "write"){ state.revealed = true; build(false); }
+  else { empty("waiting for a drawing"); $("thread").hidden = true; idleTranslator(); }
 }
 $("m-write").onclick = () => setMode("write");
 $("m-read").onclick = () => setMode("read");
@@ -1487,11 +1517,12 @@ function readDrawing(text, name){
   if (firsts.every(Boolean) && (!tree || tree.ok)){
     state.scroll = firsts.map((r, i) => ({ text: r.text, sig: r.sig || "",
                                            parent: parents[i] }));
-    paintThread();
   } else {
     state.scroll = [];
     $("thread").hidden = true;
   }
+  state.revealed = false;
+  paintThread();
   state.pending = { per, name, tree };
   translator();
 }
@@ -1565,6 +1596,8 @@ function translator(){
   };
   function finish(){
     raf = null; beams("idle"); fill.style.width = "100%";
+    state.revealed = true;
+    paintThread();
     btn.setAttribute("aria-pressed", "false");
     btn.textContent = "Translated";
     btn.disabled = true;
@@ -1641,6 +1674,7 @@ drop.addEventListener("drop", e => takeFile(e.dataTransfer.files[0]));
 state.mode = "write";
 state.scroll = [];
 state.replyTo = null;
+state.revealed = true;
 state.tilt = 0;
 state.flip = 1;
 state.tight = 0.29;
