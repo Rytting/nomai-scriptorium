@@ -693,6 +693,183 @@ def solve_rotations(columns, centers, fits, ncols, turn_weight: float = 3.0):
     return chain
 
 
+def _layering_from(connections, clusters, root):
+    """Columns by BFS from `root`, or None if the result cannot be a real drawing.
+
+    Both paths start in the same cell so column 1 holds exactly one glyph, a column
+    never holds more than two, and every connection spans exactly one column.
+    """
+    adj = defaultdict(set)
+    for ka, _, kb, _ in connections:
+        adj[ka].add(kb)
+        adj[kb].add(ka)
+    dist = _bfs(adj, root)
+    if len(dist) != len(clusters):
+        return None
+    cols = {k: v + 1 for k, v in dist.items()}
+    n = max(cols.values())
+    sizes = [sum(1 for c in cols.values() if c == i) for i in range(1, n + 1)]
+    if sizes[0] != 1 or max(sizes) > 2:
+        return None
+    if any(abs(cols[ka] - cols[kb]) != 1 for ka, _, kb, _ in connections):
+        return None
+    return cols
+
+
+def identify(cluster: Cluster, w: complex):
+    """Best glyph for a cluster when the similarity is already known.
+
+    With the placement supplied there is nothing left to estimate but which glyph it
+    is, so every point argues for the answer instead of being spent on recovering a
+    scale and an angle the layout already determines. Each part keeps a free
+    translation, since `handwrite` shifts them separately.
+    """
+    best = None
+    sig = cluster.signature
+    for gid, parts in CANONICAL.items():
+        if SIGNATURE[gid] != sig:
+            continue
+        for perm in _assignments(cluster.strokes, parts):
+            rot_ranges = [range(len(p)) if cl else [0] for p, cl in parts]
+            for rots in product(*rot_ranges):
+                total = 0.0
+                for pi, (pts, _cl) in enumerate(parts):
+                    r = rots[pi]
+                    total += _resid_fixed(
+                        w, pts[r:] + pts[:r], cluster.strokes[perm[pi]].points
+                    )
+                if best is None or total < best[0]:
+                    best = (total, gid, tuple(perm), tuple(rots))
+    return best
+
+
+def global_placement(columns, rows, centers, ncols):
+    """One similarity mapping the ideal spiral layout onto this drawing.
+
+    Given the column count the whole layout is closed form -- every cell's position,
+    angle and scale -- so the drawing has four free parameters, not two per glyph.
+    Fitting them together and reading each glyph's placement off the layout beats
+    estimating 36 placements independently, especially once handwriting blurs each
+    one on its own.
+
+    Returns a `predict(i, j)` for any cell, the per-glyph similarity, and the fit
+    residual.
+    """
+    from .render import SpiralLayout
+
+    layout = SpiralLayout(ncols)
+    keys = [k for k in centers if k in columns and k in rows]
+    if len(keys) < 3:
+        return None
+    pred = {k: layout.place(columns[k], rows[k])((0.0, 0.0)) for k in keys}
+    fit = procrustes([pred[k] for k in keys], [centers[k] for k in keys])
+    if fit is None:
+        return None
+    scale, theta, resid, shift = fit
+    g = complex(math.cos(theta), math.sin(theta)) * scale
+
+    def predict(i, j):
+        z = complex(*layout.place(i, j)((0.0, 0.0)))
+        w = g * z + shift
+        return (w.real, w.imag)
+
+    wmap = {}
+    for k in keys:
+        kk = layout.fraction(columns[k])
+        _pt, slope = layout.point_slope(kk)
+        cell = complex(math.cos(slope), math.sin(slope)) * ((MAX_SCALE_ - 1) * kk + 1)
+        wmap[k] = g * cell
+    return predict, wmap, resid
+
+
+def refine_rows(columns, rows, centers, ncols, passes: int = 3):
+    """Re-decide rows against the globally fitted layout instead of a local cost.
+
+    The first pass has to work from a local signal -- how far the implied bottom line
+    strays sideways from one column to the next -- which blurs as handwriting grows.
+    Once a layout is fitted, every cell has a predicted position, and a row guessed
+    wrong lands a full row gap away from it. That is a far louder signal, and it gets
+    louder as the fit improves, so this iterates.
+    """
+    per_col = {
+        i: [k for k, c in columns.items() if c == i] for i in range(1, ncols + 1)
+    }
+    for _ in range(passes):
+        placed = global_placement(columns, rows, centers, ncols)
+        if placed is None:
+            return rows
+        predict, _wmap, _resid = placed
+
+        states = {1: [(MIDLINE, MIDLINE)]}
+        for i in range(2, ncols + 1):
+            states[i] = _row_states(len(per_col[i]), 2)
+            if len(per_col[i]) == 2:
+                states[i] = [(1, 2), (2, 3), (1, ROWS)]
+
+        def cost(i, state):
+            ms = per_col[i]
+            if len(ms) == 1:
+                return math.dist(centers[ms[0]], predict(i, state[0]))
+            best = math.inf
+            for a, b in ((0, 1), (1, 0)):
+                d = math.dist(centers[ms[a]], predict(i, state[0])) + math.dist(
+                    centers[ms[b]], predict(i, state[1])
+                )
+                best = min(best, d)
+            return best
+
+        def reachable(prev, cur):
+            (a, b), (c, d) = prev, cur
+            return (c in j_choices(a) and d in j_choices(b)) or (
+                d in j_choices(a) and c in j_choices(b)
+            )
+
+        best = {states[1][0]: (cost(1, states[1][0]), None)}
+        trace = []
+        for i in range(2, ncols + 1):
+            nxt = {}
+            for prev, (acc, _) in best.items():
+                for cur in states[i]:
+                    if not reachable(prev, cur):
+                        continue
+                    tot = acc + cost(i, cur)
+                    if cur not in nxt or tot < nxt[cur][0]:
+                        nxt[cur] = (tot, prev)
+            if not nxt:
+                return rows
+            trace.append(nxt)
+            best = nxt
+
+        chain, cur = {}, min(best, key=lambda st: best[st][0])
+        for i in range(ncols, 1, -1):
+            chain[i] = cur
+            cur = trace[i - 2][cur][1]
+        chain[1] = states[1][0]
+
+        new_rows = {}
+        for i in range(1, ncols + 1):
+            ms = per_col[i]
+            lo, hi = chain[i]
+            if len(ms) == 1:
+                new_rows[ms[0]] = lo
+            else:
+                straight = math.dist(centers[ms[0]], predict(i, lo)) + math.dist(
+                    centers[ms[1]], predict(i, hi)
+                )
+                swapped = math.dist(centers[ms[0]], predict(i, hi)) + math.dist(
+                    centers[ms[1]], predict(i, lo)
+                )
+                a, b = (lo, hi) if straight <= swapped else (hi, lo)
+                new_rows[ms[0]], new_rows[ms[1]] = a, b
+        if new_rows == rows:
+            return rows
+        rows = new_rows
+    return rows
+
+
+MAX_SCALE_ = 2.0
+
+
 def analyze(path) -> "Observation":
     """A NomaiText SVG -> the Observation the replay decoder consumes."""
     from .decode import Observation
@@ -704,14 +881,19 @@ def analyze(path) -> "Observation":
     if empty:
         raise ValueError(f"{len(empty)} cluster(s) match no known glyph")
 
-    adj = defaultdict(set)
-    for ka, _, kb, _ in connections:
-        adj[ka].add(kb)
-        adj[kb].add(ka)
-    root = min(clusters, key=lambda k: fits[k][0].scale)
-    columns = {k: d + 1 for k, d in _bfs(adj, root).items()}
-    if len(columns) != len(clusters):
-        raise ValueError("connection graph is not connected")
+    # decompose already found a layering it could validate; recomputing one here with
+    # a plain BFS can disagree with it, and a column that ends up holding three
+    # glyphs leaves the middle one with no row at all. Try roots smallest-scale
+    # first -- column 1 is the innermost, so its glyph is the smallest -- and keep
+    # the first that actually layers.
+    columns = None
+    for root in sorted(clusters, key=lambda k: fits[k][0].scale):
+        cand = _layering_from(connections, clusters, root)
+        if cand is not None:
+            columns = cand
+            break
+    if columns is None:
+        raise ValueError("no cluster works as a column-1 glyph")
     ncols = max(columns.values())
 
     # Where the glyph sits is its fitted local *origin*, not the centroid of its
@@ -721,12 +903,34 @@ def analyze(path) -> "Observation":
     centers = {k: fits[k][0].origin for k in clusters}
     thetas = solve_rotations(columns, centers, fits, ncols)
 
-    chosen = {}
-    for k, cands in fits.items():
-        near = [f for f in cands if f.resid <= cands[0].resid + 1.0]
-        chosen[k] = min(near, key=lambda f: (_angdiff(f.theta, thetas[columns[k]]), f.resid))
-
     rows, _per_col = assign_rows(columns, centers, thetas, ncols)
+    rows = refine_rows(columns, rows, centers, ncols)
+
+    # With columns and rows known the layout is fully determined up to one global
+    # similarity, so solve for that and hand each glyph its placement instead of
+    # letting it estimate its own.
+    chosen = {}
+    placed = global_placement(columns, rows, centers, ncols)
+    if placed is not None:
+        _predict, wmap, _resid = placed
+        for k, cands in fits.items():
+            got = identify(clusters[k], wmap[k]) if k in wmap else None
+            if got is None:
+                near = [f for f in cands if f.resid <= cands[0].resid + 1.0]
+                chosen[k] = min(
+                    near, key=lambda f: (_angdiff(f.theta, thetas[columns[k]]), f.resid)
+                )
+                continue
+            total, gid, perm, rots = got
+            chosen[k] = Fit(total, gid, abs(wmap[k]),
+                            math.atan2(wmap[k].imag, wmap[k].real), perm, rots,
+                            cands[0].origin)
+    else:
+        for k, cands in fits.items():
+            near = [f for f in cands if f.resid <= cands[0].resid + 1.0]
+            chosen[k] = min(
+                near, key=lambda f: (_angdiff(f.theta, thetas[columns[k]]), f.resid)
+            )
 
     coord = {k: (columns[k], rows[k]) for k in clusters}
     glyphs = {coord[k]: chosen[k].gid for k in clusters}
