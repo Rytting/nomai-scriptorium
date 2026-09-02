@@ -667,3 +667,41 @@ Neither costs the reader anything: both are rigid motions of the whole drawing, 
 the fit is a similarity, which absorbs them. Confirmed rather than assumed -- 36
 combinations of message, winding, tightness and tilt read back in the page, 72 in
 Python, and validate.py still passes twelve of twelve.
+
+## Scroll layout
+
+A scroll is one drawing holding a conversation, and only the root is plugged into the
+wall -- so a scroll has exactly one socket, no matter how many replies it holds. That
+killed the idea of marking each junction with a triangle: the triangle means "a scroll
+plugs in here", and saying that four times is saying something false.
+
+The marker instead is an absence. Every real connection carries a vertex dot at each
+end; the join between a reply and the spiral it answers is the same two-point line
+with *no dots*. No new symbol, and exactly detectable -- the dots sit on the same
+jittered coordinates, so matching is exact rather than approximate. Which demotes the
+parent index in frame 3 from the thing that supplies the tree to the thing that checks
+it, which is where it belonged.
+
+A reply goes anywhere on its parent that has room, so where is the layout's problem
+and not the writer's. `chooseSpot` walks candidate spots from the outer end inward --
+the turns are furthest apart out there, and it is where the parent just finished
+speaking -- trying both sides of each, and takes the first that clears everything
+already on the sheet. Clearance is measured between glyph origins rather than every
+drawn vertex; a few dozen points per spiral is enough to tell whether two spirals are
+on top of each other, and it keeps the search cheap enough to run inside a redraw.
+
+Two rules shape the sheet:
+
+* nothing hangs below the socket. The scroll is plugged into the wall at its lowest
+  point and a reply drooping past it reads as falling off.
+* the whole scroll is turned about its socket so it grows upward. That rotation is
+  just the root's own tilt -- the layout is anchored on the tail, so tilting the root
+  turns everything about the socket, children included -- so it costs one extra
+  layout pass and no new machinery. Without it the scroll grew off to one side and
+  half the sheet was empty.
+
+Four spirals, three of them replies and one a reply to a reply: socket at 0.500 across
+and 0.891 down, no overlaps, joins as short as ordinary connections.
+
+Still to do: the reader has to segment a scroll back into spirals, which is where the
+dotless join earns its keep, and none of this is wired to the page yet.

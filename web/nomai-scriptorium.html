@@ -561,7 +561,10 @@ function layoutFor(ncols, tilt, flip, tight){
     return 1 + (-1 + Math.sqrt(1 + 2 * delta * k * T)) / delta;
   };
   return {
-    box, fraction, slopeAt, colAt,
+    ncols, box, fraction, slopeAt, colAt,
+    /* the point the path winds into, in the same coordinates place() returns --
+       what "away from the spiral" is measured against */
+    centre: [-anchor[0], -anchor[1]],
     /* the point on row j at an arbitrary fraction along the path, and the row axis
        there -- which is perpendicular to the spiral by construction */
     pointAt(k, j){
@@ -638,11 +641,18 @@ function jitter(grid, amount, seed){
   }));
   return { drawn, conns };
 }
-function renderSVG(grid, amount, seed, tilt, flip, tight){
-  const L = layoutFor(grid.ncols, tilt, flip, tight), places = new Map();
+/* One spiral's elements, grouped by turn, plus where every drawn point ended up.
+   `shift` moves the whole spiral into its place within a scroll; on its own it is
+   the identity. Splitting this out is what lets several spirals share one drawing
+   without any of the jitter or connection code knowing about it. */
+function spiralParts(grid, amount, seed, L, shift){
+  const places = new Map(), drawnAt = new Map();
+  const mv = shift ? (p => [p[0] + shift[0], p[1] + shift[1]]) : (p => p);
   for (const key of grid.glyphs.keys()){
     const [i, j] = key.split(",").map(Number);
-    places.set(key, L.place(i, j));
+    const base = L.place(i, j);
+    places.set(key, p => mv(base(p)));
+    drawnAt.set(key, []);
   }
   /* Group by turn: the drawing is emitted ring by ring so it can be revealed the
      same way. A connection belongs to the outer of the two turns it joins, so it
@@ -652,17 +662,18 @@ function renderSVG(grid, amount, seed, tilt, flip, tight){
     if (!byCol.has(col)) byCol.set(col, []);
     byCol.get(col).push(s2);
   };
-  const part = (pts, closed, place, col) => {
+  const part = (pts, closed, place, col, key) => {
     const w = pts.map(place);
     push(col, polyline(w, !!closed));
     (closed ? w : w.slice(1, -1)).forEach(p => push(col, dot(p)));
+    if (key) drawnAt.get(key).push(...w);
   };
   if (amount > 0){
     const { drawn, conns } = jitter(grid, amount, seed);
     for (const [key, g] of drawn){
       const col = +key.split(",")[0];
-      part(g.c, g.cc, places.get(key), col);
-      if (g.a) part(g.a, g.ac, places.get(key), col);
+      part(g.c, g.cc, places.get(key), col, key);
+      if (g.a) part(g.a, g.ac, places.get(key), col, key);
     }
     for (const c of conns){
       const A = places.get(c.a.join(","))(c.pa), B = places.get(c.b.join(","))(c.pb);
@@ -672,8 +683,8 @@ function renderSVG(grid, amount, seed, tilt, flip, tight){
   } else {
     for (const [key, gid] of grid.glyphs){
       const g = G.glyphs[gid - 1], col = +key.split(",")[0];
-      part(core(g), g.cc, places.get(key), col);
-      if (ann(g)) part(ann(g), g.ac, places.get(key), col);
+      part(core(g), g.cc, places.get(key), col, key);
+      if (ann(g)) part(ann(g), g.ac, places.get(key), col, key);
     }
     for (const c of grid.conns){
       const A = places.get(c.a.join(","))(c.pa), B = places.get(c.b.join(","))(c.pb);
@@ -681,14 +692,158 @@ function renderSVG(grid, amount, seed, tilt, flip, tight){
       push(col, polyline([A, B], false)); push(col, dot(A)); push(col, dot(B));
     }
   }
-  const el = [...byCol.keys()].sort((a, b) => a - b)
-    .map(c => '<g data-turn="' + c + '">' + byCol.get(c).join("") + "</g>");
-  const [vx, vy, w, h] = L.canvas();
-  const vb = f(vx) + " " + f(vy) + " " + f(w) + " " + f(h);
+  return { byCol, drawnAt };
+}
+const PAPER = "rgb(98.039216%,92.156863%,84.313725%)";
+function document_(groups, vx, vy, w, h){
   return '<svg xmlns="http://www.w3.org/2000/svg" width="' + f(w) + '" height="' + f(h)
-    + '" viewBox="' + vb + '">'
+    + '" viewBox="' + f(vx) + " " + f(vy) + " " + f(w) + " " + f(h) + '">'
     + '<rect x="' + f(vx) + '" y="' + f(vy) + '" width="' + f(w) + '" height="' + f(h)
-    + '" fill="rgb(98.039216%,92.156863%,84.313725%)"/>' + el.join("") + "</svg>";
+    + '" fill="' + PAPER + '"/>' + groups.join("") + "</svg>";
+}
+const turnGroups = byCol => [...byCol.keys()].sort((a, b) => a - b)
+  .map(c => '<g data-turn="' + c + '">' + byCol.get(c).join("") + "</g>");
+function renderSVG(grid, amount, seed, tilt, flip, tight){
+  const L = layoutFor(grid.ncols, tilt, flip, tight);
+  const { byCol } = spiralParts(grid, amount, seed, L, null);
+  const [vx, vy, w, h] = L.canvas();
+  return document_(turnGroups(byCol), vx, vy, w, h);
+}
+
+/* ---- a scroll: one drawing holding a conversation ----
+   Only the root is plugged into the wall, so only the root gets a socket. A reply is
+   simply another spiral inside the same scroll, joined to the one it answers.
+
+   The join is an ordinary two-point line with one difference: no vertex dots. Every
+   real connection carries a dot at each end, so a dotless line is unambiguous without
+   inventing a symbol for it -- and the parent index in frame 3 then verifies the tree
+   the geometry gives rather than having to supply it. */
+function attach(parentL, parentShift, t, side, flip, tight, childNcols){
+  /* Which way is away from the parent: the normal that points away from the centre
+     the parent winds into. `side` then picks one of the two for this child, so
+     several replies to the same spiral fan to alternate sides instead of piling up
+     on one. */
+  const p = parentL.pointAt(t, 2), c = parentL.centre;
+  const out = (p.x - c[0]) * p.ux + (p.y - c[1]) * p.uy >= 0 ? 1 : -1;
+  const nx = p.ux * out * side, ny = p.uy * out * side;
+  /* clear of the parent's band, and no further: the join should read as a connection,
+     which is a short line, not a tether */
+  const gap = (3 * (ROWS - 1) + 3.5) * K * p.scale;
+  const at = [p.x + nx * gap + parentShift[0], p.y + ny * gap + parentShift[1]];
+  /* The child's tail tangent must point back at the parent. tilt adds straight to
+     that angle -- it is pi/2 at tilt 0 -- so the whole placement is one translation. */
+  const tilt = Math.atan2(-ny, -nx) - Math.PI / 2;
+  return { shift: at, L: layoutFor(childNcols, tilt, flip, tight) };
+}
+/* Every glyph's origin, which is enough to tell whether two spirals are on top of
+   each other without walking every drawn vertex. */
+function centres(ncols, glyphKeys, L, shift){
+  const out = [];
+  for (const key of glyphKeys){
+    const [i, j] = key.split(",").map(Number);
+    const p = L.place(i, j)([0, 0]);
+    out.push([p[0] + shift[0], p[1] + shift[1]]);
+  }
+  return out;
+}
+function clearance(pts, taken){
+  let best = Infinity;
+  for (const p of pts) for (const q of taken){
+    const d = (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2;
+    if (d < best) best = d;
+  }
+  return Math.sqrt(best);
+}
+/* A reply goes anywhere on the spiral it answers that has room for it. Which spot is
+   the layout's problem, not the writer's, so this tries the outer end first -- where
+   the turns are furthest apart and the parent has just finished speaking -- and works
+   inward, taking the first spot that clears everything already on the sheet. */
+const SPOTS = [0.92, 0.78, 0.64, 0.5, 0.36, 0.22, 0.99, 0.1];
+function chooseSpot(laid, parentIdx, ncols, flip, tight){
+  const par = laid[parentIdx];
+  const keys = [...par.sp.grid.glyphs.keys()];       /* shape only; any grid this size */
+  const taken = [];
+  for (const it of laid)
+    taken.push(...centres(it.L.ncols, [...it.sp.grid.glyphs.keys()], it.L, it.shift));
+  const want = 7 * K * MAX_SCALE;
+  let best = null;
+  for (const t of SPOTS) for (const side of [1, -1]){
+    const pl = attach(par.L, par.shift, t, side, flip, tight, ncols);
+    const pts = centres(ncols, keys, pl.L, pl.shift);
+    /* nothing hangs below the socket: the scroll is plugged into the wall at its
+       lowest point, and a reply drooping past it reads as falling off */
+    const below = Math.max(0, ...pts.map(p => p[1]));
+    const score = clearance(pts, taken) - 3 * below;
+    if (!best || score > best.score) best = { score, pl, ok: below === 0 };
+    if (best.ok && score >= want) return best.pl;
+  }
+  return best.pl;
+}
+function nearestPair(a, b){
+  let best = null;
+  for (const p of a) for (const q of b){
+    const d = (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2;
+    if (!best || d < best.d) best = { d, p, q };
+  }
+  return best;
+}
+/* the join: a plain line, and deliberately no dots */
+const joinLine = (p, q) => polyline([p, q], false);
+/* Lay the scroll out once to see which way it grew, then turn the whole thing about
+   its socket so it grows upward and stays balanced over it. The root's own tilt is
+   exactly that rotation -- the layout is anchored on the tail, so tilting the root
+   turns everything about the socket, children included. */
+function balanceTilt(spirals, flip, tight){
+  const trial = layScroll(spirals, 0, flip, tight);
+  let sx = 0, sy = 0, n2 = 0;
+  for (const it of trial) for (const p of centres(it.L.ncols,
+      [...it.sp.grid.glyphs.keys()], it.L, it.shift)){ sx += p[0]; sy += p[1]; n2++; }
+  if (!n2 || (sx === 0 && sy === 0)) return 0;
+  return -Math.PI / 2 - Math.atan2(sy / n2, sx / n2);
+}
+function layScroll(spirals, tilt0, flip, tight){
+  const laid = [];
+  spirals.forEach((sp, idx) => {
+    const place = idx === 0
+      ? { shift: [0, 0], L: layoutFor(sp.grid.ncols, tilt0, flip, tight) }
+      : chooseSpot(laid, sp.parent, sp.grid.ncols, flip, tight);
+    laid.push({ L: place.L, shift: place.shift, sp });
+  });
+  return laid;
+}
+function renderScroll(spirals, amount, seed, flip, tight){
+  const tilt0 = balanceTilt(spirals, flip, tight);
+  const laid = [], groups = [];
+  spirals.forEach((sp, idx) => {
+    const place = idx === 0
+      ? { shift: [0, 0], L: layoutFor(sp.grid.ncols, tilt0, flip, tight) }
+      : chooseSpot(laid, sp.parent, sp.grid.ncols, flip, tight);
+    const parts = spiralParts(sp.grid, amount, seed + idx * 101, place.L, place.shift);
+    laid.push({ L: place.L, shift: place.shift, parts, sp });
+  });
+  /* every spiral first, then the joins, so a join is never hidden under a glyph */
+  const joins = [];
+  laid.forEach((it, idx) => {
+    groups.push('<g data-spiral="' + idx + '">' + turnGroups(it.parts.byCol).join("")
+      + "</g>");
+    if (idx === 0) return;
+    const par = laid[it.sp.parent];
+    const mine = [...it.parts.drawnAt.values()].flat();
+    const theirs = [...par.parts.drawnAt.values()].flat();
+    const np = nearestPair(theirs, mine);
+    joins.push(joinLine(np.p, np.q));
+  });
+  groups.push('<g data-joins="1">' + joins.join("") + "</g>");
+  /* one box round the lot, still with the root's socket at the bottom middle */
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const it of laid) for (const pts of it.parts.drawnAt.values()) for (const p of pts){
+    if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0];
+    if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1];
+  }
+  const m = 8 * K * MAX_SCALE, R = SOCKET_R * K * MAX_SCALE;
+  const W = 2 * Math.max(x1 + m, m - x0);
+  const Y = y0 - m, H = (Math.max(y1, 0) + 2.2 * R + 0.4 * m) - Y;
+  return document_(groups, -W / 2, Y, W, H);
 }
 
 /* Reading a drawing back.
