@@ -10,6 +10,7 @@
   --edge:#2a3542; --edge-soft:#212a35;
   --ok:#4f9d69; --warn:#c9973f; --off:#6d7c8d;
   --beam:#6ef2c0; --screen-1:#0c3038; --screen-2:#061c23; --screen-ink:#8ff0d4;
+  --slot:#8f86ff; --slot-core:#e6e2ff; --slot-frame:#3a3550;
   --ink-none:#104e8b; --ink-mine:#5c47b8; --ink-theirs:#c26610;
   --sans:'Archivo',system-ui,sans-serif;
   --serif:'Instrument Serif',Georgia,serif;
@@ -86,8 +87,35 @@ textarea:focus{outline:2px solid var(--ink-soft);outline-offset:1px;border-color
 svg.beams{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;
   opacity:0;transition:opacity .3s ease}
 svg.beams.on{opacity:1}
+/* The socket the scroll goes into, at the spiral's outer end -- which is where a
+   reply attaches too, and where the growth already begins. The dim outline is the
+   empty slot; the bright triangle is the scroll, and it turns as it goes in. */
+svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
+  pointer-events:none;overflow:visible}
+.socket polygon{transform-box:fill-box;transform-origin:center}
+.socket .housing{fill:none;stroke:var(--slot-frame);stroke-width:9;opacity:.5;
+  stroke-linejoin:round}
+.socket .slot{fill:none;stroke:var(--slot);stroke-width:3;opacity:.2;
+  stroke-linejoin:round}
+.socket .key{fill:none;stroke:var(--slot-core);stroke-width:4.5;stroke-linejoin:round;
+  filter:drop-shadow(0 0 3px var(--slot-core)) drop-shadow(0 0 9px var(--slot))}
+/* the filament that runs from the socket out to the writing */
+.stem{fill:none;stroke:var(--slot);stroke-width:2.6;opacity:.75;
+  stroke-linecap:round;filter:drop-shadow(0 0 5px var(--slot))}
+.socket.inserting .key{animation:slot-in .62s cubic-bezier(.2,.86,.3,1) both}
+.socket.inserting .slot{animation:slot-lock .62s ease-out both}
+.socket-layer.inserting .stem{animation:stem-out .26s .62s ease-out both}
+@keyframes slot-in{
+  0%{opacity:0;transform:rotate(-165deg) scale(2.7)}
+  72%{opacity:1;transform:rotate(7deg) scale(1.05)}
+  100%{opacity:1;transform:rotate(0deg) scale(1)}
+}
+@keyframes slot-lock{0%,62%{opacity:.1}80%{opacity:.8}100%{opacity:.2}}
+@keyframes stem-out{from{stroke-dashoffset:var(--len)}to{stroke-dashoffset:0}}
 @media (prefers-reduced-motion: reduce){
   .plate svg g[data-turn].lit{transition:none}
+  .socket.inserting .key,.socket.inserting .slot,
+  .socket-layer.inserting .stem{animation:none}
 }
 .plate svg{max-width:100%;height:auto;display:block}
 .plate.empty{color:#8a7f6d;font-family:var(--serif);font-size:20px;font-style:italic}
@@ -746,6 +774,7 @@ function build(grow){
   state.svg = renderSVG(grid, state.hw, state.seed, state.tilt, state.flip, state.tight);
   applyInk(inkFor(sig));
   state.track = trackFromLayout(layoutFor(grid.ncols, state.tilt, state.flip, state.tight));
+  state.socket = socketFor(state.track);
   beams(false);
   draw(state.svg, grow);
   paint(grid, msg, widened);
@@ -774,6 +803,7 @@ function draw(svg, grow){
     over.setAttribute("viewBox", base.getAttribute("viewBox"));
     over.setAttribute("preserveAspectRatio", base.getAttribute("preserveAspectRatio") || "xMidYMid meet");
     art.appendChild(over);
+    mountSocket();
   }
   const groups = [...art.querySelectorAll("g[data-turn]")];
   if (!grow || !groups.length
@@ -784,8 +814,12 @@ function draw(svg, grow){
   }
   groups.sort((a, b) => +b.dataset.turn - +a.dataset.turn);
   const step = Math.min(85, 1000 / groups.length);
-  groups.forEach((g, i) => setTimeout(() => g.classList.add("lit"), i * step));
-  setTimeout(() => plate.classList.remove("growing"), groups.length * step + 400);
+  /* the scroll turns into its socket first, and the spiral unwinds out of it */
+  const sock = art.querySelector(".socket-layer");
+  const wait = sock ? INSERT_MS + STEM_MS : 0;
+  if (sock){ sock.classList.add("inserting"); sock.firstChild.classList.add("inserting"); }
+  groups.forEach((g, i) => setTimeout(() => g.classList.add("lit"), wait + i * step));
+  setTimeout(() => plate.classList.remove("growing"), wait + groups.length * step + 400);
 }
 /* Scan ticks that ride the spiral, drawn perpendicular to it -- the row axis is
    already perpendicular to the tangent, so the tick just runs along that.
@@ -877,6 +911,52 @@ function paintTicks(svg, alpha){
 /* the spiral of a drawing we laid out ourselves */
 function trackFromLayout(L){
   return { at: k => L.pointAt(k, 2) };
+}
+/* The socket goes at the tail -- k = 1, the outer end. Taking it off the same track
+   the beams ride means this works for a drawing we laid out and for one we read
+   back, since trackFromFit has already put the fitted similarity into those points.
+   The row axis (ux, uy) is perpendicular to the path, so the tangent is (uy, -ux). */
+/* In the game the socket is a fixture on the wall -- a dark triangular housing with
+   a lit triangle inside it, always the same way up -- and the writing runs out of it
+   along a thin filament. So this does not turn with the spiral; only the filament
+   knows which way the writing went. */
+const SOCKET_R = 1.9, SOCKET_OUT = 6.2, INSERT_MS = 620, STEM_MS = 260;
+function socketFor(track){
+  if (!track) return null;
+  const p = track.at(1), tx = p.uy, ty = -p.ux;
+  const R = SOCKET_R * K * p.scale, out = SOCKET_OUT * K * p.scale;
+  return { cx: p.x + tx * out, cy: p.y + ty * out, R: R, tipX: p.x, tipY: p.y,
+           ux: tx, uy: ty };
+}
+/* Mounted separately from the drawing, because a spiral we read arrives on the
+   plate before it has been analysed and the socket is not known until the fit is. */
+function mountSocket(){
+  const art = $("art"), base = art.querySelector("svg:not(.beams):not(.socket-layer)");
+  const old = art.querySelector(".socket-layer");
+  if (old) old.remove();
+  if (!state.socket || !base) return null;
+  const sk = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  sk.setAttribute("class", "socket-layer");
+  sk.setAttribute("viewBox", base.getAttribute("viewBox"));
+  sk.setAttribute("preserveAspectRatio",
+    base.getAttribute("preserveAspectRatio") || "xMidYMid meet");
+  sk.innerHTML = socketSVG(state.socket);
+  art.appendChild(sk);
+  return sk;
+}
+function socketSVG(s2){
+  const tri = r => [[0, 1], [-0.866, -0.5], [0.866, -0.5]]
+    .map(p => f(p[0] * r) + "," + f(p[1] * r)).join(" ");
+  const inner = tri(s2.R), outer = tri(s2.R * 1.42);
+  /* the filament starts clear of the housing and ends at the outermost glyph */
+  const sx = s2.cx - s2.ux * s2.R * 1.1, sy = s2.cy - s2.uy * s2.R * 1.1;
+  const len = Math.hypot(s2.tipX - sx, s2.tipY - sy);
+  return '<g class="socket" transform="translate(' + f(s2.cx) + ',' + f(s2.cy) + ')">'
+    + '<polygon class="housing" points="' + outer + '"/>'
+    + '<polygon class="slot" points="' + inner + '"/>'
+    + '<polygon class="key" points="' + inner + '"/></g>'
+    + '<path class="stem" style="--len:' + f(len) + ';stroke-dasharray:' + f(len)
+    + '" d="M' + f(sx) + ' ' + f(sy) + 'L' + f(s2.tipX) + ' ' + f(s2.tipY) + '"/>';
 }
 /* the spiral of a drawing we read, put back through the fit that matched it */
 function trackFromFit(ncols, fit){
@@ -1067,12 +1147,23 @@ $("m-read").onclick = () => setMode("read");
 
 function readDrawing(text, name){
   state.track = null;
+  state.socket = null;
   walkers = [];
   draw(text);
   let obs;
   try { obs = analyze(text); }
   catch (err){ return fail(err.message); }
-  if (obs.fit){ state.track = trackFromFit(obs.ncols, obs.fit); beams("idle"); }
+  if (obs.fit){
+    state.track = trackFromFit(obs.ncols, obs.fit);
+    state.socket = socketFor(state.track);
+    /* the scroll goes in, and the wall it is plugged into shows what is written --
+       the same order as in the game, and the reason the socket is here at all */
+    /* seated, not inserting: a drawing we opened is already on the wall, and
+       playing the scroll into its socket after the writing has appeared tells the
+       story backwards. The insertion belongs to writing. */
+    mountSocket();
+    beams("idle");
+  }
   let readings = [], base = null;
   for (const b of [256, 200000]){
     try { const r = readStrict(obs, b); if (r.length){ readings = r; base = b; break; } }

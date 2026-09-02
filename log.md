@@ -614,3 +614,32 @@ unsigned, and five legacy messages -- no mismatches.
 Also renamed the thing being built. What we were calling a document is a *scroll*,
 which is the community's own word and the game's: a conversation as one object you
 pick up, hand over, and slot into a wall.
+
+## The socket
+
+The plate now has a scroll socket at the spiral's outer end: a dark triangular
+housing, a lit triangle inside it, and a filament running out to the first glyph. On
+Write the triangle turns as it goes in, the filament shoots out, and the spiral
+unwinds from there.
+
+The first attempt got the look wrong -- a solid pastel triangle, sized like a
+signpost, turned to lie along the tangent. Reference shots from the game corrected
+three things at once. The lit part is a *stroke*, not a fill, inside a dark frame.
+The socket is a fixture on the wall and does not turn with the writing: it is always
+the same way up, apex down. And the writing does not start at the socket, it runs out
+of it along a thin filament -- which is what makes "the spiral grows out of the
+triangle" literal rather than approximate.
+
+Two things fell out of the geometry for free. The socket is placed from
+`track.at(1)`, the same track the scan ticks ride, so a drawing we laid out and a
+drawing we read back both get a socket in the right place -- `trackFromFit` has
+already folded the fitted similarity into those points. And the growth animation
+already ran outer turn first, which is the end the socket is on, so the spiral was
+always unwinding from there; nothing about the sequence had to change.
+
+The socket lives in its own overlay, never in `state.svg`. The file handed to the
+reader stays the drawing alone, and still reads back.
+
+Reading does not play the insertion. A drawing we opened is already on the wall, and
+playing the scroll into its socket after the writing has appeared tells the story
+backwards; the socket is simply seated. The insertion belongs to writing.
