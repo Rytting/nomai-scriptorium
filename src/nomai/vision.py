@@ -57,33 +57,108 @@ class _DSU:
         self.p[self.find(i)] = self.find(j)
 
 
+def _spike_table():
+    """Body signature -> the glyphs that can carry a spike, and where it goes.
+
+    Only two body shapes in the alphabet can: a single four-point open line and a
+    closed pentagon. Every other cluster is structurally forbidden from owning a
+    two-point stroke, which settles most of the drawing for free.
+    """
+    table = {}
+    for gid, parts in CANONICAL.items():
+        spikes = [p for p in parts if len(p[0]) == 2 and not p[1]]
+        if not spikes:
+            continue
+        body = [p for p in parts if not (len(p[0]) == 2 and not p[1])]
+        sig = tuple(sorted((len(pts), cl) for pts, cl in body))
+        table.setdefault(sig, []).append((body[0], spikes[0][0]))
+    return table
+
+
+_SPIKE_TABLE = None
+
+
+def _spike_table_cached():
+    global _SPIKE_TABLE  # CANONICAL is defined below; build on first use
+    if _SPIKE_TABLE is None:
+        _SPIKE_TABLE = _spike_table()
+    return _SPIKE_TABLE
+
+
+def spike_residual(body_strokes, stroke) -> float:
+    """How well a two-point stroke fits as this glyph's spike; inf if impossible.
+
+    Fit the body to the canonical core, push the canonical spike through the same
+    similarity, and measure. The spike's own jitter translation is left free, since
+    `handwrite` draws one per PolySpec rather than one per glyph.
+    """
+    sig = tuple(sorted((len(s.points), s.closed) for s in body_strokes))
+    best = math.inf
+    for (core_pts, core_closed), spike_pts in _spike_table_cached().get(sig, []):
+        for bs in body_strokes:
+            if len(bs.points) != len(core_pts) or bs.closed != core_closed:
+                continue
+            for r in (range(len(core_pts)) if core_closed else [0]):
+                fit = procrustes(core_pts[r:] + core_pts[:r], bs.points)
+                if fit is None:
+                    continue
+                scale, theta, _res, _sh = fit
+                w = complex(math.cos(theta), math.sin(theta)) * scale
+                for pts in (stroke.points, stroke.points[::-1]):
+                    best = min(best, _resid_fixed(w, spike_pts, pts))
+    return best
+
+
+def layering(clusters_sig, connections):
+    """Column index per cluster, or None if these connections cannot be a drawing.
+
+    Connections only ever run between consecutive columns, both paths start in the
+    same cell, and a column holds at most two glyphs. Rooting the BFS anywhere else
+    breaks one of those, so this doubles as a validity test -- which is what lets the
+    spike count be inferred instead of guessed.
+    """
+    adj = defaultdict(set)
+    for ka, _, kb, _ in connections:
+        if ka == kb:
+            return None
+        adj[ka].add(kb)
+        adj[kb].add(ka)
+    for root in clusters_sig:
+        dist = _bfs(adj, root)
+        if len(dist) != len(clusters_sig):
+            continue
+        cols = {k: v + 1 for k, v in dist.items()}
+        n = max(cols.values())
+        sizes = [sum(1 for c in cols.values() if c == i) for i in range(1, n + 1)]
+        if sizes[0] != 1 or max(sizes) > 2:
+            continue
+        if any(abs(cols[ka] - cols[kb]) != 1 for ka, _, kb, _ in connections):
+            continue
+        return cols
+    return None
+
+
 def decompose(strokes: list[Stroke]):
     """Split strokes into glyph clusters and connection lines.
 
     Strokes of three points or more are glyph parts, grouped by *exact* shared
-    coordinates: annotations are built from core vertices and `handwrite` perturbs
+    coordinates -- annotations are built from core vertices and `handwrite` perturbs
     shared points through one map, so no distance threshold is needed.
 
-    Two-point strokes are the awkward ones -- a spike annotation and a connection
-    line are the same shape -- and they are held out of that merge, since a
-    connection's endpoints are literally glyph vertices and would otherwise chain
-    every glyph into a single component.
+    Two-point strokes are the hard part: a spike annotation and a connection line are
+    the same shape. Measurement (tools/calibrate_spike.py) says the two populations
+    *overlap* in fit residual -- at handwriting 0.3 the worst real spike scores 2.03
+    while the best non-spike scores 0.89 -- so no cutoff separates them, adaptive or
+    otherwise. What the same measurement shows is that ranking by residual is
+    perfect: across 60 drawings the real spikes were always exactly the lowest N.
 
-    They are separated without any threshold, by asking where each endpoint lives:
-
-    * both endpoints are vertices of glyph bodies -> a connection between them
-    * exactly one is, and the free end appears nowhere else -> a spike, whose tip is
-      a brand new point that only this stroke touches
-    * exactly one is, and the free end is shared with another two-point stroke ->
-      a connection has landed on a spike's tip, and of the two the shorter one is
-      the spike, since a connection has to reach across to the next column
-
-    An earlier version compared each end to the nearest cluster centroid, which
-    misplaces long spikes on large glyphs; a later one divided the drawn length by
-    an estimated scale, which is worse, because estimating that scale from a single
-    stroke can land on a 0.7-scaled annotation and inflate it by half.
+    So rank, and let the drawing itself supply N. Taking one spike too many steals a
+    real connection, and the connection graph stops being a layered chain; taking one
+    too few leaves a stroke that spans no columns. Scanning N from the top down and
+    keeping the first arrangement that still forms a valid layering turns a threshold
+    problem into a search with an exact test.
     """
-    two = [i for i, s in enumerate(strokes) if len(s.points) == 2]
+    two = [i for i, s in enumerate(strokes) if len(s.points) > 1 and len(s.points) == 2]
     body = [i for i, s in enumerate(strokes) if len(s.points) > 2]
 
     owner: dict[Point, list[int]] = defaultdict(list)
@@ -95,18 +170,22 @@ def decompose(strokes: list[Stroke]):
         for a in idxs[1:]:
             dsu.union(idxs[0], a)
 
-    roots: dict[int, Cluster] = {}
+    base_strokes: dict[int, list[Stroke]] = {}
     for i in body:
-        roots.setdefault(dsu.find(i), Cluster()).strokes.append(strokes[i])
+        base_strokes.setdefault(dsu.find(i), []).append(strokes[i])
 
-    keys = list(roots)
-    centroids = {k: roots[k].centroid for k in keys}
+    keys = list(base_strokes)
+    centroids = {
+        k: (
+            sum(p[0] for st in v for p in st.points)
+            / sum(len(st.points) for st in v),
+            sum(p[1] for st in v for p in st.points)
+            / sum(len(st.points) for st in v),
+        )
+        for k, v in base_strokes.items()
+    }
     home = {p: dsu.find(i) for i in body for p in strokes[i].points}
-
-    endpoint_users: dict[Point, list[int]] = defaultdict(list)
-    for i in two:
-        for p in strokes[i].points:
-            endpoint_users[p].append(i)
+    canonical = set(SIGNATURE.values())
 
     def nearest(pt: Point) -> int:
         return min(
@@ -115,66 +194,61 @@ def decompose(strokes: list[Stroke]):
             + (centroids[k][1] - pt[1]) ** 2,
         )
 
-    connections = []
+    # rank every plausible (stroke, host) pairing, best fit first
+    ranked = []
     for i in two:
         a, b = strokes[i].points
-        ha, hb = home.get(a), home.get(b)
-        if ha is not None and hb is not None:
-            if ha == hb:
-                roots[ha].strokes.append(strokes[i])
-            else:
-                connections.append((ha, a, hb, b))
+        for h in {x for x in (home.get(a), home.get(b)) if x is not None}:
+            r = spike_residual(base_strokes[h], strokes[i])
+            if r < math.inf:
+                ranked.append((r, i, h))
+    ranked.sort()
+    chain, used_stroke, used_host = [], set(), set()
+    for r, i, h in ranked:
+        if i in used_stroke or h in used_host:
             continue
-        if ha is None and hb is None:
-            connections.append((nearest(a), a, nearest(b), b))
-            continue
+        chain.append((i, h))
+        used_stroke.add(i)
+        used_host.add(h)
 
-        base = ha if ha is not None else hb
-        free = b if ha is not None else a
-        rivals = [j for j in endpoint_users[free] if j != i]
-        is_spike = not rivals or all(
-            strokes[i].length < strokes[j].length for j in rivals
-        )
-        other = nearest(free)
-        if is_spike or other == base:  # a connection never returns to its own glyph
-            roots[base].strokes.append(strokes[i])
-        else:
-            connections.append(
-                (base, a, other, b) if ha is not None else (other, a, base, b)
-            )
+    def build(n_spikes):
+        roots = {k: Cluster(list(v)) for k, v in base_strokes.items()}
+        spiked = set()
+        for i, h in chain[:n_spikes]:
+            roots[h].strokes.append(strokes[i])
+            spiked.add(i)
+        if any(cl.signature not in canonical for cl in roots.values()):
+            return None
+        owned = {p: k for k, cl in roots.items() for st in cl.strokes for p in st.points}
+        conns = []
+        for i in two:
+            if i in spiked:
+                continue
+            a, b = strokes[i].points
+            if a not in owned or b not in owned:
+                # a connection always ends on a glyph vertex, so a loose end means a
+                # spike is still sitting in the connection pile -- this n is too low
+                return None
+            conns.append((owned[a], a, owned[b], b))
+        return roots, conns
 
-    _repair_signatures(roots, connections, nearest)
-    return roots, connections
-
-
-def _repair_signatures(roots, connections, nearest) -> None:
-    """Detach any two-point stroke that gives its cluster an impossible shape.
-
-    When a spike and a connection share a tip, the shorter-is-the-spike rule can pick
-    wrong -- a spike on a double-scale glyph is longer than a connection between two
-    columns that happen to sit close. The counts stay right, so nothing looks amiss
-    until a cluster ends up with a stroke pattern no glyph has. Every real glyph's
-    signature is in the canonical table, so a cluster outside it is proof of a
-    misplaced stroke, and moving it back is unambiguous: there is exactly one that
-    can be removed to make the cluster legal again.
-    """
-    canonical = set(SIGNATURE.values())
-    for key, cluster in roots.items():
-        if cluster.signature in canonical:
-            continue
-        for st in [s for s in cluster.strokes if len(s.points) == 2]:
-            rest = [s for s in cluster.strokes if s is not st]
-            if tuple(sorted((len(s.points), s.closed) for s in rest)) in canonical:
-                cluster.strokes = rest
-                a, b = st.points
-                far = max(a, b, key=lambda p: (p[0] - cluster.centroid[0]) ** 2
-                          + (p[1] - cluster.centroid[1]) ** 2)
-                other = nearest(far)
-                if other != key:
-                    connections.append(
-                        (key, a, other, b) if far == b else (other, a, key, b)
-                    )
-                break
+    # Scan upward and stop at the first arrangement that works. Too few spikes leaves
+    # a connection endpoint nobody owns; too many steals a real connection. Scanning
+    # downward instead accepts over-assignment, because when the two paths merge the
+    # graph carries cycles and losing a redundant edge still layers fine.
+    for n in range(len(chain) + 1):
+        built = build(n)
+        if built and layering({k: None for k in built[0]}, built[1]) is not None:
+            return built
+    fallback = {k: Cluster(list(v)) for k, v in base_strokes.items()}
+    owned = {p: k for k, cl in fallback.items() for st in cl.strokes for p in st.points}
+    return fallback, [
+        (owned.get(strokes[i].points[0]) or nearest(strokes[i].points[0]),
+         strokes[i].points[0],
+         owned.get(strokes[i].points[1]) or nearest(strokes[i].points[1]),
+         strokes[i].points[1])
+        for i in two
+    ]
 
 
 def _bfs(adj, src):
