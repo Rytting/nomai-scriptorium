@@ -581,3 +581,36 @@ to fit a curve parameter to, and it still read back correctly.
 Python was brought along at the same time, and gained tilt too, which it had never
 had. Sweep in tools/check_shape.py: 3 messages x 2 windings x 3 tilts x 4
 shape/handwriting combinations, 72 of 72.
+
+## Frame 3: a reply
+
+The strict integer has been a framed record since the length went in -- a leading
+digit saying which frame, precisely so the format could grow without the reader
+having to guess. Frame 3 is the reply:
+
+    [3][parent][nameLen][bodyLen] name... body... [nonce]
+
+`parent` is the index, within the scroll, of the spiral this one answers. It is not a
+position. A reply is drawn attached to its parent's outer end, so where it sits is
+already visible, and encoding coordinates would be encoding something the picture
+already says.
+
+What the index buys is a *check*. Once a drawing holds more than one spiral, the
+reader has to decide which joins are replies and which are ordinary connections
+between neighbouring glyphs -- and both are two-point strokes between two clusters,
+which is the same ambiguity that made spikes hard. Geometry alone would give an
+answer that has to be believed. With the parent recorded, the reader can verify the
+tree it thinks it sees against the tree the writer wrote down. Same trade the strict
+dialect made everywhere else: spend a digit, delete a guess.
+
+Unsigned replies are allowed (`nameLen` may be 0), which frame 2 does not permit --
+frame 2 with no name is just frame 1, but a reply with no name is still a reply.
+
+Pre-frame drawings still read. A reply cannot be mistaken for one: its body runs to
+at least five digits, and a bare length-prefixed record that long has a leading digit
+far above 3. Checked both directions across two bases, four parents, signed and
+unsigned, and five legacy messages -- no mismatches.
+
+Also renamed the thing being built. What we were calling a document is a *scroll*,
+which is the community's own word and the game's: a conversation as one object you
+pick up, hand over, and slot into a wall.

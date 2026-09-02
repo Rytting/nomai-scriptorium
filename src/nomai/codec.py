@@ -16,7 +16,7 @@ MAX_NONCE = 64
 
 
 def write(message: str, base: int = 256, dialect: str = STRICT,
-          signature: str | None = None) -> GlyphGrid:
+          signature: str | None = None, parent: int | None = None) -> GlyphGrid:
     """Message -> drawing. In STRICT, guarantees the drawing has exactly one reading.
 
     Rival readings are a deterministic function of X, so the encoder can simply check
@@ -28,7 +28,7 @@ def write(message: str, base: int = 256, dialect: str = STRICT,
         return grid_from_oracle(Oracle(encode(message, base, dialect)), dialect)
     want = f"{signature}: {message}" if signature else message
     for nonce in range(1, MAX_NONCE + 1):
-        x = encode(message, base, STRICT, nonce, signature)
+        x = encode(message, base, STRICT, nonce, signature, parent)
         gg = grid_from_oracle(Oracle(x), STRICT)
         readings = decode_strict(Observation.from_grid(gg), bases=(base,))
         if len(readings) == 1 and readings[0][2] == want:

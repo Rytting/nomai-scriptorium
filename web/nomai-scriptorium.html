@@ -294,16 +294,22 @@ function evalpoly(base, digits){
   return x;
 }
 /* A strict integer is a framed record, not a bare run of codepoints: the leading
-   digit says which frame. That is what makes room for the next one -- a reply, which
-   would carry the spiral it answers, and that is how a conversation branches. */
-const PLAIN = 1, SIGNED = 2;
-function encode(msg, base, dialect, nonce, signature){
+   digit says which frame.
+   REPLY carries the index, within the scroll, of the spiral it answers -- not a
+   position, since a reply is drawn attached to its parent's outer end and so its
+   place is already visible. The index buys a check: without it the reader would have
+   to decide from geometry alone which join is a reply and which is an ordinary
+   connection between glyphs, and be believed. */
+const PLAIN = 1, SIGNED = 2, REPLY = 3;
+function encode(msg, base, dialect, nonce, signature, parent){
   const cps = Array.from(msg).map(c => c.codePointAt(0));
   if (!cps.length) return null;
   const sig = Array.from(signature || "").map(c => c.codePointAt(0));
   if (Math.max(...cps.concat(sig)) >= base) return "big";
   if (dialect !== "strict") return evalpoly(base, cps);
-  const d = sig.length
+  const d = parent != null
+    ? [REPLY, parent, sig.length, cps.length].concat(sig, cps, [nonce])
+    : sig.length
     ? [SIGNED, sig.length, cps.length].concat(sig, cps, [nonce])
     : [PLAIN, cps.length].concat(cps, [nonce]);
   return evalpoly(base, d);
@@ -312,21 +318,27 @@ function decodeInt(x, base, dialect){
   const B = BigInt(base), cps = [];
   while (x > 0n){ cps.push(Number(x % B)); x = x / B; }
   if (!cps.length) return null;
-  if (dialect !== "strict") return { sig: null, body: cps };
+  if (dialect !== "strict") return { sig: null, body: cps, parent: null };
   if (cps.length < 3 || cps[cps.length - 1] < 1) return null;
   const body = cps.slice(0, -1), fmt = body[0];
   if (fmt === PLAIN && body.length >= 2){
     const nb = body[1], rest = body.slice(2);
-    if (rest.length && nb === rest.length) return { sig: null, body: rest };
+    if (rest.length && nb === rest.length) return { sig: null, body: rest, parent: null };
   } else if (fmt === SIGNED && body.length >= 4){
     const ns = body[1], nb = body[2], rest = body.slice(3);
     if (rest.length && ns >= 1 && ns + nb === rest.length)
-      return { sig: rest.slice(0, ns), body: rest.slice(ns) };
+      return { sig: rest.slice(0, ns), body: rest.slice(ns), parent: null };
+  } else if (fmt === REPLY && body.length >= 5){
+    const pa = body[1], ns = body[2], nb = body[3], rest = body.slice(4);
+    if (rest.length && ns + nb === rest.length)
+      return { sig: ns ? rest.slice(0, ns) : null, body: rest.slice(ns), parent: pa };
   }
   /* drawings written before the frame existed carry the length alone; keep them
-     readable rather than orphaning them for a format change */
+     readable rather than orphaning them for a format change. A reply is never
+     mistaken for one: its body runs to at least five digits, and a bare record that
+     long has a leading digit far above 3. */
   const nb = body[0], rest = body.slice(1);
-  if (rest.length && nb === rest.length) return { sig: null, body: rest };
+  if (rest.length && nb === rest.length) return { sig: null, body: rest, parent: null };
   return null;
 }
 const okCps = c2 => c2.every(c => c > 0 && c <= 0x10ffff && !(c >= 0xd800 && c <= 0xdfff));
@@ -335,7 +347,7 @@ function toRecord(x, base, dialect){
   const r = decodeInt(x, base, dialect);
   if (!r || !r.body.length || !okCps(r.body)) return null;
   if (r.sig && !okCps(r.sig)) return null;
-  return { sig: r.sig ? str(r.sig) : null, text: str(r.body) };
+  return { sig: r.sig ? str(r.sig) : null, text: str(r.body), parent: r.parent };
 }
 const toLine = r => r ? (r.sig ? r.sig + ": " + r.text : r.text) : null;
 

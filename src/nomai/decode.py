@@ -384,18 +384,18 @@ def x_to_codepoints(x: int, base: int) -> list[int]:
 
 
 def x_to_record(x: int, base: int, strict: bool = False, dialect: str = UPSTREAM):
-    """(signature, body) for a strict integer, or (None, text) for an upstream one."""
+    """(signature, body, parent) -- the last two None for an upstream integer."""
     got = decode_int(x, base, dialect)
     if got is None:
         return None
-    sig_cps, body_cps = got if dialect == STRICT else (None, got)
+    sig_cps, body_cps, parent = got if dialect == STRICT else (None, got, None)
     if not body_cps:
         return None
     for cp in list(body_cps) + list(sig_cps or []):
         if not _plausible(cp, strict):
             return None
     sig = "".join(chr(c) for c in sig_cps) if sig_cps else None
-    return sig, "".join(chr(c) for c in body_cps)
+    return sig, "".join(chr(c) for c in body_cps), parent
 
 
 def x_to_text(
@@ -405,7 +405,7 @@ def x_to_text(
     rec = x_to_record(x, base, strict, dialect)
     if rec is None:
         return None
-    sig, body = rec
+    sig, body, _ = rec
     return f"{sig}: {body}" if sig else body
 
 

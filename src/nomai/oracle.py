@@ -34,10 +34,18 @@ def evalpoly(base: int, digits) -> int:
 
 # A strict-dialect integer is a framed record, not a bare run of codepoints. The
 # leading digit says which frame, so the format can grow without the reader having to
-# guess: the obvious next one is a reply, carrying which spiral it answers, which is
-# how a conversation branches.
+# guess.
+#
+# REPLY carries the index, within the scroll, of the spiral it answers. It does not
+# carry a position: a reply is drawn attached to its parent's outer end, so where it
+# sits is already visible. What the index buys is a *check*. Without it the reader
+# would have to decide from geometry alone which join is a reply and which is an
+# ordinary connection between two glyphs, and be believed; with it the reader can
+# verify the tree it thinks it sees against the tree the writer recorded. That is the
+# same trade the strict dialect made everywhere else: spend a digit, delete a guess.
 PLAIN = 1
 SIGNED = 2
+REPLY = 3
 
 
 def encode(
@@ -46,6 +54,7 @@ def encode(
     dialect: str = UPSTREAM,
     nonce: int = 1,
     signature: str | None = None,
+    parent: int | None = None,
 ) -> int:
     """Message -> the integer an Oracle consumes.
 
@@ -70,7 +79,11 @@ def encode(
         raise ValueError(f"strict dialect: text longer than base {base}")
     if not 1 <= nonce < base:
         raise ValueError(f"nonce {nonce} out of range for base {base}")
-    if sig:
+    if parent is not None:
+        if not 0 <= parent < base:
+            raise ValueError(f"parent {parent} out of range for base {base}")
+        digits = [REPLY, parent, len(sig), len(cps)] + sig + cps + [nonce]
+    elif sig:
         digits = [SIGNED, len(sig), len(cps)] + sig + cps + [nonce]
     else:
         digits = [PLAIN, len(cps)] + cps + [nonce]
@@ -80,7 +93,7 @@ def encode(
 def decode_int(x: int, base: int, dialect: str = UPSTREAM):
     """The integer -> codepoints, or None if it cannot be a message in this dialect.
 
-    STRICT returns `(signature codepoints or None, body codepoints)`.
+    STRICT returns `(signature codepoints or None, body codepoints, parent or None)`.
     """
     cps = []
     while x > 0:
@@ -97,16 +110,22 @@ def decode_int(x: int, base: int, dialect: str = UPSTREAM):
     if fmt == PLAIN and len(body) >= 2:
         n_body, rest = body[1], body[2:]
         if rest and n_body == len(rest):
-            return None, rest
+            return None, rest, None
     elif fmt == SIGNED and len(body) >= 4:
         n_sig, n_body, rest = body[1], body[2], body[3:]
         if rest and n_sig >= 1 and n_sig + n_body == len(rest):
-            return rest[:n_sig], rest[n_sig:]
+            return rest[:n_sig], rest[n_sig:], None
+    elif fmt == REPLY and len(body) >= 5:
+        parent, n_sig, n_body, rest = body[1], body[2], body[3], body[4:]
+        if rest and n_sig + n_body == len(rest):
+            return (rest[:n_sig] or None), rest[n_sig:], parent
     # Drawings written before the frame existed carry the length alone. Falling back
-    # keeps them readable rather than orphaning them for a format change.
+    # keeps them readable rather than orphaning them for a format change. A reply can
+    # never be mistaken for one of those: its body runs to at least five digits, and
+    # a bare record that long has a leading digit far above 3.
     n_body, rest = body[0], body[1:]
     if rest and n_body == len(rest):
-        return None, rest
+        return None, rest, None
     return None
 
 
