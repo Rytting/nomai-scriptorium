@@ -1035,3 +1035,11 @@ away how many replies are coming, which is the one thing the reveal is for.
 
 None of this happens while writing. You wrote it; nothing is hidden from you and
 nothing glows.
+
+The first version of the glow was wrong in a way worth recording: it painted every
+unread spiral one fluorescent green. That throws away what the ink was already saying.
+Whose a spiral is and whether you have read it are two separate facts, and the colour
+should not have to give up the first to carry the second. Each ink has a lit twin now
+-- the same hue with the lamp on behind it -- so an unread spiral of yours is bright
+violet and an unread one of theirs is bright orange, and reading either only puts the
+light out.

@@ -11,8 +11,8 @@
   --ok:#4f9d69; --warn:#c9973f; --off:#6d7c8d;
   --beam:#6ef2c0; --beam-deep:#0d9c78; --beam-core:#f0fff9; --screen-1:#0c3038; --screen-2:#061c23; --screen-ink:#8ff0d4;
   --slot:#8f86ff; --slot-core:#e6e2ff; --slot-frame:#3a3550;
-  --unread:#2fd6a6;
   --ink-none:#104e8b; --ink-mine:#5c47b8; --ink-theirs:#c26610;
+  --ink-none-lit:#2f8ce0; --ink-mine-lit:#9a83ff; --ink-theirs-lit:#ff9a33;
   --sans:'Archivo',system-ui,sans-serif;
   --serif:'Instrument Serif',Georgia,'Songti SC','Noto Serif CJK SC',
     'Source Han Serif SC',serif;
@@ -101,11 +101,14 @@ svg.beams.on{opacity:1}
    empty slot; the bright triangle is the scroll, and it turns as it goes in. */
 svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
   pointer-events:none;overflow:visible}
-/* A spiral you have not translated yet is lit, the way an unread message is. Reading
-   it puts it out. */
-#art g[data-spiral].unread path[stroke-width]{stroke:var(--unread)}
-#art g[data-spiral].unread path:not([stroke-width]){fill:var(--unread)}
-#art g[data-spiral].unread{filter:drop-shadow(0 0 5px var(--unread))}
+/* A spiral you have not translated yet is lit, the way an unread message is, and
+   reading it puts it out. It keeps its own colour either way: whose a spiral is and
+   whether you have read it are two different things, and the ink should not have to
+   give up the first to say the second. */
+#art g[data-spiral].unread path[stroke-width]{stroke:var(--ink-lit)}
+#art g[data-spiral].unread path:not([stroke-width]){fill:var(--ink-lit)}
+#art g[data-spiral].unread{filter:drop-shadow(0 0 4px var(--ink-lit))
+  drop-shadow(0 0 10px var(--ink-lit))}
 #art g[data-spiral]{transition:opacity .3s ease}
 #art g[data-spiral][hidden]{display:none}
 .socket polygon{transform-box:fill-box;transform-origin:center}
@@ -1469,6 +1472,7 @@ function applyInk(sigs){
   $("art").querySelectorAll("[data-spiral]").forEach(g => {
     const k = kinds[+g.dataset.spiral] || kinds[0] || "none";
     g.style.setProperty("--ink", "var(--ink-" + k + ")");
+    g.style.setProperty("--ink-lit", "var(--ink-" + k + "-lit)");
   });
   $("art").style.setProperty("--ink", "var(--ink-" + (kinds[0] || "none") + ")");
   const mine = kinds.filter(k => k === "mine").length;
