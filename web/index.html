@@ -204,7 +204,10 @@ footer a{color:var(--text-dim)}
 .tbar{height:3px;background:var(--edge-soft);border-radius:2px;overflow:hidden}
 .tbar i{display:block;height:100%;width:0;background:var(--beam);
   transition:width .06s linear}
-.hold{align-self:flex-start;user-select:none;-webkit-user-select:none;touch-action:none}
+/* holding is the interaction, so nothing the browser does on a long press may
+   interrupt it: no scrolling, no selection, and no iOS callout menu */
+.hold{align-self:flex-start;user-select:none;-webkit-user-select:none;
+  touch-action:none;-webkit-touch-callout:none}
 .hold[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media (prefers-reduced-motion: no-preference){
