@@ -13,7 +13,8 @@
   --slot:#8f86ff; --slot-core:#e6e2ff; --slot-frame:#3a3550;
   --ink-none:#104e8b; --ink-mine:#5c47b8; --ink-theirs:#c26610;
   --sans:'Archivo',system-ui,sans-serif;
-  --serif:'Instrument Serif',Georgia,serif;
+  --serif:'Instrument Serif',Georgia,'Songti SC','Noto Serif CJK SC',
+    'Source Han Serif SC',serif;
   --mono:'IBM Plex Mono',ui-monospace,monospace;
 }
 :root:not([data-theme="dark"]){
@@ -34,6 +35,13 @@
   --edge:#2a3542; --edge-soft:#212a35;
 }
 *{box-sizing:border-box}
+/* Chinese needs a touch more room between lines than the Latin does */
+:root[lang="zh"] body{line-height:1.8}
+/* CJK has no true italic, so a browser slants it by hand and it reads as a mistake */
+:root[lang="zh"] h1 em,:root[lang="zh"] .who,:root[lang="zh"] .trow .said b,
+:root[lang="zh"] .answering .q{font-style:normal}
+:root[lang="zh"] h1{line-height:1.25}
+.seg.lang{align-self:flex-start}
 [hidden]{display:none!important}
 body{margin:0;background:var(--rock);color:var(--text);font-family:var(--sans);
   font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
@@ -218,7 +226,7 @@ footer a{color:var(--text-dim)}
 <div class="wrap">
 <header>
   <p class="label">Outer Wilds · procedural Nomai script</p>
-  <h1>Write something in <em>Nomai</em></h1>
+  <h1 id="h1">Write something in <em>Nomai</em></h1>
   <p class="sub">Your sentence becomes one enormous integer, and that integer is spent
   answering the questions that decide each glyph, each row, each join. The spiral is
   what the answers look like.</p>
@@ -231,6 +239,10 @@ footer a{color:var(--text-dim)}
   <span class="hint" id="whohint"></span>
 </div>
 
+<div class="seg lang" role="group" aria-label="Language">
+  <button id="lang-en" aria-pressed="true">English</button>
+  <button id="lang-zh" aria-pressed="false">中文</button>
+</div>
 <div class="seg" role="group" aria-label="Mode" style="align-self:flex-start">
   <button id="m-write" aria-pressed="true">Write</button>
   <button id="m-read" aria-pressed="false">Read a scroll</button>
@@ -1016,6 +1028,151 @@ function renderScroll(spirals, amount, seed, flip, tight){
 
 /* ---- page ---- */
 const $ = id => document.getElementById(id);
+
+/* Chinese, keyed by the English rather than by invented names.
+   Two reasons. Adding a translation is then one line and cannot drift out of sync
+   with the string it translates, and the page needs no markup changes at all: the
+   walker below reads the text that is already there and looks it up. Anything with no
+   entry simply stays in English, so a half-finished translation degrades into a
+   readable page rather than a page full of missing-key markers. */
+const ZH = {
+  "Outer Wilds \u00b7 procedural Nomai script": "\u661f\u9645\u62d3\u8352 \u00b7 \u7a0b\u5e8f\u751f\u6210\u7684\u632a\u9ea6\u6587\u5b57",
+  "Write something in": "\u5199\u70b9\u4ec0\u4e48\uff0c\u7528",
+  "Your sentence becomes one enormous integer, and that integer is spent answering the questions that decide each glyph, each row, each join. The spiral is what the answers look like.":
+    "\u4f60\u7684\u53e5\u5b50\u4f1a\u53d8\u6210\u4e00\u4e2a\u5de8\u5927\u7684\u6574\u6570\uff0c\u800c\u8fd9\u4e2a\u6574\u6570\u88ab\u82b1\u5728\u56de\u7b54\u4e00\u8fde\u4e32\u95ee\u9898\u4e0a\uff1a\u6bcf\u4e00\u4e2a\u5b57\u5f62\u3001\u6bcf\u4e00\u884c\u3001\u6bcf\u4e00\u6761\u8fde\u63a5\u3002\u87ba\u65cb\u5c31\u662f\u90a3\u4e9b\u7b54\u6848\u7684\u6837\u5b50\u3002",
+  "You are": "\u4f60\u662f",
+  "nobody in particular": "\u65e0\u540d\u6c0f",
+  "Write": "\u5199",
+  "Read a scroll": "\u8bfb\u4e00\u5377",
+  "Unsigned": "\u4e0d\u7f72\u540d",
+  "Signed": "\u7f72\u540d",
+  "Nomai spirals are nearly always signed. The unsigned ones are notices, and questions put to whoever passes.":
+    "\u632a\u9ea6\u87ba\u65cb\u51e0\u4e4e\u603b\u662f\u7f72\u540d\u7684\u3002\u4e0d\u7f72\u540d\u7684\u90a3\u4e9b\u662f\u544a\u793a\uff0c\u6216\u8005\u662f\u7559\u7ed9\u4efb\u4f55\u8def\u8fc7\u7684\u4eba\u7684\u95ee\u9898\u3002",
+  "Nomai": "\u632a\u9ea6\u6587",
+  "Outer Wilds": "\u661f\u9645\u62d3\u8352",
+  "write a new scroll instead": "\u6539\u5199\u4e00\u5377\u65b0\u7684",
+  "Answering": "\u56de\u590d",
+  "Rewriting": "\u6539\u5199",
+  "not a reply after all": "\u7b97\u4e86\uff0c\u4e0d\u56de\u590d\u4e86",
+  "leave it as it is": "\u7b97\u4e86\uff0c\u4e0d\u6539\u4e86",
+  "Your text": "\u4f60\u7684\u6587\u5b57",
+  "Someone else's scroll": "\u522b\u4eba\u7684\u5377\u8f74",
+  "Drop a Nomai SVG here, or click to choose one":
+    "\u628a\u632a\u9ea6\u6587 SVG \u62d6\u5230\u8fd9\u91cc\uff0c\u6216\u8005\u70b9\u4e00\u4e0b\u9009\u4e00\u4e2a",
+  "who is writing": "\u8c01\u5199\u7684",
+  "waiting for words": "\u7b49\u4f60\u5199\u5b57",
+  "waiting for a drawing": "\u7b49\u4f60\u7ed9\u4e00\u5f20\u56fe",
+  "Dialect": "\u65b9\u8a00",
+  "Unambiguous": "\u65e0\u6b67\u4e49",
+  "Original": "\u539f\u7248",
+  "Alphabet size": "\u5b57\u6bcd\u8868",
+  "Latin": "\u62c9\u4e01",
+  "Any language": "\u4efb\u4f55\u8bed\u8a00",
+  "Handwriting": "\u624b\u5199\u611f",
+  "Curl": "\u5377\u5411",
+  "Clockwise": "\u987a\u65f6\u9488",
+  "The other way": "\u53cd\u8fc7\u6765",
+  "Wind": "\u677e\u7d27",
+  "Tilt": "\u503e\u659c",
+  "Etch the scroll": "\u523b\u5f55\u5377\u8f74",
+  "Saves the drawing as an SVG file": "\u628a\u56fe\u5b58\u6210 SVG \u6587\u4ef6",
+  "Surprise me": "\u968f\u4fbf\u6765\u4e00\u53e5",
+  "The 33 glyphs and the spiral come from": "\u90a3 33 \u4e2a\u5b57\u5f62\u548c\u87ba\u65cb\u6765\u81ea",
+  "(MIT), traced by hand from": "\uff08MIT \u6388\u6743\uff09\uff0c\u662f\u4ece",
+  ". The unambiguous dialect is a change of ours: the same drawings, numbered so that each one has exactly one reading.":
+    "\u91cc\u4e00\u7b14\u4e00\u7b14\u63cf\u51fa\u6765\u7684\u3002\u65e0\u6b67\u4e49\u65b9\u8a00\u662f\u6211\u4eec\u6539\u7684\uff1a\u540c\u6837\u7684\u56fe\uff0c\u6362\u4e86\u4e00\u79cd\u7f16\u53f7\u65b9\u5f0f\uff0c\u4f7f\u5f97\u6bcf\u5f20\u56fe\u53ea\u6709\u4e00\u79cd\u8bfb\u6cd5\u3002",
+  "Nothing here is sent anywhere. Everything runs in this page.":
+    "\u8fd9\u91cc\u7684\u4e1c\u897f\u4e0d\u4f1a\u88ab\u53d1\u5230\u4efb\u4f55\u5730\u65b9\u3002\u5168\u90e8\u8ba1\u7b97\u90fd\u5728\u8fd9\u4e2a\u9875\u9762\u91cc\u5b8c\u6210\u3002",
+
+  "tight": "\u7d27", "very tight": "\u5f88\u7d27", "open": "\u677e", "very open": "\u5f88\u677e",
+  "set by the scroll": "\u7531\u5377\u8f74\u51b3\u5b9a",
+  "reads back reliably": "\u80fd\u53ef\u9760\u5730\u8bfb\u56de\u6765",
+  "usually reads back": "\u901a\u5e38\u80fd\u8bfb\u56de\u6765",
+  "for looks, may not read back": "\u597d\u770b\u4f18\u5148\uff0c\u53ef\u80fd\u8bfb\u4e0d\u56de\u6765",
+  "this one is yours": "\u8fd9\u4e00\u6761\u662f\u4f60\u7684",
+  "all yours": "\u5168\u90e8\u90fd\u662f\u4f60\u7684",
+  "someone else wrote this": "\u8fd9\u662f\u522b\u4eba\u5199\u7684",
+  "none of these are yours": "\u8fd9\u4e9b\u90fd\u4e0d\u662f\u4f60\u7684",
+  "Write it": "\u5199\u4e0b\u6765",
+  "Written": "\u5df2\u5199\u4e0b",
+  "Needs a name": "\u8fd8\u5dee\u4e00\u4e2a\u540d\u5b57",
+  "Add this reply": "\u628a\u8fd9\u6761\u56de\u590d\u63a5\u4e0a",
+  "Rewrite this spiral": "\u6539\u5199\u8fd9\u6761\u87ba\u65cb",
+  "Rewrite it": "\u6539\u5199",
+  "reply": "\u56de\u590d", "rewrite": "\u6539\u5199",
+  "untranslated": "\u672a\u7ffb\u8bd1",
+  "point at it": "\u5bf9\u51c6\u5b83\u4e86", "click to aim": "\u70b9\u4e00\u4e0b\u5bf9\u51c6",
+  "spirals": "\u87ba\u65cb", "glyphs": "\u5b57\u5f62", "turns": "\u5708",
+  "characters": "\u5b57\u7b26", "integer digits": "\u6574\u6570\u4f4d\u6570",
+  "replies": "\u56de\u590d", "joins": "\u8fde\u63a5", "alphabet": "\u5b57\u6bcd\u8868",
+  "Hold to translate": "\u6309\u4f4f\u7ffb\u8bd1",
+  "All translated": "\u5168\u90e8\u7ffb\u8bd1\u5b8c\u4e86",
+  "reading": "\u8bfb\u6cd5", "scroll": "\u5377\u8f74", "or": "\u6216",
+  "intended": "\u672c\u610f", "also fits": "\u4e5f\u8bf4\u5f97\u901a", "stuck": "\u5361\u4f4f\u4e86",
+  "Download SVG": "\u4e0b\u8f7d SVG",
+  "Could not save": "\u5b58\u4e0d\u4e0b\u6765",
+  "Try again in a moment": "\u7a0d\u540e\u518d\u8bd5\u4e00\u6b21",
+  "Saved": "存好了"
+};
+let LANG = "en";
+const t = v => (LANG === "zh" && ZH[v]) || v;
+
+/* Swap the page's own words, leaving everything the reader wrote alone. Text nodes
+   are looked up as they stand and left untouched when the table has nothing for
+   them, and the original is stashed so switching back is exact rather than a
+   translation of a translation. */
+const _orig = new WeakMap();
+function paintLang(){
+  const root = document.documentElement;
+  root.setAttribute("lang", LANG);
+  $("lang-en").setAttribute("aria-pressed", String(LANG === "en"));
+  $("lang-zh").setAttribute("aria-pressed", String(LANG === "zh"));
+  /* The heading is not one sentence with a word swapped in -- each language wants
+     its own shape -- so it is written whole here instead of walked. */
+  $("h1").innerHTML = LANG === "zh"
+    ? "试试像<em>挪麦</em>一样书写吧！"
+    : "Write something in <em>Nomai</em>";
+  const skip = ["thread", "art", "readings", "stats", "msg", "sig", "me", "h1"]
+    .map(id => $(id)).filter(Boolean);
+  const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const jobs = [];
+  for (let node = walk.nextNode(); node; node = walk.nextNode()){
+    if (skip.some(el => el.contains(node))) continue;
+    jobs.push(node);
+  }
+  for (const node of jobs){
+    if (!_orig.has(node)) _orig.set(node, node.nodeValue);
+    const was = _orig.get(node);
+    /* Markup wraps its long sentences over several lines, so the text node carries
+       newlines and indentation the table's key does not. Collapse the run of spaces
+       to look it up, and put the surrounding whitespace back afterwards: between two
+       inline tags it is a real space, not decoration. */
+    const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(was);
+    const key = m[2].replace(/\s+/g, " ");
+    if (!key) continue;
+    const now = t(key);
+    node.nodeValue = now === key ? was : m[1] + now + m[3];
+  }
+  for (const [id, attr] of [["me", "placeholder"], ["sig", "placeholder"],
+                            ["dl-svg", "title"]]){
+    const el = $(id);
+    if (!el) continue;
+    const k = id + "/" + attr;
+    if (!_orig.has(el)) _orig.set(el, {});
+    const box = _orig.get(el);
+    if (box[k] === undefined) box[k] = el.getAttribute(attr) || "";
+    el.setAttribute(attr, t(box[k]));
+  }
+}
+function setLang(v){
+  LANG = v;
+  try { localStorage.setItem("nomai.lang", v); } catch (e) { /* private window */ }
+  paintLang();
+  /* the panels the page writes itself have to be written again in the new words */
+  if (state.mode === "write") { hwRead(); syncTilt(); syncWrite(); reshape(); }
+  else if (state.pending) { paintThread(); paintTranslator(); }
+  else idleTranslator();
+}
 const state = { dialect: "strict", base: 256, hw: 0.15, svg: "", seed: 47 };
 const BANDS = [
   [0.2, "var(--ok)", "reads back reliably"],
@@ -1064,10 +1221,10 @@ function showAim(){
   $("answering").hidden = !on;
   if (!on) return;
   $("answering").querySelector(".label").textContent =
-    a.kind === "reply" ? "Answering" : "Rewriting";
+    t(a.kind === "reply" ? "Answering" : "Rewriting");
   $("answering-what").textContent = line;
-  $("answering-off").textContent = a.kind === "reply"
-    ? "not a reply after all" : "leave it as it is";
+  $("answering-off").textContent = t(a.kind === "reply"
+    ? "not a reply after all" : "leave it as it is");
 }
 function setAim(kind, index){
   /* the composer lives in the writing pane, so aiming it is asking to write --
@@ -1096,11 +1253,12 @@ function syncWrite(){
   const changed = contentNow() !== state.committed;
   const a = state.aim;
   $("write").disabled = !changed || !ready;
-  $("write").textContent = state.signed && !$("sig").value.trim() ? "Needs a name"
+  $("write").textContent = t(
+      state.signed && !$("sig").value.trim() ? "Needs a name"
     : a.kind === "reply" ? "Add this reply"
     : !changed ? "Written"
     : a.kind === "new" ? "Write it"
-    : state.scroll.length > 1 ? "Rewrite this spiral" : "Rewrite it";
+    : state.scroll.length > 1 ? "Rewrite this spiral" : "Rewrite it");
 }
 function commit(){
   const text = $("msg").value, sig = state.signed ? $("sig").value.trim() : "";
@@ -1209,6 +1367,7 @@ function build(grow, growIdx){
   paint(sc, widened, shaky);
 }
 function empty(text){
+  text = t(text);
   $("plate").className = "plate empty";
   $("plate-msg").textContent = text;
   $("plate-msg").hidden = false;
@@ -1304,9 +1463,11 @@ function applyInk(sigs){
   const theirs = kinds.filter(k => k === "theirs").length;
   $("swatch").style.background = "var(--ink-"
     + (mine ? "mine" : theirs ? "theirs" : "none") + ")";
-  $("whohint").textContent = mine && theirs ? `${mine} yours, ${theirs} not`
-    : mine ? (mine > 1 ? "all yours" : "this one is yours")
-    : theirs ? (theirs > 1 ? "none of these are yours" : "someone else wrote this") : "";
+  $("whohint").textContent = mine && theirs
+      ? (LANG === "zh" ? `${mine} \u6761\u662f\u4f60\u7684\uff0c${theirs} \u6761\u4e0d\u662f`
+                       : `${mine} yours, ${theirs} not`)
+    : mine ? t(mine > 1 ? "all yours" : "this one is yours")
+    : theirs ? t(theirs > 1 ? "none of these are yours" : "someone else wrote this") : "";
 }
 const sigsOf = () => state.scroll.map(sp => sp.sig || "");
 function beams(mode){
@@ -1450,10 +1611,10 @@ function paintThread(){
     return `<div class="trow${aimed}${picked}" data-row="${k}">`
       + `<span class="depth">${"\u2502 ".repeat(depth[k])}</span>`
       + `<span class="said ${kind}">${said}</span>`
-      + (open ? `<button class="linky" data-edit="${k}">rewrite</button>`
-              + `<button class="linky" data-reply="${k}">reply</button>`
-              : `<span class="depth">${state.sel === k ? "point at it"
-                                                       : "click to aim"}</span>`)
+      + (open ? `<button class="linky" data-edit="${k}">${t("rewrite")}</button>`
+              + `<button class="linky" data-reply="${k}">${t("reply")}</button>`
+              : `<span class="depth">${t(state.sel === k ? "point at it"
+                                                         : "click to aim")}</span>`)
       + `</div>`;
   }).join("");
   box.querySelectorAll("[data-reply]").forEach(b =>
@@ -1494,7 +1655,7 @@ function paint(sc, widened, shaky){
     ["turns", turns],
     sc.length > 1 ? ["characters", chars]
                   : ["integer digits", String(sc[0].grid.x).length]
-  ].map(([n2, v]) => `<div class="stat"><span class="v">${v}</span><span class="n">${n2}</span></div>`).join("");
+  ].map(([n2, v]) => `<div class="stat"><span class="v">${v}</span><span class="n">${t(n2)}</span></div>`).join("");
 
   const r = $("readings");
   const shake = shaky
@@ -1508,9 +1669,9 @@ function paint(sc, widened, shaky){
        each character now takes more of the drawing to pin down.</p>` : "";
   if (state.dialect !== "strict"){
     const n2 = upstreamCandidates(sc[0].grid);
-    r.innerHTML = `<div class="reading rival"><span class="tag">intended</span>`
+    r.innerHTML = `<div class="reading rival"><span class="tag">${t("intended")}</span>`
       + `<span class="t">${esc(sc[0].text)}</span></div>`
-      + `<div class="reading rival"><span class="tag">also fits</span>`
+      + `<div class="reading rival"><span class="tag">${t("also fits")}</span>`
       + `<span class="t">${fmtBig(n2)} other numbering${n2 === 2n ? "" : "s"} of this same drawing`
       + `</span></div>`
       + `<p class="note">The original numbering throws information away in three places: which
@@ -1521,14 +1682,14 @@ function paint(sc, widened, shaky){
   }
   if (sc.length === 1){
     const rec = sc[0].grid.readings[0];
-    r.innerHTML = `<div class="reading only"><span class="tag">reading</span>`
+    r.innerHTML = `<div class="reading only"><span class="tag">${t("reading")}</span>`
       + `<span class="t">${rec.sig ? `<span class="who">` + esc(rec.sig) + `:</span> ` : ""}`
       + `${esc(rec.text)}</span></div>`
       + `<p class="note">Exactly one reading. Every question this drawing answers has a single
          possible answer, so anyone with the decoder recovers <b>this sentence and no other</b>.</p>`
       + wide + shake;
   } else {
-    r.innerHTML = `<div class="reading only"><span class="tag">scroll</span>`
+    r.innerHTML = `<div class="reading only"><span class="tag">${t("scroll")}</span>`
       + `<span class="t">${sc.length} spirals, ${sc.length - 1} of them replies</span></div>`
       + `<p class="note">One drawing holding the whole conversation, plugged into its wall at
          a single socket. Each reply records which spiral it answers, so a reader can check
@@ -1547,8 +1708,8 @@ const esc = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&g
 function hwRead(){
   const [, color, text] = band(state.hw);
   $("hw-read").innerHTML = `<span class="dot" style="background:${color}"></span>`
-    + state.hw.toFixed(2) + `<span class="sr"> — ${text}</span>`;
-  $("hw-read").title = text;
+    + state.hw.toFixed(2) + `<span class="sr"> — ${t(text)}</span>`;
+  $("hw-read").title = t(text);
 }
 function seg(a, b, key, va, vb){
   const set = v => {
@@ -1599,8 +1760,8 @@ $("c-cw").onclick = () => setFlip(1);
 $("c-ccw").onclick = () => setFlip(-1);
 $("tight").oninput = e => {
   state.tight = +e.target.value;
-  $("tight-read").textContent = state.tight <= 0.22 ? "very tight"
-    : state.tight <= 0.34 ? "tight" : state.tight <= 0.46 ? "open" : "very open";
+  $("tight-read").textContent = t(state.tight <= 0.22 ? "very tight"
+    : state.tight <= 0.34 ? "tight" : state.tight <= 0.46 ? "open" : "very open");
   reshape();
 };
 $("tilt").oninput = e => {
@@ -1611,7 +1772,7 @@ $("tilt").oninput = e => {
 function syncTilt(){
   const many = state.scroll.length > 1;
   $("tilt").disabled = many;
-  $("tilt-read").textContent = many ? "set by the scroll"
+  $("tilt-read").textContent = many ? t("set by the scroll")
     : Math.round(state.tilt * 180 / Math.PI) + "\u00b0";
 }
 $("surprise").onclick = () => {
@@ -1660,11 +1821,11 @@ dlBtn.onclick = async () => {
   dlBtn.disabled = true;
   try {
     await saver.save({ filename: slug(), data: state.svg });
-    dlBtn.textContent = "Saved";
+    dlBtn.textContent = t("Saved");
   } catch (err) {
-    dlBtn.textContent = err && err.code === "declined" ? "Download SVG"
+    dlBtn.textContent = t(err && err.code === "declined" ? "Download SVG"
       : err && err.code === "rate_limited" ? "Try again in a moment"
-      : "Could not save";
+      : "Could not save");
   }
   setTimeout(() => { dlBtn.textContent = was; dlBtn.disabled = false; }, 1600);
 };
@@ -1724,9 +1885,9 @@ function readDrawing(text, name){
     ["turns", scroll.spirals.reduce((a, o) => a + o[0].ncols, 0)],
     scroll.spirals.length > 1 ? ["replies", scroll.joins.length]
                               : ["joins", obs.conns.length],
-    ["alphabet", base === null ? "-" : (base === 256 ? "Latin" : "any")]
+    ["alphabet", base === null ? "-" : t(base === 256 ? "Latin" : "Any language")]
   ].filter(Boolean)
-   .map(([n2, v]) => `<div class="stat"><span class="v">${v}</span><span class="n">${n2}</span></div>`).join("");
+   .map(([n2, v]) => `<div class="stat"><span class="v">${v}</span><span class="n">${t(n2)}</span></div>`).join("");
   /* the colour goes on before the text does: on a wall you can see whose a spiral
      is without translating it */
   /* the ink goes on before the words do: on a wall you can see whose a spiral is
@@ -1761,7 +1922,7 @@ function idleTranslator(){
   $("readings").innerHTML = `<div class="translator">
     <div class="screen"><span class="line"><span class="idle">${esc(NOTHING)}</span></span></div>
     <div class="tbar"><i></i></div>
-    <button class="btn hold" disabled>Hold to translate</button>
+    <button class="btn hold" disabled>${t("Hold to translate")}</button>
   </div>`;
 }
 const NOTHING = "\u003c!\u003e No Nomai writing detected \u003c!\u003e";
@@ -1814,9 +1975,11 @@ function paintTranslator(){
   line.innerHTML = per.map((_, i) => screenLine(i)).join("<br>");
   const left = per.filter((_, i) => !state.seen.has(i)).length;
   btn.disabled = !left;
-  btn.textContent = !left ? "All translated"
-    : per.length > 1 ? `Hold to translate this one \u00b7 ${left} left`
-    : "Hold to translate";
+  btn.textContent = !left ? t("All translated")
+    : per.length > 1
+      ? (LANG === "zh" ? `\u6309\u4f4f\u7ffb\u8bd1\u8fd9\u4e00\u6761 \u00b7 \u8fd8\u5269 ${left}`
+                       : `Hold to translate this one \u00b7 ${left} left`)
+    : t("Hold to translate");
   const fill = $("tfill");
   if (fill) fill.style.width = (state.seen.has(state.sel) ? 100 : tprog * 100) + "%";
 }
@@ -1825,7 +1988,7 @@ function translator(){
   $("readings").innerHTML = `<div class="translator">
     <div class="screen"><span class="line" id="line"></span></div>
     <div class="tbar"><i id="tfill"></i></div>
-    <button class="btn hold" id="translate" aria-pressed="false">Hold to translate</button>
+    <button class="btn hold" id="translate" aria-pressed="false">${t("Hold to translate")}</button>
   </div>`;
   const btn = $("translate");
   const frame = ts => {
@@ -1879,7 +2042,7 @@ function translator(){
     } else if (readings.length > 1){
       $("readings").insertAdjacentHTML("beforeend",
         readings.slice(1, 5).map(t =>
-          `<div class="reading rival"><span class="tag">or</span><span class="t">${show(t)}</span></div>`).join("")
+          `<div class="reading rival"><span class="tag">${t("or")}</span><span class="t">${show(t)}</span></div>`).join("")
         + `<p class="note">More than one sentence fits this drawing, so it cannot be
            read with certainty.</p>`);
     } else {
@@ -1900,7 +2063,7 @@ function translator(){
 }
 function fail(msg){
   $("stats").innerHTML = "";
-  $("readings").innerHTML = `<div class="reading bad"><span class="tag">stuck</span>`
+  $("readings").innerHTML = `<div class="reading bad"><span class="tag">${t("stuck")}</span>`
     + `<span class="t">${esc(msg)}</span></div>`
     + `<p class="note">Heavy handwriting is the usual cause — above about 0.4 the
        shapes move far enough that a join can be misread.</p>`;
@@ -1936,6 +2099,13 @@ try { state.me = localStorage.getItem("nomai.me") || ""; } catch (e) { state.me 
 $("me").value = state.me;
 state.signed = false;
 state.signedAs = "";
+$("lang-en").onclick = () => setLang("en");
+$("lang-zh").onclick = () => setLang("zh");
+try {
+  LANG = localStorage.getItem("nomai.lang")
+      || (/^zh\b/i.test(navigator.language || "") ? "zh" : "en");
+} catch (e) { LANG = /^zh\b/i.test(navigator.language || "") ? "zh" : "en"; }
+paintLang();
 hwRead();
 commit();
 </script>

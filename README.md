@@ -27,6 +27,11 @@ derived from its author's work — hand-traced, in turn, from *Outer Wilds*.
 | `src/nomai/codec.py` | the read/write API |
 | `web/` | the same thing in JavaScript, as a page that needs no server |
 
+The page reads in English or Chinese, switched at the top and remembered, and
+starts in whichever the browser asks for. Translations live in one table keyed by
+the English string itself, so adding one is a single line and anything missing
+simply stays in English.
+
 Two dialects share every glyph and every drawing rule:
 
 * **upstream** — exactly what NomaiText.jl draws. It is lossy in three places, so a
