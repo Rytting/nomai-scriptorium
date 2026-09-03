@@ -1257,3 +1257,25 @@ wall went from three and a half seconds to two.
 
 `tools/check_canon.py` now runs every wall in both languages, 12 of 12, and the parser
 that lifts the list out of the page had to learn one more key.
+
+### Plainer words, and a hold that survives your thumb
+
+Not our wording, and better for it. The blurb under the title had been describing the
+mechanism in a shape somebody called too roundabout for a game about a solar system
+that keeps exploding, and it read worse in Chinese than in English -- the kind of
+sentence that translates into something nobody says. It now says what the thing is: an
+information-encoding glyph algorithm, every result uniquely its input, decodable
+exactly, many languages, go and play. The single-reading note went the same way, from
+a paragraph explaining why to one line stating what.
+
+One caveat kept for later: taken at the header's word, "decoded exactly" is the strict
+dialect. The original numbering is still on the page and a drawing there has many
+readings and no reading -- which the dialect's own note says, right where it matters.
+
+The button and the hold came out of the same pass. `Hold to translate` was a small
+left-aligned button doing the most important thing on the page, and is now the size of
+the job. And holding it used to end the moment the pointer crossed the edge, which is
+what a thumb does on a phone: it presses, and it drifts. `setPointerCapture` keeps the
+press with the button until it is actually released, and `lostpointercapture` replaces
+`pointerleave` as the thing that ends it -- with capture set, `pointerleave` fires
+straight away, so it had to go or nothing would ever be translated.

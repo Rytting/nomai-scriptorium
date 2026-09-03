@@ -1,0 +1,94 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - paragraph [ref=e4]: Outer Wilds · procedural Nomai script
+    - heading [level=1] [ref=e5]:
+      - text: Write something in
+      - emphasis [ref=e6]: Nomai
+    - paragraph [ref=e7]: We use an information-encoding glyph algorithm, so every generated result corresponds uniquely to its input and can be decoded exactly. It supports characters from many languages. Happy exploring!
+  - generic [ref=e8]:
+    - generic [ref=e9]: You are
+    - textbox "You are" [ref=e10]:
+      - /placeholder: nobody in particular
+  - group "Language" [ref=e12]:
+    - button "English" [pressed] [ref=e13] [cursor=pointer]
+    - button "中文" [ref=e14] [cursor=pointer]
+  - group "Mode" [ref=e15]:
+    - button "Write" [pressed] [ref=e16] [cursor=pointer]
+    - button "Read a scroll" [ref=e17] [cursor=pointer]
+  - generic [ref=e18]:
+    - generic [ref=e19]:
+      - group "Signature" [ref=e20]:
+        - button "Unsigned" [pressed] [ref=e21] [cursor=pointer]
+        - button "Signed" [ref=e22] [cursor=pointer]
+      - generic [ref=e23]: Nomai spirals are nearly always signed. The unsigned ones are notices, and questions put to whoever passes.
+    - generic [ref=e24]: Your text
+    - textbox "Your text" [ref=e25]: The Eye of the Universe
+  - generic [ref=e316] [cursor=pointer]:
+    - generic [ref=e317]: The Eye of the Universe
+    - button "rewrite" [ref=e318]
+    - button "reply" [ref=e319]
+  - generic [ref=e320]:
+    - generic [ref=e321]:
+      - generic [ref=e322]:
+        - generic [ref=e323]: Dialect
+        - group "Dialect" [ref=e324]:
+          - button "Unambiguous" [pressed] [ref=e325] [cursor=pointer]
+          - button "Original" [ref=e326] [cursor=pointer]
+      - generic [ref=e327]:
+        - generic [ref=e328]: Alphabet size
+        - group "Alphabet size" [ref=e329]:
+          - button "Latin" [pressed] [ref=e330] [cursor=pointer]
+          - button "Any language" [ref=e331] [cursor=pointer]
+      - generic [ref=e332]:
+        - generic [ref=e333]: Handwriting
+        - generic [ref=e334]:
+          - slider "Handwriting" [ref=e335]: "0.15"
+          - generic "reads back reliably" [ref=e336]:
+            - text: "0.15"
+            - generic [ref=e338]: — reads back reliably
+      - generic [ref=e339]:
+        - generic [ref=e340]: Curl
+        - group "Curl" [ref=e341]:
+          - button "Clockwise" [pressed] [ref=e342] [cursor=pointer]
+          - button "The other way" [ref=e343] [cursor=pointer]
+      - generic [ref=e344]:
+        - generic [ref=e345]: Wind
+        - generic [ref=e346]:
+          - slider "Wind" [ref=e347]: "0.29"
+          - generic [ref=e348]: tight
+      - generic [ref=e349]:
+        - generic [ref=e350]: Tilt
+        - generic [ref=e351]:
+          - slider "Tilt" [ref=e352]: "0"
+          - generic [ref=e353]: 0°
+    - generic [ref=e354]:
+      - generic [ref=e355]:
+        - generic [ref=e356]: "23"
+        - generic [ref=e357]: characters
+      - generic [ref=e358]:
+        - generic [ref=e359]: "31"
+        - generic [ref=e360]: glyphs
+      - generic [ref=e361]:
+        - generic [ref=e362]: "17"
+        - generic [ref=e363]: turns
+      - generic [ref=e364]:
+        - generic [ref=e365]: "61"
+        - generic [ref=e366]: integer digits
+    - generic [ref=e367]:
+      - generic [ref=e368]:
+        - generic [ref=e369]: reading
+        - generic [ref=e370]: The Eye of the Universe
+      - paragraph [ref=e371]: One exact decoding, matching the original input.
+    - generic [ref=e372]:
+      - button "Written" [disabled] [ref=e373] [cursor=pointer]
+      - button "Etch the scroll" [ref=e374] [cursor=pointer]
+      - button "Surprise me" [ref=e375] [cursor=pointer]
+  - contentinfo [ref=e376]:
+    - paragraph [ref=e377]:
+      - text: The 33 glyphs and the spiral come from
+      - link "evanfields/NomaiText.jl" [ref=e378] [cursor=pointer]:
+        - /url: https://github.com/evanfields/NomaiText.jl
+      - text: (MIT), traced by hand from
+      - emphasis [ref=e379]: Outer Wilds
+      - text: ". The unambiguous dialect is a change of ours: the same drawings, numbered so that each one has exactly one reading."
+    - paragraph [ref=e380]: Nothing here is sent anywhere. Everything runs in this page.

@@ -258,9 +258,14 @@ footer a{color:var(--text-dim)}
   transition:width .06s linear}
 /* holding is the interaction, so nothing the browser does on a long press may
    interrupt it: no scrolling, no selection, and no iOS callout menu */
-.hold{align-self:flex-start;user-select:none;-webkit-user-select:none;
-  touch-action:none;-webkit-touch-callout:none}
-.hold[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.hold{align-self:center;min-width:260px;max-width:100%;min-height:48px;
+  padding:12px 24px;font-size:15px;font-weight:500;
+  background:var(--text);border-color:var(--text);color:var(--rock);
+  box-shadow:0 4px 14px rgba(0,0,0,.18);
+  user-select:none;-webkit-user-select:none;touch-action:none;-webkit-touch-callout:none}
+.hold:hover,.hold[aria-pressed="true"]{
+  background:var(--text-dim);border-color:var(--text-dim);color:var(--rock)}
+.hold[aria-pressed="true"]{transform:translateY(1px)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media (prefers-reduced-motion: no-preference){
   .plate svg{transition:opacity .12s ease}
@@ -271,9 +276,9 @@ footer a{color:var(--text-dim)}
 <header>
   <p class="label">Outer Wilds · procedural Nomai script</p>
   <h1 id="h1">Write something in <em>Nomai</em></h1>
-  <p class="sub">The spiral is not a Nomai-looking decoration with a message tucked
-  inside it. Your sentence is what draws it — every glyph, every row, every join is
-  the writing — and the drawing on its own is enough to read it back.</p>
+  <p class="sub">We use an information-encoding glyph algorithm, so every generated
+  result corresponds uniquely to its input and can be decoded exactly. It supports
+  characters from many languages. Happy exploring!</p>
 </header>
 
 <div class="whoami">
@@ -2168,8 +2173,8 @@ const CANON = [
 const ZH = {
   "Outer Wilds \u00b7 procedural Nomai script": "\u300a\u661f\u9645\u62d3\u8352\u300b\u00b7 \u7a0b\u5e8f\u751f\u6210\u7684\u632a\u9ea6\u6587\u5b57",
   "Write something in": "\u5199\u70b9\u4ec0\u4e48\uff0c\u7528",
-  "The spiral is not a Nomai-looking decoration with a message tucked inside it. Your sentence is what draws it — every glyph, every row, every join is the writing — and the drawing on its own is enough to read it back.":
-    "\u8fd9\u4e2a\u87ba\u65cb\u4e0d\u662f\u5148\u753b\u4e00\u4e2a\u50cf\u632a\u9ea6\u6587\u7684\u56fe\u6848\uff0c\u518d\u628a\u4fe1\u606f\u85cf\u8fdb\u53bb\u3002\u662f\u4f60\u7684\u53e5\u5b50\u5728\u753b\u5b83\u2014\u2014\u6bcf\u4e00\u4e2a\u5b57\u5f62\u3001\u6bcf\u4e00\u884c\u3001\u6bcf\u4e00\u6761\u8fde\u63a5\u90fd\u662f\u5b57\uff0c\u5149\u9760\u8fd9\u5f20\u56fe\u5c31\u80fd\u628a\u8bdd\u8bfb\u56de\u6765\u3002",
+  "We use an information-encoding glyph algorithm, so every generated result corresponds uniquely to its input and can be decoded exactly. It supports characters from many languages. Happy exploring!":
+    "\u6211\u4eec\u91c7\u7528\u4fe1\u606f\u7f16\u7801\u5b57\u5f62\u7b97\u6cd5\uff0c\u4f7f\u6bcf\u5f20\u751f\u6210\u7ed3\u679c\u90fd\u552f\u4e00\u5bf9\u5e94\u8f93\u5165\u5185\u5bb9\uff0c\u5e76\u53ef\u51c6\u786e\u8fd8\u539f\u3002\u652f\u6301\u4e2d\u6587\u3001\u82f1\u6587\u7b49\u591a\u79cd\u5b57\u7b26\u3002\u8bf7\u5c3d\u60c5\u63a2\u7d22\u5427\uff01",
   "You are": "\u4f60\u662f",
   "nobody in particular": "\u65e0\u540d\u6c0f",
   "Write": "\u5199",
@@ -2938,9 +2943,8 @@ function paint(sc, widened, shaky){
       + `<span class="t">${rec.sig ? `<span class="who">` + esc(rec.sig) + `:</span> ` : ""}`
       + `${esc(rec.text)}</span></div>`
       + note(
-        `Exactly one reading. Every question this drawing answers has a single possible
-         answer, so anyone with the decoder recovers <b>this sentence and no other</b>.`,
-        `\u53ea\u6709\u4e00\u79cd\u8bfb\u6cd5\u3002\u8fd9\u5f20\u56fe\u56de\u7b54\u7684\u6bcf\u4e00\u4e2a\u95ee\u9898\u90fd\u53ea\u6709\u4e00\u4e2a\u53ef\u80fd\u7684\u7b54\u6848\uff0c\u6240\u4ee5\u4efb\u4f55\u4eba\u62ff\u7740\u89e3\u7801\u5668\u90fd\u53ea\u4f1a\u5f97\u5230<b>\u8fd9\u4e00\u53e5\u8bdd\uff0c\u4e0d\u4f1a\u662f\u522b\u7684</b>\u3002`)
+        `One exact decoding, matching the original input.`,
+        `\u89e3\u7801\u7ed3\u679c\u552f\u4e00\uff0c\u4e0e\u8f93\u5165\u5185\u5bb9\u4e00\u81f4\u3002`)
       + wide + shake;
   } else {
     r.innerHTML = `<div class="reading only"><span class="tag">${t("scroll")}</span>`
@@ -3358,6 +3362,9 @@ function translator(){
   const start = e => {
     if (state.seen.has(state.sel)) return;
     if (e && e.preventDefault) e.preventDefault();
+    if (e && e.pointerId !== undefined && btn.setPointerCapture){
+      try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+    }
     thold = true; btn.setAttribute("aria-pressed", "true"); beams("scan");
     if (!traf){ tlast = 0; traf = requestAnimationFrame(frame); }
   };
@@ -3419,7 +3426,7 @@ function translator(){
     }
   }
   btn.addEventListener("pointerdown", start);
-  ["pointerup", "pointerleave", "pointercancel", "blur"].forEach(ev =>
+  ["pointerup", "pointercancel", "lostpointercapture", "blur"].forEach(ev =>
     btn.addEventListener(ev, stop));
   btn.addEventListener("keydown", e => {
     if (e.key === " " || e.key === "Enter"){ e.preventDefault(); start(null); }
