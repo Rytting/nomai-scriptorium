@@ -1337,3 +1337,28 @@ With a real 375-wide viewport the rack was the only thing left looking cramped, 
 became a grid -- `repeat(auto-fit, minmax(96px, 1fr))` -- and divides whatever width
 there is instead of wrapping into a ragged row: six across on a desktop, two on a
 phone, with the labels on one line and something you can actually hit with a thumb.
+
+### What it opens on
+
+`The Eye of the Universe` was a phrase. The page now opens on a sentence:
+
+> Solanum: These are the two tenets of Nomai philosophy; to seek out and to
+> understand is our way of living.
+
+and in Chinese on 所莱内姆：挪麦信奉两大人生信条；寻找和理解是我们生命的意义。
+
+It is signed, which does three things before anybody touches a control: the signature
+mechanism is visibly on, the ink comes up in the other speaker's colour because
+Solanum is not you, and the thread row underneath already has `reply` on it. And it is
+a line about seeking out and understanding a thing, on a page whose whole job is to
+hand you a drawing and let you work out what it says.
+
+The line follows the language, and only while it is still the line: swapping checks
+that the box and the name both still hold the other language's opening exactly, so the
+moment somebody writes their own, the box is theirs. The alphabet goes with it --
+widening happens on its own but narrowing never did, and coming back to the English
+line in the larger alphabet would have drawn it half as long again for nothing.
+
+`setSigned` grew a second argument on the way. Pressing **Signed** should put the
+caret in the name box; setting the opening line should not, and a page that takes the
+caret on load is rude.

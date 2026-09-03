@@ -320,7 +320,7 @@ footer a{color:var(--text-dim)}
     <button class="linky" id="answering-off">write a new scroll instead</button>
   </div>
   <label class="label" for="msg">Your text</label>
-  <textarea id="msg" spellcheck="false">The Eye of the Universe</textarea>
+  <textarea id="msg" spellcheck="false"></textarea>
 </div>
 
 <div class="composer" id="read-pane" hidden>
@@ -1454,11 +1454,14 @@ function paintLang(){
   }
 }
 function setLang(v){
+  const was = LANG;
   LANG = v;
   try { localStorage.setItem("nomai.lang", v); } catch (e) { /* private window */ }
   paintLang();
+  const swapped = state.mode === "write" && swapOpening(was);
   /* the panels the page writes itself have to be written again in the new words */
-  if (state.mode === "write") { hwRead(); syncTilt(); syncWrite(); reshape(); }
+  if (swapped) { hwRead(); syncTilt(); commit(); }
+  else if (state.mode === "write") { hwRead(); syncTilt(); syncWrite(); reshape(); }
   else if (state.pending) { paintThread(); paintTranslator(); }
   else idleTranslator();
 }
@@ -2102,13 +2105,42 @@ $("me").oninput = e => {
   if (state.mode === "write") applyInk(sigsOf());
   else if (state.pending) applyInk(state.pending.per.map(r => (r[0] && r[0].sig) || ""));
 };
-function setSigned(on){
+function setSigned(on, focus){
   state.signed = on;
   $("s-signed").setAttribute("aria-pressed", String(on));
   $("s-anon").setAttribute("aria-pressed", String(!on));
   $("sig").hidden = !on;
-  if (on) $("sig").focus();
+  /* pressing the button asks for a name and should land in the box; setting the
+     opening line does not, and a page that grabs the caret on load is rude */
+  if (on && focus !== false) $("sig").focus();
   syncWrite();
+}
+/* The line the page opens on: Solanum's two tenets, which is what this page is for
+   somebody to do to a piece of writing, and signed, so the signature is doing its
+   work before anybody has touched a control. */
+const FIRST = {
+  en: ["These are the two tenets of Nomai philosophy; to seek out and to understand "
+       + "is our way of living.", "Solanum"],
+  zh: ["\u632a\u9ea6\u4fe1\u5949\u4e24\u5927\u4eba\u751f\u4fe1\u6761\uff1b\u5bfb\u627e\u548c\u7406\u89e3\u662f\u6211\u4eec\u751f\u547d\u7684\u610f\u4e49\u3002", "\u6240\u83b1\u5185\u59c6"]
+};
+function openOn(lang){
+  const [text, sig] = FIRST[lang] || FIRST.en;
+  $("msg").value = text;
+  $("sig").value = sig;
+  /* The alphabet only ever widens on its own, which is right for something somebody
+     typed and wrong here: coming back to the English line in the larger alphabet
+     would draw it half as long again for nothing. The opening line is set as a fresh
+     load would set it. */
+  setBaseUI(Array.from(text + sig).some(c => c.codePointAt(0) >= 256) ? 200000 : 256);
+  setSigned(true, false);
+}
+/* It follows the language, but only while it is still the opening line: the moment
+   somebody has written their own, the box is theirs and nothing may touch it. */
+function swapOpening(was){
+  const old = FIRST[was];
+  if (!old || $("msg").value !== old[0] || $("sig").value !== old[1]) return false;
+  openOn(LANG);
+  return true;
 }
 $("s-signed").onclick = () => setSigned(true);
 $("s-anon").onclick = () => setSigned(false);
@@ -2606,6 +2638,7 @@ try {
   LANG = localStorage.getItem("nomai.lang")
       || (/^zh\b/i.test(navigator.language || "") ? "zh" : "en");
 } catch (e) { LANG = /^zh\b/i.test(navigator.language || "") ? "zh" : "en"; }
+openOn(LANG);
 paintLang();
 hwRead();
 commit();
