@@ -39,7 +39,7 @@
 /* Chinese needs a touch more room between lines than the Latin does */
 :root[lang="zh"] body{line-height:1.8}
 /* CJK has no true italic, so a browser slants it by hand and it reads as a mistake */
-:root[lang="zh"] h1 em,:root[lang="zh"] .who,:root[lang="zh"] .trow .said b,
+:root[lang="zh"] em,:root[lang="zh"] .who,:root[lang="zh"] .trow .said b,
 :root[lang="zh"] .answering .q{font-style:normal}
 :root[lang="zh"] h1{line-height:1.25}
 .seg.lang{align-self:flex-start}
@@ -1181,7 +1181,7 @@ const CANON = [
    entry simply stays in English, so a half-finished translation degrades into a
    readable page rather than a page full of missing-key markers. */
 const ZH = {
-  "Outer Wilds \u00b7 procedural Nomai script": "\u661f\u9645\u62d3\u8352 \u00b7 \u7a0b\u5e8f\u751f\u6210\u7684\u632a\u9ea6\u6587\u5b57",
+  "Outer Wilds \u00b7 procedural Nomai script": "\u300a\u661f\u9645\u62d3\u8352\u300b\u00b7 \u7a0b\u5e8f\u751f\u6210\u7684\u632a\u9ea6\u6587\u5b57",
   "Write something in": "\u5199\u70b9\u4ec0\u4e48\uff0c\u7528",
   "Your sentence becomes one enormous integer, and that integer is spent answering the questions that decide each glyph, each row, each join. The spiral is what the answers look like.":
     "\u4f60\u7684\u53e5\u5b50\u4f1a\u53d8\u6210\u4e00\u4e2a\u5de8\u5927\u7684\u6574\u6570\uff0c\u800c\u8fd9\u4e2a\u6574\u6570\u88ab\u82b1\u5728\u56de\u7b54\u4e00\u8fde\u4e32\u95ee\u9898\u4e0a\uff1a\u6bcf\u4e00\u4e2a\u5b57\u5f62\u3001\u6bcf\u4e00\u884c\u3001\u6bcf\u4e00\u6761\u8fde\u63a5\u3002\u87ba\u65cb\u5c31\u662f\u90a3\u4e9b\u7b54\u6848\u7684\u6837\u5b50\u3002",
@@ -1194,7 +1194,7 @@ const ZH = {
   "Nomai spirals are nearly always signed. The unsigned ones are notices, and questions put to whoever passes.":
     "\u632a\u9ea6\u87ba\u65cb\u51e0\u4e4e\u603b\u662f\u7f72\u540d\u7684\u3002\u4e0d\u7f72\u540d\u7684\u90a3\u4e9b\u662f\u544a\u793a\uff0c\u6216\u8005\u662f\u7559\u7ed9\u4efb\u4f55\u8def\u8fc7\u7684\u4eba\u7684\u95ee\u9898\u3002",
   "Nomai": "\u632a\u9ea6\u6587",
-  "Outer Wilds": "\u661f\u9645\u62d3\u8352",
+  "Outer Wilds": "\u300a\u661f\u9645\u62d3\u8352\u300b",
   "write a new scroll instead": "\u6539\u5199\u4e00\u5377\u65b0\u7684",
   "Answering": "\u56de\u590d",
   "Rewriting": "\u6539\u5199",
@@ -1258,21 +1258,26 @@ const ZH = {
   "Could not save": "\u5b58\u4e0d\u4e0b\u6765",
   "Try again in a moment": "\u7a0d\u540e\u518d\u8bd5\u4e00\u6b21",
   "Saved": "存好了",
+  /* Names of places and people follow the game's official Chinese localisation
+     rather than a transliteration of our own: someone who has played it in Chinese
+     should recognise the wall without having to translate back through English.
+     所莱内姆, 派伊, 伊代亚, 眼祭坛, 垫脚石区, 太阳站, 量子卫星 -- and 挪麦 without
+     the 人, which is how that localisation writes it. */
   "From the wall": "从墙上取",
   "Or someone else's scroll": "或者别人的卷轴",
   "Six scrolls the Nomai left in this star system, kept here the way a wall keeps them. Take one down and read it; you can answer it afterwards, which is what the walls were for.":
-    "挪麦人留在这个星系里的六卷卷轴，像墙那样存放在这里。取一卷下来读读看；读完还可以回复它，卷轴墙本来就是这么用的。",
+    "挪麦在这个星系里留下的六卷卷轴，像墙那样存放在这里。取一卷下来读读看；读完还可以回复它，卷轴墙本来就是这么用的。",
   "etching it": "正在刻录",
   "that scroll could not be etched": "这一卷刻不出来",
-  "Eye Shrine District": "宇宙之眼神殿区",
+  "Eye Shrine District": "眼祭坛区",
   "The Sun Station": "太阳站",
   "Stepping Stone District": "垫脚石区",
   "The Quantum Moon": "量子卫星",
-  "Solanum, as a child": "索拉南，还是孩子的时候",
+  "Solanum, as a child": "所莱内姆，还是孩子的时候",
   "a notice, unsigned": "一则告示，未署名",
-  "Pye and Idaea": "派伊与伊黛娅",
+  "Pye and Idaea": "派伊与伊代亚",
   "the children": "孩子们",
-  "Solanum, at the end": "索拉南，在最后",
+  "Solanum, at the end": "所莱内姆，在最后",
   "the welcome": "迎客之辞"
 };
 let LANG = "en";
@@ -1300,7 +1305,8 @@ function paintLang(){
   const skip = ["thread", "art", "readings", "stats", "msg", "sig", "me", "h1"]
     .map(id => $(id)).filter(Boolean);
   const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-  const jobs = [];
+  const jobs = [], done = [];
+  const WIDE = /[\u3000-\u303f\uff01-\uff65]/;
   for (let node = walk.nextNode(); node; node = walk.nextNode()){
     if (skip.some(el => el.contains(node))) continue;
     jobs.push(node);
@@ -1316,7 +1322,26 @@ function paintLang(){
     const key = m[2].replace(/\s+/g, " ");
     if (!key) continue;
     const now = t(key);
-    node.nodeValue = now === key ? was : m[1] + now + m[3];
+    /* the surrounding whitespace goes back on, except where the translation begins
+       or ends with full-width punctuation, which carries its own half of a space */
+    const lead = LANG === "zh" && WIDE.test(now[0]) ? "" : m[1];
+    const tail = LANG === "zh" && WIDE.test(now.slice(-1)) ? "" : m[3];
+    node.nodeValue = now === key ? was : lead + now + tail;
+    done.push(node);
+  }
+  /* The whitespace around a phrase is put back because between two inline tags it is
+     a real space. Against full-width punctuation it is not: 从 《星际拓荒》 里 wants
+     to be 从《星际拓荒》里, and the bracket already carries its own half of a space.
+     The space and the bracket usually sit in different text nodes -- one either side
+     of an <em> -- so this runs over the sequence rather than inside a node. */
+  if (LANG === "zh"){
+    for (let i = 0; i + 1 < done.length; i++){
+      const a = done[i], b = done[i + 1];
+      if (/ $/.test(a.nodeValue) && WIDE.test(b.nodeValue[0] || ""))
+        a.nodeValue = a.nodeValue.replace(/ +$/, "");
+      if (/^ /.test(b.nodeValue) && WIDE.test(a.nodeValue.slice(-1)))
+        b.nodeValue = b.nodeValue.replace(/^ +/, "");
+    }
   }
   for (const [id, attr] of [["me", "placeholder"], ["sig", "placeholder"],
                             ["dl-svg", "title"]]){
@@ -1348,7 +1373,7 @@ const PROMPTS = [
   "The Eye of the Universe", "Come to the Ash Twin Project",
   "We were not the first", "The Nomai were here",
   "Hearthians make excellent marshmallows", "hi",
-  "宇宙之眼", "挪麦人到过这里"
+  "宇宙之眼", "挪麦曾到过这里"
 ];
 
 function band(v){ return BANDS.find(b => v <= b[0] + 1e-9) || BANDS[2]; }
@@ -2195,6 +2220,9 @@ function paintRack(){
     </button>`).join("");
   rack.querySelectorAll("[data-scroll]").forEach(b =>
     b.onclick = () => takeDown(+b.dataset.scroll, b));
+  /* the wall is painted after the page's words have been, so its own words -- the
+     names and the places, which follow the game's Chinese -- need the walker again */
+  paintLang();
 }
 
 /* Etched here and now rather than shipped. A drawing of one of these runs to most of

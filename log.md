@@ -1164,3 +1164,31 @@ below its own heading.
 A scroll off the wall is one you can answer. That was already true of any scroll that
 reads completely -- the reader rebuilds `state.scroll` from what it read -- so the canon
 arrives as a conversation with a reply button on every line you have translated.
+
+### Names that already have Chinese
+
+The wall's Chinese was mine, and it should not have been. Outer Wilds has an official
+Chinese localisation, and this project's owner keeps a master table of it for their own
+translation work, with a rule attached: look it up, do not write from impression.
+
+Six of the wall's labels were wrong against it. Solanum was 索拉南 and is 所莱内姆.
+Idaea was 伊黛娅 and is 伊代亚. The Eye Shrine was 宇宙之眼神殿区 and is 眼祭坛区 --
+a shrine, not a temple district, and the official name does not repeat 宇宙之眼. Nomai
+is 挪麦 without the 人, which the page had in two places. Pye 派伊, 垫脚石区, 太阳站
+and 量子卫星 were already right. The four names the master table does not carry came
+from the wiki it names as its authority.
+
+A player who knows this game in Chinese should recognise the wall without translating
+it back through English first, and the table is where that recognition lives.
+
+Two things about the Chinese fell out of looking. The whitespace around a translated
+phrase is put back deliberately -- between two inline tags it is a real space -- but
+against full-width punctuation it is not one: 从 《星际拓荒》 里 should be
+从《星际拓荒》里, because the bracket already carries its own half of a space. The
+space and the bracket are usually in different text nodes, one either side of an
+`<em>`, so the trim runs over the sequence as well as inside each node. And `<em>` in
+Chinese is a browser slanting a glyph that has no italic; the rule that said so
+already existed and only covered the heading.
+
+The wall also painted itself after the page's words had been translated, so its labels
+stayed English until you toggled the language. It calls the walker when it finishes.
