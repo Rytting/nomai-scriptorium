@@ -814,6 +814,23 @@ function centres(ncols, glyphKeys, L, shift){
   }
   return out;
 }
+const box = pts => [Math.min(...pts.map(p=>p[0])), Math.min(...pts.map(p=>p[1])),
+                    Math.max(...pts.map(p=>p[0])), Math.max(...pts.map(p=>p[1]))];
+/* How far a placement would sit inside a spiral already on the sheet, 0 to 1. Distance
+   between nearest points cannot see this: one spiral can sit in another's hook with
+   every pair of points two hundred units apart and still read as tangled. */
+function nesting(pts, boxes){
+  const [ax0, ay0, ax1, ay1] = box(pts);
+  let worst = 0;
+  for (const [bx0, by0, bx1, by1] of boxes){
+    const w = Math.min(ax1, bx1) - Math.max(ax0, bx0);
+    const h = Math.min(ay1, by1) - Math.max(ay0, by0);
+    if (w <= 0 || h <= 0) continue;
+    const small = Math.min((ax1 - ax0) * (ay1 - ay0), (bx1 - bx0) * (by1 - by0));
+    if (small > 0) worst = Math.max(worst, w * h / small);
+  }
+  return worst;
+}
 function clearance(pts, taken){
   let best = Infinity;
   for (const p of pts) for (const q of taken){
@@ -830,7 +847,7 @@ function clearance(pts, taken){
    was missing: with the gap fixed, a spiral with no room simply had to be crammed in,
    and two overlapping spirals are read as one, which fails outright rather than
    quietly. Letting a reply stand further off costs nothing but paper. */
-const SPOTS = [0.92, 0.78, 0.64, 0.5, 0.36, 0.22, 0.99, 0.1];
+const SPOTS = [0.78, 0.7, 0.62, 0.86, 0.54, 0.46, 0.36, 0.24];
 const REACH = [1, 1.5, 2.2, 3.2];
 /* A reply may also loosen its coil or wind the other way to fit a gap. Both are free
    at the far end: every spiral is read on its own, and the fit recovers winding and
@@ -843,7 +860,15 @@ const PAY_FLIP = 0.1, PAY_TIGHT = 0.04;
    has to touch for that to look tangled, so it is a last resort, not a choice. */
 const PAY_INWARD = 0.9;
 /* How strongly the outer end is preferred, in units of `want`. */
-const OUTER_PULL = 0.5;
+/* Where along the parent a reply wants to sit. Late in the sentence, because
+   you answer somebody after they have finished -- but not at the very end,
+   which is where the spiral is widest and where its own base is: the socket
+   for a root, the join to its parent for a reply. Landing there crowds the
+   one place the drawing is already busiest. */
+const BEST_SPOT = 0.75, SPOT_PULL = 1.4;
+/* What sitting inside another spiral costs. Heavy: nothing has to touch for it to look
+   wrong, and there is almost always somewhere else to stand. */
+const NEST_PULL = 4;
 /* Below this the ink of two spirals starts to meet, whatever the score says. Measured
    rather than guessed: across thirty scrolls, glyph origins this far apart left about
    eighty units between the nearest drawn points. */
@@ -854,9 +879,12 @@ const tights = b => [b, Math.min(0.6, b * 1.4), Math.max(0.15, b * 0.72)]
 function chooseSpot(laid, parentIdx, ncols, flip, tight){
   const par = laid[parentIdx];
   const keys = [...par.sp.grid.glyphs.keys()];       /* shape only; any grid this size */
-  const taken = [];
-  for (const it of laid)
-    taken.push(...centres(it.L.ncols, [...it.sp.grid.glyphs.keys()], it.L, it.shift));
+  const taken = [], boxes = [];
+  for (const it of laid){
+    const c = centres(it.L.ncols, [...it.sp.grid.glyphs.keys()], it.L, it.shift);
+    taken.push(...c);
+    boxes.push(box(c));
+  }
   const want = WANT_ROOM * K * MAX_SCALE;
   const ranked = [];
   for (const reach of REACH) for (const tw of tights(tight)) for (const fl of [flip, -flip])
@@ -878,8 +906,9 @@ function chooseSpot(laid, parentIdx, ncols, flip, tight){
        search was being pulled quietly into the middle of the parent's coil. Prefer
        the outer end outright too, since that is where the room is. */
     const room = clearance(pts, taken);
-    let score = Math.min(room, want) - 0.55 * pl.gap / pl.reachScale
-              + OUTER_PULL * want * t - 3 * below - pay * want;
+    let score = Math.min(room, want) - NEST_PULL * want * nesting(pts, boxes)
+              - 0.55 * pl.gap / pl.reachScale
+              - SPOT_PULL * want * Math.abs(t - BEST_SPOT) - 3 * below - pay * want;
     if (room < TOO_CLOSE * K * MAX_SCALE) score -= 50 * want;
     ranked.push({ score, pl });
   }
@@ -3003,8 +3032,11 @@ function screenLine(i){
 function paintTranslator(){
   const per = state.pending.per, line = $("line"), btn = $("translate");
   if (!line) return;
-  line.parentElement.classList.toggle("many", per.length > 1);
-  line.innerHTML = per.map((_, i) => screenLine(i)).join("<br>");
+  /* Only the spirals that have been found. A garbled line for one still to come
+     announces that it is coming, which is the whole of what the reveal withholds. */
+  const shown = per.map((_, i) => i).filter(revealable);
+  line.parentElement.classList.toggle("many", shown.length > 1);
+  line.innerHTML = shown.map(screenLine).join("<br>");
   const left = per.filter((_, i) => !state.seen.has(i) && revealable(i)).length;
   btn.disabled = !left;
   btn.textContent = !left ? t("All translated")

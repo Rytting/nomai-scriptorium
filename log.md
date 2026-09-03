@@ -1099,3 +1099,34 @@ code had just set. A test that reads the value the code wrote confirms that the
 assignment happened, which was never in doubt. It says nothing about whether anything
 was hidden. The checks ask `getComputedStyle(g).display` now, which is the browser's
 answer rather than ours, and hiding is done with a class, which every element has.
+
+### Two metrics, and the one that could see it
+
+"The two replies overlap each other." The distance metric said they did not -- two
+hundred units apart, five glyph widths -- and it was right about what it measures and
+useless for the question. One spiral can sit inside another's hook with every pair of
+points comfortably far apart, and that reads, plainly, as tangled.
+
+Overlapping extents can see it. `nesting` is the worst overlap between two spirals'
+bounding boxes as a fraction of the smaller, and with it the layout can be told to stay
+out of another spiral's footprint rather than merely off its ink. Charged heavily,
+since nothing has to touch for it to look wrong and there is almost always somewhere
+else to stand. Thirty scrolls: one had a spiral a quarter inside another, now none, and
+the worst left is three per cent.
+
+Two other things came out of the same complaint. A reply was landing at the parent's
+very end, which is where the spiral is widest and where its own base is -- the socket
+for a root, the join to its parent for a reply -- so it crowded the one place already
+busiest. It aims for about three quarters along now: late in the sentence, because you
+answer somebody after they have finished, but clear of the base.
+
+And the translator was still printing a garbled line for every spiral in the scroll,
+including the ones not yet found. A row of noise for a spiral still to come announces
+that it is coming, which is exactly what the reveal withholds. It lists only what is on
+the wall, so a line appears as its spiral does.
+
+Worth keeping from all of this: three times in a row the first measurement said the
+complaint was wrong. Ink never touched, the split was exact, the seed was fine. Each
+time the person looking at it was right and the number was answering a different
+question. A metric that disagrees with someone looking at the thing is a hypothesis
+about which metric to build next.

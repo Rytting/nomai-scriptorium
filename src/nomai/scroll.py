@@ -65,7 +65,7 @@ class Placement:
 # coil costs. A reply may wind the other way or coil differently -- a real wall has
 # both -- and that is free at the reading end, because every spiral is read on its own
 # and the fit recovers winding and tightness for each independently.
-SPOTS = (0.92, 0.78, 0.64, 0.5, 0.36, 0.22, 0.99, 0.1)
+SPOTS = (0.78, 0.7, 0.62, 0.86, 0.54, 0.46, 0.36, 0.24)
 REACH = (1.0, 1.5, 2.2, 3.2)
 # The hand a spiral is written in. Nobody can tell which one was used, so it is free
 # to change, and it turns out to matter: for a few grids one jitter pattern moves a
@@ -84,7 +84,16 @@ PAY_FLIP, PAY_TIGHT = 0.1, 0.04
 # to touch for that to look tangled, so it is a last resort rather than a choice.
 PAY_INWARD = 0.9
 # How strongly the outer end is preferred, in units of `want`.
-OUTER_PULL = 0.5
+# Where along the parent a reply wants to sit. Late in the sentence, because
+# you answer somebody after they have finished -- but not at the very end,
+# which is where the spiral is widest and where its own base is: the socket
+# for a root, the join to its parent for a reply. Landing there crowds the
+# one place the drawing is already busiest.
+BEST_SPOT = 0.75
+SPOT_PULL = 1.4
+# What sitting inside another spiral costs. Heavy: nothing has to touch for it to
+# look wrong, and there is almost always somewhere else to stand.
+NEST_PULL = 4.0
 WANT_ROOM = 6.0
 # Below this the ink of two spirals starts to meet, whatever the score says. Measured
 # rather than guessed: across thirty scrolls, glyph origins that far apart left about
@@ -132,6 +141,32 @@ def centres(grid, layout: SpiralLayout, shift: Point) -> list[Point]:
     return out
 
 
+def _box(pts):
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    return (min(xs), min(ys), max(xs), max(ys))
+
+
+def nesting(pts, boxes) -> float:
+    """How far this placement would sit inside an existing spiral, 0 to 1.
+
+    Distance between nearest points cannot see this at all: one spiral can sit in
+    another's hook with every pair of points a comfortable two hundred units apart
+    and still read, plainly, as tangled. Overlapping extents can see it.
+    """
+    ax0, ay0, ax1, ay1 = _box(pts)
+    worst = 0.0
+    for bx0, by0, bx1, by1 in boxes:
+        w = min(ax1, bx1) - max(ax0, bx0)
+        h = min(ay1, by1) - max(ay0, by0)
+        if w <= 0 or h <= 0:
+            continue
+        small = min((ax1 - ax0) * (ay1 - ay0), (bx1 - bx0) * (by1 - by0))
+        if small > 0:
+            worst = max(worst, w * h / small)
+    return worst
+
+
 def clearance(pts, taken) -> float:
     if not taken:
         return math.inf
@@ -151,7 +186,9 @@ def choose_spot(laid, parent_idx: int, grid, flip: int, tight: float):
     not sit snugly was flung to the far end of the sheet on a long tether.
     """
     parent = laid[parent_idx]
-    taken = [q for it in laid for q in centres(it.spiral.grid, it.layout, it.shift)]
+    each = [centres(it.spiral.grid, it.layout, it.shift) for it in laid]
+    taken = [q for c in each for q in c]
+    boxes = [_box(c) for c in each]
     want = WANT_ROOM * K * MAX_SCALE
     ranked = []
     for reach in REACH:
@@ -177,8 +214,9 @@ def choose_spot(laid, parent_idx: int, grid, flip: int, tight: float):
                         # end outright too, since that is where the room is.
                         room = clearance(pts, taken)
                         score = (min(room, want)
+                                 - NEST_PULL * want * nesting(pts, boxes)
                                  - 0.55 * pl.gap / pl.reach_scale
-                                 + OUTER_PULL * want * t
+                                 - SPOT_PULL * want * abs(t - BEST_SPOT)
                                  - 3 * below - pay * want)
                         if room < TOO_CLOSE * K * MAX_SCALE:
                             score -= 50 * want      # not a placement, whatever else

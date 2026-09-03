@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1500" viewBox="0 0 800 1200">
+  <defs>
+    <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#71401f"/>
+      <stop offset="0.22" stop-color="#a96c36"/>
+      <stop offset="0.48" stop-color="#c18649"/>
+      <stop offset="0.72" stop-color="#93572c"/>
+      <stop offset="1" stop-color="#633417"/>
+    </linearGradient>
+    <linearGradient id="slot" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#252b2a"/>
+      <stop offset="1" stop-color="#0d1211"/>
+    </linearGradient>
+    <filter id="outerShadow" x="-25%" y="-15%" width="150%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#160c06" flood-opacity=".34"/>
+    </filter>
+    <filter id="slotShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000" flood-opacity=".72"/>
+    </filter>
+    <style>
+      .slot { fill: url(#slot); stroke: #080c0b; stroke-width: 3; stroke-linejoin: round; }
+      .edge { fill: none; stroke: #351c0e; stroke-width: 54; stroke-linecap: square; stroke-linejoin: miter; }
+      .board { fill: none; stroke: url(#wood); stroke-width: 40; stroke-linecap: square; stroke-linejoin: miter; }
+      .highlight { fill: none; stroke: #e2ad70; stroke-opacity: .28; stroke-width: 2.4; stroke-linecap: round; }
+    </style>
+  </defs>
+
+  <!-- Exact geometry: each large equilateral triangle has side L=480.
+       Each center hexagon and each corner triangle has centerline side L/3=160. -->
+  <g transform="translate(0 0)">
+    <!-- dark open slots -->
+    <g filter="url(#slotShadow)">
+      <!-- upper right-pointing module -->
+      <polygon class="slot" points="190,120 328.564065,200 190,280"/>
+      <polygon class="slot" points="605.692194,360 467.128129,280 467.128129,440"/>
+      <polygon class="slot" points="190,600 190,440 328.564065,520"/>
+      <polygon class="slot" points="328.564065,200 467.128129,280 467.128129,440 328.564065,520 190,440 190,280"/>
+
+      <!-- middle left-pointing module -->
+      <polygon class="slot" points="605.692194,360 467.128129,440 605.692194,520"/>
+      <polygon class="slot" points="190,600 328.564065,520 328.564065,680"/>
+      <polygon class="slot" points="605.692194,840 605.692194,680 467.128129,760"/>
+      <polygon class="slot" points="467.128129,440 328.564065,520 328.564065,680 467.128129,760 605.692194,680 605.692194,520"/>
+
+      <!-- lower right-pointing module -->
+      <polygon class="slot" points="190,600 328.564065,680 190,760"/>
+      <polygon class="slot" points="605.692194,840 467.128129,760 467.128129,920"/>
+      <polygon class="slot" points="190,1080 190,920 328.564065,1000"/>
+      <polygon class="slot" points="328.564065,680 467.128129,760 467.128129,920 328.564065,1000 190,920 190,760"/>
+    </g>
+
+    <!-- wooden board centerlines -->
+    <g filter="url(#outerShadow)">
+      <path class="edge" d="M 190 65 L 190 1135 M 605.692194 65 L 605.692194 1135"/>
+      <path class="edge" d="M 190 120 L 605.692194 360 L 190 600 Z"/>
+      <path class="edge" d="M 605.692194 360 L 190 600 L 605.692194 840 Z"/>
+      <path class="edge" d="M 190 600 L 605.692194 840 L 190 1080 Z"/>
+      <path class="edge" d="M 328.564065 200 L 467.128129 280 L 467.128129 440 L 328.564065 520 L 190 440 L 190 280 Z"/>
+      <path class="edge" d="M 467.128129 440 L 328.564065 520 L 328.564065 680 L 467.128129 760 L 605.692194 680 L 605.692194 520 Z"/>
+      <path class="edge" d="M 328.564065 680 L 467.128129 760 L 467.128129 920 L 328.564065 1000 L 190 920 L 190 760 Z"/>
+
+      <path class="board" d="M 190 65 L 190 1135 M 605.692194 65 L 605.692194 1135"/>
+      <path class="board" d="M 190 120 L 605.692194 360 L 190 600 Z"/>
+      <path class="board" d="M 605.692194 360 L 190 600 L 605.692194 840 Z"/>
+      <path class="board" d="M 190 600 L 605.692194 840 L 190 1080 Z"/>
+      <path class="board" d="M 328.564065 200 L 467.128129 280 L 467.128129 440 L 328.564065 520 L 190 440 L 190 280 Z"/>
+      <path class="board" d="M 467.128129 440 L 328.564065 520 L 328.564065 680 L 467.128129 760 L 605.692194 680 L 605.692194 520 Z"/>
+      <path class="board" d="M 328.564065 680 L 467.128129 760 L 467.128129 920 L 328.564065 1000 L 190 920 L 190 760 Z"/>
+    </g>
+
+    <!-- subtle wood grain -->
+    <g class="highlight">
+      <path d="M 180 82 C 198 245, 176 425, 198 603 S 178 922, 199 1116"/>
+      <path d="M 596 82 C 615 238, 592 429, 616 606 S 594 935, 615 1115"/>
+      <path d="M 230 141 C 303 189, 393 226, 493 291"/>
+      <path d="M 253 562 C 327 516, 409 486, 477 444"/>
+      <path d="M 252 635 C 324 680, 406 715, 480 758"/>
+      <path d="M 250 1044 C 331 992, 411 957, 480 916"/>
+    </g>
+  </g>
+</svg>

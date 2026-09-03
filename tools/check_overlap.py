@@ -57,6 +57,29 @@ for (shape, parents), flip, tight in itertools.product(
                                   it.layout, it.shift)
         drawn.append([p for v in at.values() for p in v])
 
+    def boxes(sets):
+        return [(min(p[0] for p in q), min(p[1] for p in q),
+                 max(p[0] for p in q), max(p[1] for p in q)) for q in sets]
+
+    def nesting(sets):
+        """The worst overlap between two spirals' bounding boxes, as a fraction of
+        the smaller box. Nearest-point distance cannot see this: one spiral can sit
+        inside another's hook while every pair of points stays far apart."""
+        worst = 0.0
+        bs = boxes(sets)
+        for i in range(len(bs)):
+            for j in range(i + 1, len(bs)):
+                ax0, ay0, ax1, ay1 = bs[i]
+                bx0, by0, bx1, by1 = bs[j]
+                w = min(ax1, bx1) - max(ax0, bx0)
+                h = min(ay1, by1) - max(ay0, by0)
+                if w <= 0 or h <= 0:
+                    continue
+                small = min((ax1 - ax0) * (ay1 - ay0), (bx1 - bx0) * (by1 - by0))
+                if small > 0:
+                    worst = max(worst, w * h / small)
+        return worst
+
     def closest(sets):
         best = math.inf
         for i in range(len(sets)):
@@ -68,16 +91,22 @@ for (shape, parents), flip, tight in itertools.product(
                             best = d
         return math.sqrt(best)
 
-    rows.append((shape, flip, tight, closest(origins), closest(drawn)))
+    rows.append((shape, flip, tight, closest(origins), closest(drawn),
+                 nesting(drawn)))
 
 unit = K * MAX_SCALE
-print(f"one K*MAX_SCALE is {unit:.0f} units; a glyph is about 40 across\n")
-print(f"{'shape':<18} flip tight   closest origins   closest ink   ink verdict")
-print("-" * 74)
-touching = 0
-for shape, flip, tight, o, d in rows:
-    verdict = "TOUCHING" if d < 40 else ("close" if d < 90 else "clear")
+print("one K*MAX_SCALE is %.0f units; a glyph is about 40 across" % unit)
+print()
+print("%-18s flip tight   closest ink   boxes overlap by" % "shape")
+print("-" * 66)
+touching = tangled = 0
+for shape, flip, tight, o, d, nest in rows:
     touching += d < 40
-    print(f"{shape:<18} {flip:>4} {tight:<5}   {o:>9.0f} ({o/unit:4.1f})   "
-          f"{d:>7.0f} ({d/unit:4.1f})   {verdict}")
-print(f"\n{touching} of {len(rows)} scrolls have ink closer than one glyph width")
+    tangled += nest > 0.25
+    mark = "  <- tangled" if nest > 0.25 else ""
+    print("%-18s %4d %-5s   %7.0f (%4.1f)   %5.0f%%%s"
+          % (shape, flip, tight, d, d / unit, nest * 100, mark))
+print()
+print("%d of %d have ink closer than one glyph width" % (touching, len(rows)))
+print("%d of %d have one spiral sitting a quarter inside another"
+      % (tangled, len(rows)))
