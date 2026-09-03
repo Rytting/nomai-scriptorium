@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1200" viewBox="0 0 1500 1200">
+  <defs>
+    <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7b4b27"/>
+      <stop offset="0.28" stop-color="#b67a42"/>
+      <stop offset="0.52" stop-color="#8f5a30"/>
+      <stop offset="0.78" stop-color="#c28a50"/>
+      <stop offset="1" stop-color="#71401f"/>
+    </linearGradient>
+    <linearGradient id="slot" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#252b2a"/>
+      <stop offset="1" stop-color="#111716"/>
+    </linearGradient>
+    <linearGradient id="scroll" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9d8cff"/>
+      <stop offset="0.5" stop-color="#4b32b8"/>
+      <stop offset="1" stop-color="#251c68"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#1d130b" flood-opacity=".28"/>
+    </filter>
+    <filter id="innerShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".65"/>
+    </filter>
+    <style>
+      .title { font: 700 38px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #211a14; }
+      .subtitle { font: 400 21px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #62564c; }
+      .section { font: 700 26px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #2d241d; }
+      .label { font: 500 21px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #3c332c; }
+      .small { font: 400 18px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #65594f; }
+      .slot { fill: url(#slot); stroke: #090d0c; stroke-width: 3; stroke-linejoin: round; }
+      .board-edge { fill: none; stroke: #3a2112; stroke-width: 44; stroke-linecap: square; stroke-linejoin: miter; }
+      .board { fill: none; stroke: url(#wood); stroke-width: 32; stroke-linecap: square; stroke-linejoin: miter; }
+      .grain { fill: none; stroke: #e0ad71; stroke-opacity: .28; stroke-width: 2.2; stroke-linecap: round; }
+      .callout { fill: none; stroke: #6b5c50; stroke-width: 3; }
+      .call-dot { fill: #6b5c50; }
+    </style>
+  </defs>
+
+  <rect width="1500" height="1200" fill="#eee9e1"/>
+  <rect x="36" y="36" width="1428" height="1128" rx="26" fill="#fbfaf7" stroke="#d5ccc0" stroke-width="2"/>
+
+  <text x="78" y="100" class="title">挪麦卷轴墙 · 木板槽架正视结构</text>
+  <text x="78" y="139" class="subtitle">所有线条均表示木板；木板围成的深色孔洞为卷轴槽</text>
+
+  <text x="125" y="204" class="section">整体正面</text>
+
+  <!-- Slot cavities: 3 exact equilateral-triangle modules, each containing one regular hexagon and 3 equilateral triangles. -->
+  <g filter="url(#innerShadow)">
+    <!-- Module 1: points right -->
+    <polygon class="slot" points="280,170 401.243556,240 280,310"/>
+    <polygon class="slot" points="643.730669,380 522.487113,310 522.487113,450"/>
+    <polygon class="slot" points="280,590 280,450 401.243556,520"/>
+    <polygon class="slot" points="401.243556,240 522.487113,310 522.487113,450 401.243556,520 280,450 280,310"/>
+
+    <!-- Module 2: points left -->
+    <polygon class="slot" points="643.730669,380 522.487113,450 643.730669,520"/>
+    <polygon class="slot" points="280,590 401.243556,520 401.243556,660"/>
+    <polygon class="slot" points="643.730669,800 643.730669,660 522.487113,730"/>
+    <polygon class="slot" points="522.487113,450 401.243556,520 401.243556,660 522.487113,730 643.730669,660 643.730669,520"/>
+
+    <!-- Module 3: points right -->
+    <polygon class="slot" points="280,590 401.243556,660 280,730"/>
+    <polygon class="slot" points="643.730669,800 522.487113,730 522.487113,870"/>
+    <polygon class="slot" points="280,1010 280,870 401.243556,940"/>
+    <polygon class="slot" points="401.243556,660 522.487113,730 522.487113,870 401.243556,940 280,870 280,730"/>
+  </g>
+
+  <!-- Wooden board network: dark board edges first, wood faces second. -->
+  <g filter="url(#shadow)">
+    <path class="board-edge" d="M 280 120 L 280 1060 M 643.730669 120 L 643.730669 1060"/>
+    <path class="board-edge" d="M 280 170 L 643.730669 380 L 280 590 Z"/>
+    <path class="board-edge" d="M 643.730669 380 L 280 590 L 643.730669 800 Z"/>
+    <path class="board-edge" d="M 280 590 L 643.730669 800 L 280 1010 Z"/>
+    <path class="board-edge" d="M 401.243556 240 L 522.487113 310 L 522.487113 450 L 401.243556 520 L 280 450 L 280 310 Z"/>
+    <path class="board-edge" d="M 522.487113 450 L 401.243556 520 L 401.243556 660 L 522.487113 730 L 643.730669 660 L 643.730669 520 Z"/>
+    <path class="board-edge" d="M 401.243556 660 L 522.487113 730 L 522.487113 870 L 401.243556 940 L 280 870 L 280 730 Z"/>
+
+    <path class="board" d="M 280 120 L 280 1060 M 643.730669 120 L 643.730669 1060"/>
+    <path class="board" d="M 280 170 L 643.730669 380 L 280 590 Z"/>
+    <path class="board" d="M 643.730669 380 L 280 590 L 643.730669 800 Z"/>
+    <path class="board" d="M 280 590 L 643.730669 800 L 280 1010 Z"/>
+    <path class="board" d="M 401.243556 240 L 522.487113 310 L 522.487113 450 L 401.243556 520 L 280 450 L 280 310 Z"/>
+    <path class="board" d="M 522.487113 450 L 401.243556 520 L 401.243556 660 L 522.487113 730 L 643.730669 660 L 643.730669 520 Z"/>
+    <path class="board" d="M 401.243556 660 L 522.487113 730 L 522.487113 870 L 401.243556 940 L 280 870 L 280 730 Z"/>
+  </g>
+
+  <!-- restrained grain marks to make every line read as a timber board -->
+  <g class="grain">
+    <path d="M 271 137 C 284 260, 268 388, 284 512 S 273 806, 286 1041"/>
+    <path d="M 634 139 C 649 281, 631 432, 648 581 S 635 852, 650 1037"/>
+    <path d="M 311 191 C 360 224, 430 249, 493 291"/>
+    <path d="M 330 558 C 383 527, 445 499, 493 468"/>
+    <path d="M 331 619 C 395 657, 460 689, 514 723"/>
+    <path d="M 333 979 C 393 937, 455 913, 503 878"/>
+  </g>
+
+  <!-- labels kept outside the structure so the front view stays readable -->
+  <g>
+    <path class="callout" d="M 740 306 L 680 306 L 559 374"/>
+    <circle class="call-dot" cx="740" cy="306" r="6"/>
+    <text x="765" y="299" class="label">正三角形卷轴槽</text>
+    <text x="765" y="329" class="small">每个大三角单元共 3 个</text>
+
+    <path class="callout" d="M 740 535 L 680 535 L 540 590"/>
+    <circle class="call-dot" cx="740" cy="535" r="6"/>
+    <text x="765" y="528" class="label">正六边形卷轴槽</text>
+    <text x="765" y="558" class="small">每个大三角单元中央 1 个</text>
+
+    <path class="callout" d="M 740 780 L 685 780 L 596 746"/>
+    <circle class="call-dot" cx="740" cy="780" r="6"/>
+    <text x="765" y="773" class="label">木板隔断</text>
+    <text x="765" y="803" class="small">所有棕色线条均为有厚度的木板</text>
+  </g>
+
+  <!-- triangular-prism scroll inset -->
+  <g transform="translate(900 660)">
+    <text x="0" y="0" class="section">卷轴放置方式</text>
+    <text x="0" y="38" class="small">卷轴为三棱柱形，正面看到的是三角形截面</text>
+    <g transform="translate(85 95)" filter="url(#shadow)">
+      <polygon points="0,120 92,67 92,173" fill="url(#scroll)" stroke="#20185a" stroke-width="5"/>
+      <polygon points="92,67 255,20 255,126 92,173" fill="#49399c" stroke="#20185a" stroke-width="5"/>
+      <polygon points="0,120 163,73 255,20 92,67" fill="#7867d0" stroke="#20185a" stroke-width="5"/>
+      <path d="M 28 119 C 43 96, 55 140, 73 108" fill="none" stroke="#cfcbff" stroke-width="5"/>
+      <path d="M 119 81 C 151 63, 179 88, 214 55" fill="none" stroke="#c4bdff" stroke-width="4" opacity=".75"/>
+    </g>
+    <path d="M 55 315 L 410 315" stroke="#d8cfc5" stroke-width="2"/>
+    <text x="55" y="358" class="label">插入方向：垂直于墙面</text>
+    <text x="55" y="394" class="small">三角槽可直接约束卷轴转动；六边形槽可容纳多枚或组合式卷轴</text>
+  </g>
+
+  <rect x="745" y="1020" width="680" height="92" rx="16" fill="#f4eee7" stroke="#d7c2aa" stroke-width="2"/>
+  <text x="775" y="1057" class="label">几何基准：大正三角形边长 L；三角槽与六边形的中心线边长均为 L / 3</text>
+  <text x="775" y="1089" class="small">木板等宽并采用一致斜切拼角，槽口轮廓仍保持正三角形和正六边形。</text>
+</svg>

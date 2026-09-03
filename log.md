@@ -1083,3 +1083,19 @@ crowding the outer end is crowding. So a placement whose glyph origins come clos
 four times `K * MAX_SCALE` is now disqualified rather than merely marked down -- a
 figure taken from the measurement above, not guessed. Back to none in thirty, with the
 round trips unchanged at 24 of 24 and the page at 23 of 24.
+
+### The reveal was never happening, and the test agreed with itself
+
+Reported from looking at the page: all the spirals are still there before the first one
+is read. Correct, and the reason is a small one with a large lesson attached.
+
+`hidden` is a property of `HTMLElement`. An SVG `<g>` is an `SVGElement` and has no
+such property, so `g.hidden = true` hangs a value off the JavaScript object and touches
+nothing in the document. Every spiral stayed on the wall; only the glow moved, which is
+why it half looked right.
+
+The tests passed throughout, because they read `g.hidden` back -- the very expando the
+code had just set. A test that reads the value the code wrote confirms that the
+assignment happened, which was never in doubt. It says nothing about whether anything
+was hidden. The checks ask `getComputedStyle(g).display` now, which is the browser's
+answer rather than ours, and hiding is done with a class, which every element has.

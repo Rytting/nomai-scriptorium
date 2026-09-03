@@ -110,7 +110,10 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
 #art g[data-spiral].unread{filter:drop-shadow(0 0 4px var(--ink-lit))
   drop-shadow(0 0 10px var(--ink-lit))}
 #art g[data-spiral]{transition:opacity .3s ease}
-#art g[data-spiral][hidden]{display:none}
+/* `hidden` is a property of HTMLElement and an SVG <g> is not one, so setting
+   `g.hidden` there only hangs a value off the object and the drawing never changes.
+   A class is a class on any element. */
+#art .not-yet{display:none}
 .socket polygon{transform-box:fill-box;transform-origin:center}
 .socket .housing{fill:none;stroke:var(--slot-frame);stroke-width:9;opacity:.5;
   stroke-linejoin:round}
@@ -1617,8 +1620,8 @@ function paintReveal(grow){
   const gs = [...art.querySelectorAll("g[data-spiral]")];
   gs.forEach((g, i) => {
     const on = revealable(i);
-    const was = !g.hidden;
-    g.hidden = !on;
+    const was = !g.classList.contains("not-yet");
+    g.classList.toggle("not-yet", !on);
     g.classList.toggle("unread", on && !state.seen.has(i));
     if (on && !was && grow){
       const turns = [...g.querySelectorAll("g[data-turn]")];
@@ -1634,9 +1637,10 @@ function paintReveal(grow){
   });
   /* a join arrives with the reply it holds: it means nothing until both of its ends
      are on the wall, and it should not be a line pointing at nothing */
+  const off = g => !g || g.classList.contains("not-yet");
   art.querySelectorAll("[data-join]").forEach(jg => {
     const e = state.edges && state.edges[+jg.dataset.join];
-    jg.hidden = !e || !gs[e[0]] || !gs[e[1]] || gs[e[0]].hidden || gs[e[1]].hidden;
+    jg.classList.toggle("not-yet", !e || off(gs[e[0]]) || off(gs[e[1]]));
   });
 }
 

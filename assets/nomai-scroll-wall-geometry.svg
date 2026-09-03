@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100">
+  <defs>
+    <style>
+      .title { font: 700 38px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #17202a; }
+      .subtitle { font: 400 21px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #536171; }
+      .section { font: 700 25px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #24313d; }
+      .label { font: 500 20px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #334155; }
+      .small { font: 400 18px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #526171; }
+      .beam-shadow { fill: none; stroke: #ced4da; stroke-width: 24; stroke-linecap: round; stroke-linejoin: round; }
+      .beam { fill: none; stroke: #20262d; stroke-width: 14; stroke-linecap: round; stroke-linejoin: round; }
+      .triangle-guide { fill: none; stroke: #8693a0; stroke-width: 3; stroke-dasharray: 10 9; }
+      .hex { fill: #21b455; fill-opacity: .16; stroke: #159447; stroke-width: 9; stroke-linejoin: round; }
+      .hex-thin { fill: #21b455; fill-opacity: .18; stroke: #159447; stroke-width: 6; stroke-linejoin: round; }
+      .corner { fill: #dbe3ea; stroke: #27323b; stroke-width: 4; stroke-linejoin: round; }
+      .dimension { fill: none; stroke: #3973a5; stroke-width: 3; marker-start: url(#arrow); marker-end: url(#arrow); }
+      .extension { stroke: #7a8b9a; stroke-width: 2; stroke-dasharray: 6 6; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3973a5"/>
+    </marker>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#17202a" flood-opacity=".16"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="1100" fill="#f7f6f1"/>
+  <rect x="38" y="38" width="1524" height="1024" rx="24" fill="#ffffff" stroke="#dce2e7" stroke-width="2"/>
+
+  <text x="80" y="104" class="title">挪麦卷轴墙 · 正几何结构图</text>
+  <text x="80" y="142" class="subtitle">三组方向交替的正三角形；每组切去三个全等小正三角形，中心留下正六边形</text>
+
+  <text x="120" y="202" class="section">整体正视结构</text>
+
+  <!-- continuous side rails, matching the user's upright sketch -->
+  <g filter="url(#softShadow)">
+    <path class="beam-shadow" d="M 220 215 L 220 925 M 531.769145 215 L 531.769145 925"/>
+    <path class="beam" d="M 220 215 L 220 925 M 531.769145 215 L 531.769145 925"/>
+  </g>
+
+  <!-- three exact equilateral triangles, side length 360, alternating right/left/right -->
+  <g>
+    <path class="beam-shadow" d="M 220 240 L 531.769145 420 L 220 600 Z"/>
+    <path class="beam-shadow" d="M 531.769145 420 L 220 600 L 531.769145 780 Z"/>
+    <path class="beam-shadow" d="M 220 600 L 531.769145 780 L 220 960 Z"/>
+    <path class="beam" d="M 220 240 L 531.769145 420 L 220 600 Z"/>
+    <path class="beam" d="M 531.769145 420 L 220 600 L 531.769145 780 Z"/>
+    <path class="beam" d="M 220 600 L 531.769145 780 L 220 960 Z"/>
+  </g>
+
+  <!-- regular hexagons from trisecting every side -->
+  <polygon class="hex" points="323.923048,300 427.846097,360 427.846097,480 323.923048,540 220,480 220,360"/>
+  <polygon class="hex" points="427.846097,480 323.923048,540 323.923048,660 427.846097,720 531.769145,660 531.769145,540"/>
+  <polygon class="hex" points="323.923048,660 427.846097,720 427.846097,840 323.923048,900 220,840 220,720"/>
+
+  <!-- unit identifiers -->
+  <g>
+    <circle cx="576" cy="420" r="23" fill="#20262d"/><text x="576" y="428" text-anchor="middle" font-family="Arial" font-size="23" font-weight="700" fill="#fff">1</text>
+    <circle cx="174" cy="600" r="23" fill="#20262d"/><text x="174" y="608" text-anchor="middle" font-family="Arial" font-size="23" font-weight="700" fill="#fff">2</text>
+    <circle cx="576" cy="780" r="23" fill="#20262d"/><text x="576" y="788" text-anchor="middle" font-family="Arial" font-size="23" font-weight="700" fill="#fff">3</text>
+  </g>
+
+  <!-- main dimensions: S = 360, altitude = sqrt(3)/2 S -->
+  <line x1="190" y1="240" x2="155" y2="240" class="extension"/>
+  <line x1="190" y1="600" x2="155" y2="600" class="extension"/>
+  <line x1="165" y1="252" x2="165" y2="588" class="dimension"/>
+  <text x="140" y="426" class="label" text-anchor="middle" transform="rotate(-90 140 426)">L</text>
+  <line x1="220" y1="985" x2="220" y2="1018" class="extension"/>
+  <line x1="531.769145" y1="805" x2="531.769145" y2="1018" class="extension"/>
+  <line x1="232" y1="1002" x2="519.769145" y2="1002" class="dimension"/>
+  <text x="375.884573" y="1038" class="label" text-anchor="middle">√3 L / 2</text>
+
+  <!-- divider -->
+  <line x1="700" y1="185" x2="700" y2="1020" stroke="#dbe1e6" stroke-width="2"/>
+
+  <text x="760" y="202" class="section">单个大三角形的精确切分</text>
+  <text x="760" y="236" class="small">示例方向与第 1 单元一致；另外两组只需镜像并平移</text>
+
+  <!-- exact unit: S = 420, H = 210*sqrt(3) = 363.730669 -->
+  <g filter="url(#softShadow)">
+    <polygon points="820,330 1183.730669,540 820,750" fill="#f4f6f8" stroke="#222b33" stroke-width="8" stroke-linejoin="round"/>
+    <!-- three corner triangles, each side L/3 = 140 -->
+    <polygon class="corner" points="820,330 941.243556,400 820,470"/>
+    <polygon class="corner" points="1183.730669,540 1062.487113,470 1062.487113,610"/>
+    <polygon class="corner" points="820,750 820,610 941.243556,680"/>
+    <!-- central exact regular hexagon, side L/3 = 140 -->
+    <polygon class="hex-thin" points="941.243556,400 1062.487113,470 1062.487113,610 941.243556,680 820,610 820,470"/>
+  </g>
+
+  <!-- equality / angle marks -->
+  <path d="M 871 359 l -4 18 M 876 362 l -4 18" stroke="#5d6975" stroke-width="3"/>
+  <path d="M 1122 503 l -16 9 M 1125 508 l -16 9" stroke="#5d6975" stroke-width="3"/>
+  <path d="M 1006 646 l 8 14 M 1011 643 l 8 14" stroke="#5d6975" stroke-width="3"/>
+  <text x="837" y="372" class="small">60°</text>
+  <text x="1121" y="548" class="small">60°</text>
+  <text x="838" y="728" class="small">60°</text>
+
+  <!-- side-length dimension on one small triangle / hex side -->
+  <line x1="941.243556" y1="390" x2="941.243556" y2="356" class="extension"/>
+  <line x1="1062.487113" y1="460" x2="1079.487113" y2="431" class="extension"/>
+  <line x1="951.635861" y1="366" x2="1069.095252" y2="433.8" class="dimension"/>
+  <text x="1029" y="376" class="label" transform="rotate(30 1029 376)">L / 3</text>
+
+  <!-- callouts -->
+  <g>
+    <line x1="1200" y1="365" x2="1094" y2="455" stroke="#607180" stroke-width="3"/>
+    <circle cx="1200" cy="365" r="7" fill="#607180"/>
+    <text x="1220" y="358" class="label">中心绿色区域</text>
+    <text x="1220" y="387" class="small">正六边形，六边均为 L / 3</text>
+
+    <line x1="1200" y1="708" x2="1110" y2="620" stroke="#607180" stroke-width="3"/>
+    <circle cx="1200" cy="708" r="7" fill="#607180"/>
+    <text x="1220" y="701" class="label">三个角部区域</text>
+    <text x="1220" y="730" class="small">三个全等正三角形，边长均为 L / 3</text>
+  </g>
+
+  <rect x="760" y="820" width="740" height="172" rx="18" fill="#f2f7f4" stroke="#b9d9c4" stroke-width="2"/>
+  <text x="795" y="865" class="section" fill="#166534">几何约束</text>
+  <text x="795" y="908" class="label">大三角形：三边相等，边长 L，三个内角均为 60°</text>
+  <text x="795" y="946" class="label">三等分每条边后连接相邻分点：3 个小正三角形 + 1 个正六边形</text>
+  <text x="795" y="980" class="small">小三角形边长 = 正六边形边长 = L / 3</text>
+</svg>
