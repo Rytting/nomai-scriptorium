@@ -1,3 +1,7 @@
+<meta charset="utf-8">
+<!-- Without this a phone lays the page out at 980px and then shrinks the whole
+     thing to fit, which is why everything on it was about 40% of its size. -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nomai Scriptorium</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap">
@@ -142,11 +146,14 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
    of its own, and a polygon does not want a button's box. */
 .racknote{color:var(--text-faint);font-size:12.5px;max-width:62ch;margin:0}
 #rack-open{align-self:flex-start}
-.rack{display:flex;flex-wrap:wrap;gap:10px;padding:14px;border-radius:4px;
+/* A grid rather than a wrapped row, so the slots divide whatever width there is
+   instead of leaving a ragged gap: six across on a desktop, three on a phone. */
+.rack{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));
+  gap:10px;padding:14px;border-radius:4px;
   background:linear-gradient(160deg,var(--rock-3),var(--rock-2));
   border:1px solid var(--edge)}
-.rack .slot{position:relative;width:104px;flex:0 0 auto;background:none;border:0;
-  padding:0;cursor:pointer;color:inherit;text-align:center;font:inherit;
+.rack .slot{position:relative;background:none;border:0;
+  padding:6px 2px;cursor:pointer;color:inherit;text-align:center;font:inherit;
   display:flex;flex-direction:column;align-items:center;gap:5px}
 .rack .slot svg{display:block;overflow:visible}
 .rack .housing{fill:#0c0f14;stroke:var(--slot-frame);stroke-width:5;

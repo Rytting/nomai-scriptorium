@@ -1312,3 +1312,28 @@ which some browsers require.
 
 Worth keeping: both real bugs were invisible on the machine the page was built on, and
 both were one measurement away. Counting the activations took one line.
+
+### The page had never been told a phone was a phone
+
+"On my own phone it looks like this -- a bit too small, don't you think?" It was too
+small, and not the rack or the type or anything that could be tuned: *everything*, by
+about the same factor, which is the shape of one cause rather than many.
+
+There was no `<meta name="viewport">`. Without it a mobile browser lays a page out at
+980 CSS pixels -- the width it guesses a site was designed for -- and then scales the
+result down to fit the screen. On a 390 point phone that is 40%. Every rule in the
+stylesheet was doing exactly what it said and being shrunk afterwards.
+
+The tell had been in front of me an hour earlier: testing the file picker at a mobile
+viewport, `window.innerWidth` came back **980** and I read past it, because I was
+looking at events rather than layout. 980 is not a number a browser invents; it is the
+default layout width, and it means precisely this.
+
+One line fixes it, and a second went in beside it: no `<meta charset>` either. GitHub
+Pages sends the encoding in a header so the Chinese renders, but the page is also a
+file people save and open, and there it would not have.
+
+With a real 375-wide viewport the rack was the only thing left looking cramped, so it
+became a grid -- `repeat(auto-fit, minmax(96px, 1fr))` -- and divides whatever width
+there is instead of wrapping into a ragged row: six across on a desktop, two on a
+phone, with the labels on one line and something you can actually hit with a thumb.
