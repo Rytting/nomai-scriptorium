@@ -1381,3 +1381,27 @@ than into `#readings`, which is what let the two separate -- the notes it append
 after a scroll is finished still go to `#readings`, below. The one thing this
 introduced is a cell that must be emptied when the mode changes, because writing a
 drawing is not something you point a translator at, and nothing else was clearing it.
+
+### Two masks
+
+Not our work: the user traced two icons out of the game by hand and put them where the
+mode buttons were. A Nomai mask in profile with sound leaving the mouth is **write**;
+the same mask with the eye throwing rays is **read**. Which is the whole page in two
+pictures, and better than the two words it replaces, because the words were describing
+an interface and these describe the thing the interface is about.
+
+`tools/convert_icon_paths.py` came with them -- Photoshop exports paths as PostScript,
+and this pulls the geometry out of that and writes a filled SVG with a reusable `#icon`
+group. It reads the path operators and never executes anything.
+
+`build_page.py` inlines the two groups where the source has a `<use href>` at them, so
+the standalone page stays one file that needs nothing beside it. It costs 55 KB, which
+is a quarter of the page and worth it. The source page opened on its own does not draw
+them, because an external `<use>` across documents is blocked; the built page is what
+ships and it has no reference left in it to block.
+
+Both buttons keep an `aria-label` that follows the language, and the hover label under
+each one is a text node like any other, so the walker translates it: 写, 读一卷.
+
+One gap left, and it is the device this was all being tested on: a phone has no hover,
+so a touch reader gets two masks and no label at all.
