@@ -324,7 +324,13 @@ footer a{color:var(--text-dim)}
   <div class="rack" id="rack" hidden></div>
   <span class="label">Or someone else's scroll</span>
   <label class="drop" id="drop" tabindex="0">
-    <input type="file" id="file" accept=".svg,image/svg+xml" hidden>
+    <!-- Android's picker greys out anything whose reported type is not in this
+         list, and it reports an .svg from Files as octet-stream or plain text about
+         as often as it reports it as an image. Whatever comes back is read as text
+         and checked; a wrong file gets a message, which is better than a file the
+         picker would not let you tap. -->
+    <input type="file" id="file" hidden
+      accept=".svg,image/svg+xml,text/xml,application/xml,text/plain,application/octet-stream">
     <span id="drop-text">Drop a Nomai SVG here, or click to choose one</span>
   </label>
 </div>
@@ -2261,6 +2267,7 @@ const ZH = {
   "Or someone else's scroll": "或者别人的卷轴",
   "Six scrolls the Nomai left in this star system, kept here the way a wall keeps them. Take one down and read it; you can answer it afterwards, which is what the walls were for.":
     "挪麦在这个星系里留下的六卷卷轴，像墙那样存放在这里。取一卷下来读读看；读完还可以回复它，卷轴墙本来就是这么用的。",
+  "reading it": "\u6b63\u5728\u8bfb\u8fd9\u5f20\u56fe",
   "etching it": "正在刻录",
   "that scroll could not be etched": "这一卷刻不出来",
   "Eye Shrine District": "眼祭坛区",
@@ -3075,7 +3082,10 @@ dlBtn.onclick = async () => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = slug();
+    /* some browsers will not act on a link that is not in the document */
+    document.body.appendChild(a);
     a.click();
+    a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     return;
   }
@@ -3449,12 +3459,29 @@ const takeFile = f => {
   if (!f) return;
   $("drop-text").textContent = f.name;
   const rd = new FileReader();
-  rd.onload = () => readDrawing(String(rd.result), f.name);
+  rd.onload = () => {
+    const text = String(rd.result);
+    /* A scroll runs to a couple of megabytes and reading one is not quick on a
+       phone. Reading it blocks the page, so say so first and let that paint. */
+    empty("reading it");
+    setTimeout(() => readDrawing(text, f.name), 30);
+  };
   rd.readAsText(f);
 };
-drop.onclick = () => $("file").click();
+/* The label already opens the picker -- that is what a label wrapping an input is
+   for -- so calling click() as well opened it twice on one tap. Desktop hid that;
+   a phone does not, and the second dialog can arrive over the first and take the
+   answer with it. Only the keyboard needs help: Enter on a focused label does
+   nothing on its own. */
 drop.onkeydown = e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); $("file").click(); } };
-$("file").onchange = e => takeFile(e.target.files[0]);
+$("file").onchange = e => {
+  takeFile(e.target.files[0]);
+  /* Choosing the same file twice leaves the value untouched, so no change event
+     fires and the second attempt does nothing at all -- which on a phone, where
+     there is usually only the one file you are trying, looks like the page ignoring
+     you. Clearing it means every pick counts, including the same file again. */
+  e.target.value = "";
+};
 ["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => {
   e.preventDefault(); drop.classList.add("over");
 }));

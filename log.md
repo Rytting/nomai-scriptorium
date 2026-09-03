@@ -1279,3 +1279,36 @@ what a thumb does on a phone: it presses, and it drifts. `setPointerCapture` kee
 press with the button until it is actually released, and `lostpointercapture` replaces
 `pointerleave` as the thing that ends it -- with capture set, `pointerleave` fires
 straight away, so it had to go or nothing would ever be translated.
+
+### One tap, two pickers
+
+"I saved a file on my phone, and importing it shows nothing." Two of the causes were
+sitting in the markup and measurable from a desktop console; a third and fourth are
+reasoned rather than reproduced here.
+
+The drop zone is a `<label>` wrapping a hidden file input, which is exactly how you
+open a picker without an ugly button -- and it also had `drop.onclick` calling
+`file.click()`. That is the same job done twice: one tap on the label activated the
+input **twice**, measured. A desktop browser papers over it, because the second dialog
+lands on the first and the user never notices. A phone does not: the second one can
+arrive over the answer to the first and take it away with it. The label was already
+doing the work; only the keyboard needed the handler, because Enter on a focused label
+does nothing by itself.
+
+The other one is worse, because it is silent and it punishes retrying. `change` fires
+when the value changes, and picking the same file again does not change it -- so the
+second attempt at the same file produced no event, no error, nothing. Which is what
+you do when something did not work: you try the same file again. Clearing the value
+after each pick makes every pick count.
+
+Two more went in on the same reasoning, unverified because this is not a phone.
+Android's picker greys out anything whose reported type is not in `accept`, and it
+reports an .svg out of Files as octet-stream or plain text about as often as an image,
+so the list is wider now and a wrong file gets a message instead of being untappable.
+And reading a scroll is one to two and a half megabytes of parsing that blocks the
+page; the plate says it is reading before it starts, rather than sitting on the last
+thing it said. The save got an anchor that is in the document while it is clicked,
+which some browsers require.
+
+Worth keeping: both real bugs were invisible on the machine the page was built on, and
+both were one measurement away. Counting the activations took one line.
