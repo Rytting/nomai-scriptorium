@@ -225,6 +225,15 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
   background:var(--text);color:var(--rock);font-size:12px;
   visibility:hidden;pointer-events:none}
 .modes button:hover .mode-tip,.modes button:focus-visible .mode-tip{visibility:visible}
+/* A touch device never hovers, so the label that waits for a pointer is a label
+   nobody there will ever see: two masks and no words. It sits under the mask
+   instead, as part of the button, which is what it was standing in for. */
+@media (hover: none){
+  .seg.modes button{height:auto;padding:10px 6px;gap:7px}
+  .mode-tip{position:static;transform:none;visibility:visible;z-index:auto;
+    background:none;color:inherit;padding:0;white-space:normal;
+    font-size:11.5px;line-height:1.25}
+}
 
 input[type=range]{width:190px;accent-color:var(--ink-soft);background:transparent}
 .hw{display:flex;align-items:center;gap:12px}

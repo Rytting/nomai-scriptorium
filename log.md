@@ -1405,3 +1405,10 @@ each one is a text node like any other, so the walker translates it: 写, 读一
 
 One gap left, and it is the device this was all being tested on: a phone has no hover,
 so a touch reader gets two masks and no label at all.
+
+The gap is closed: under `@media (hover: none)` the label stops waiting for a pointer
+and becomes part of the button, sitting under the mask. Nothing changes where there is
+a mouse -- the button is still 92 by 86 with the label hidden until you hover it -- and
+on a touch device it grows to 92 by 107 with 写 / 读一卷 under the two faces. Which is
+the right trade: a tooltip is a second look at something you can already see, and on a
+phone it was standing in for a label that had been removed.
