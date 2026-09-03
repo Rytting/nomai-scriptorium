@@ -22,9 +22,26 @@ from nomai.scroll import Spiral, analyze_scroll, check_tree, render_scroll  # no
 # the page's own settings when it etches one of these
 HAND, SEED, FLIP, TIGHT = 0.12, 47, 1, 0.29
 
-src = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
-block = re.search(r"const CANON = (\[.*?\n\]);", src, re.S).group(1)
-CANON = json.loads(re.sub(r"(\w+):", r'"\1":', block))
+def read_canon():
+    """The wall's list, out of the page it lives in.
+
+    It is JavaScript, so three things stand between it and json: comments, strings
+    written in pieces so the lines fit, and unquoted keys. Only the keys of these
+    objects get quoted, and only where a brace or a comma puts them -- a blanket
+    `word:` rewrite would reach inside the scrolls themselves, which say things like
+    "Mission: Science compels us to explode the sun!".
+    """
+    src = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
+    block = re.search(r"const CANON = (\[.*?\n\]);", src, re.S).group(1)
+    block = re.sub(r"/\*.*?\*/", "", block, flags=re.S)
+    block = re.sub(r'"\s*\+\s*"', "", block)
+    block = re.sub(r"([{,]\s*)(where|who|turns)(\s*:)", r'\1"\2"\3', block)
+    got = json.loads(block)
+    assert all(set(c) == {"where", "who", "turns"} for c in got), got[0]
+    return got
+
+
+CANON = read_canon()
 
 ok = bad = 0
 rows = []

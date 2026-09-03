@@ -2033,54 +2033,92 @@ function readStrict(obs, base){
 /* ---- page ---- */
 const $ = id => document.getElementById(id);
 
-/* Six scrolls from the game, kept as the words rather than as drawings.
+/* Six walls from the game, kept as the words rather than as drawings.
 
-   A drawing of one runs to most of a megabyte, and six of those would be a page ten
-   times its own size for no gain: this page already contains the whole writer, so it
-   can etch a scroll at the moment somebody takes it off the wall. Deterministic, so
-   the scroll everyone pulls out is the same scroll -- the same seed and the same
+   A drawing of one runs to a megabyte or more, and six of those would be a page
+   twenty times its own size for no gain: this page already contains the whole writer,
+   so it can etch a scroll at the moment somebody takes it off the wall. Deterministic,
+   so the scroll everyone pulls out is the same scroll -- the same seed and the same
    layout produce the same drawing every time.
 
-   Straight apostrophes throughout: the canon uses curly ones, which do not fit the
-   Latin alphabet, and everything else is verbatim. */
+   Verbatim, at whatever length the wall runs to. The structure follows the source's
+   own convention for writing these down: a new paragraph is the next spiral in the
+   same line of talk, a bullet starts a branch off the one before it -- which is the
+   tree this format already has. Straight apostrophes are the one change: the canon
+   uses curly ones, and those live outside the Latin alphabet, so they would push a
+   scroll onto the larger one and double its length for a piece of punctuation. */
 const CANON = [
   { where: "Eye Shrine District", who: "Solanum, as a child",
     turns: [
       ["I don't know why everyone says the Eye is important.", "Solanum", null],
-      ["They say it brought us to this solar system, but is that good?", "Solanum", 0],
+      ["They say it brought us to this solar system, but is that good? Dad told me "
+       + "lots of Nomai died when our clan came here.", "Solanum", 0],
       ["What if the Eye wanted that to happen?", "Solanum", 1],
       ["What if the Eye isn't something good?", "Solanum", 1]] },
+  { where: "Eye Shrine District", who: "the welcome",
+    turns: [
+      ["Be welcomed in this place. This shrine is a space to reflect on what brought "
+       + "us here to this star system: The signal from the Eye.", "", null],
+      ["We observed the Eye's signal in our travels, and followed it here to find "
+       + "its source.", "", 0],
+      ["What we know is this: The source of the signal (which we have chosen to call "
+       + "the Eye of the universe) is older than the universe itself. The rest, we "
+       + "have yet to learn.", "", 1],
+      ["Enter, and open your mind to its possibilities.", "", 2]] },
   { where: "Eye Shrine District", who: "a notice, unsigned",
     turns: [
-      ["If the Eye called to us, why won't it reveal itself?", "", null],
+      ["If the Eye called to us, why won't it reveal itself? Why is it so difficult "
+       + "to locate it?", "", null],
       ["Did something happen to it?", "", 0],
-      ["Does the Eye no longer desire to be found?", "", 0],
-      ["Perhaps this isn't the Eye's choice.", "", 2]] },
+      ["Did the signal stop? Does the Eye no longer desire to be found?", "", 0],
+      /* the source does not indent this one under either branch, but it is an answer
+         to the second and reads as nothing else */
+      ["Perhaps this isn't the Eye's choice. The Eye may not be able to communicate "
+       + "with us more than it already has.", "", 2]] },
   { where: "The Sun Station", who: "Pye and Idaea",
     turns: [
-      ["Science compels us to explode the sun!", "Pye", null],
-      ["Can't we change this?", "Idaea", 0],
-      ["But it's accurate.", "Pye", 1],
-      ["Here's a better one.", "Idaea", 1],
-      ["You lack a sense of humour.", "Pye", 3]] },
+      ["Mission: Science compels us to explode the sun!", "Pye", null],
+      ["Can't we change this? I don't enjoy working in view of such a morbid mission "
+       + "statement.", "Idaea", 0],
+      ["But it's accurate. We're going to create a supernova for the purpose of "
+       + "scientific progress. That's our mission.", "Pye", 1],
+      ["Our mission is to decide if such an irresponsible feat is even possible.",
+       "Idaea", 2],
+      ["Here's a better one. Mission: Determine if it's possible to prompt the sun "
+       + "to explode.", "Idaea", 1],
+      ["You lack a sense of humour.", "Pye", 4],
+      ["At least I don't lack a sense of ethics!", "Idaea", 5],
+      ["Kindly refrain from going supernova on me before the sun does, Idaea.",
+       "Pye", 6]] },
   { where: "Stepping Stone District", who: "the children",
     turns: [
       ["Are we playing the fossil fish game tonight?", "Taget", null],
-      ["I fed the fossil fish a new lantern.", "Solanum", 0],
-      ["I'm still small enough!", "Lami", 0],
-      ["You won't be for long.", "Laevi", 2]] },
-  { where: "The Quantum Moon", who: "Solanum, at the end",
+      ["I fed the fossil fish a new lantern. If you go to the Stepping Stone Cave, "
+       + "the entrance to the Fossil Fish Cave is easy to see now.", "Solanum", 0],
+      ["Gratitude, Solanum! It's good you're small enough to climb through the hole "
+       + "at the Anglerfish Overlook.", "Laevi", 1],
+      ["I'm still small enough!", "Lami", 2],
+      ["You won't be for long. Mom and dad are tall, so you and I will be tall, too.",
+       "Laevi", 3]] },
+  /* Solanum on the Quantum Moon used to be here, and she never wrote it: what she says
+     there is spoken, through the projection stones, and two of the lines it had were
+     from different topics stitched together. A wall of scrolls holds what was written
+     down. This one is written down, by the same person, as a child at school. */
+  { where: "School District", who: "Solanum's report",
     turns: [
-      ["This encounter feels special.", "Solanum", null],
-      ["I hope you won't mind if I think of you as a friend.", "Solanum", 0],
-      ["I may not be entirely alive.", "Solanum", 1],
-      ["Perhaps my journey has reached its end.", "Solanum", 2]] },
-  { where: "Eye Shrine District", who: "the welcome",
-    turns: [
-      ["Be welcomed in this place.", "", null],
-      ["The source of the signal is older than the universe itself.", "", 0],
-      ["The rest, we have yet to learn.", "", 1],
-      ["Enter, and open your mind to its possibilities.", "", 2]] }
+      ["Formation of This Universe", "Solanum", null],
+      ["No one knows how this universe was made, but one thing we do know is "
+       + "everything used to be very hot and dense (tightly packed together).",
+       "Solanum", 0],
+      ["As this early universe expanded, it also cooled down. Once it had cooled "
+       + "down enough, particles were able to group together and form things like "
+       + "galaxies, stars and planets!", "Solanum", 1],
+      ["Since then, space has continued to grow at a faster and faster rate, which "
+       + "is hard to think about without your brain hurting.", "Solanum", 2],
+      ["This universe will keep getting colder and larger, until one day, the stars "
+       + "and the life they support will all die.", "Solanum", 3],
+      ["That's scary to think about, even though Conoy tells me it won't happen in "
+       + "our lifetimes. But it'll happen in someone else's, someday!", "Solanum", 4]] }
 ];
 
 /* Chinese, keyed by the English rather than by invented names.
@@ -2181,12 +2219,12 @@ const ZH = {
   "Eye Shrine District": "眼祭坛区",
   "The Sun Station": "太阳站",
   "Stepping Stone District": "垫脚石区",
-  "The Quantum Moon": "量子卫星",
   "Solanum, as a child": "所莱内姆，还是孩子的时候",
   "a notice, unsigned": "一则告示，未署名",
   "Pye and Idaea": "派伊与伊代亚",
   "the children": "孩子们",
-  "Solanum, at the end": "所莱内姆，在最后",
+  "School District": "学校区",
+  "Solanum's report": "所莱内姆的作业",
   "the welcome": "迎客之辞"
 };
 let LANG = "en";

@@ -1192,3 +1192,36 @@ already existed and only covered the heading.
 
 The wall also painted itself after the page's words had been translated, so its labels
 stayed English until you toggled the language. It calls the walker when it finishes.
+
+### The wall was quoting from memory
+
+"I bet you didn't put the whole thing up there — the Pye and Idaea one is definitely
+longer than what you wrote." It was. That wall is eight spirals and had five, and each
+of the five was cut short: "But it's accurate." is the first sentence of three.
+
+Every scroll on the wall was abridged the same way, and one of them was not a scroll at
+all. What Solanum says on the Quantum Moon is spoken, through the projection stones,
+and two of the four lines that slot carried came from different topics stitched
+together. A wall of scrolls holds what somebody wrote down. It now holds her school
+report on the formation of the universe instead, which she did write down, at the same
+age as the Eye Shrine one.
+
+The tree came free. The source these are documented in has a convention -- a new
+paragraph is the next spiral in the same line of talk, a bullet starts a branch -- and
+that is the shape a scroll already has, so the structure is read off the document
+rather than invented. One place is genuinely ambiguous: "Perhaps this isn't the Eye's
+choice" is not indented under either branch, and it is an answer to the second and
+reads as nothing else. That is a judgement, and it is marked as one in the source.
+
+Verbatim costs. The six went from 245-709 characters each, drawings of 0.9 to 2.4 MB,
+and the browser now takes between one and three and a half seconds to etch one instead
+of half a second. All six still read back, in both implementations, tree included --
+`tools/check_canon.py` takes five minutes now, and it reads the list out of the page,
+which is JavaScript, so it has to get past comments, strings written in pieces, and
+unquoted keys. The blanket `word:` rewrite it used to do would have quoted the middle
+of "Mission: Science compels us to explode the sun!".
+
+`data/canon/` went with it. It was one scroll etched by hand before the wall existed,
+and what it held was the abridged text -- the same mistake, in a file. Nothing links
+it, the wall etches the real thing on demand, and the check verifies that; the history
+still has it.
