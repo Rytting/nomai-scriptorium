@@ -79,21 +79,34 @@ over something that will not come back.
 
 ## Handwriting
 
-`handwriting` jitters the strokes to look hand drawn. It also costs accuracy when
-the drawing is read back, so there is a ceiling (`tools/hw_sweep.py`, strict dialect
-round trip):
+`handwriting` jitters the strokes to look hand drawn. It also costs accuracy when the
+drawing is read back, so there is a ceiling. Two measurements, and the difference
+between them is the point:
 
-| handwriting | exact round trip |
-|---|---|
-| 0 | 20/20 |
-| 0.1 | 20/20 |
-| **0.2** | **19/20** |
-| 0.3 | 16/20 |
-| 0.6 | 15/20 |
+| handwriting | 20 chosen messages | 900 random ones |
+|---|---|---|
+| 0 | 20/20 | **99.5%** |
+| 0.1 | 20/20 | **95.5%** |
+| 0.15 | — | **92.3%** |
+| **0.2** | 19/20 | **88.5%** |
+| 0.3 | 16/20 | — |
+| 0.6 | 15/20 | — |
 
-**Keep it at 0.2 or below** for anything meant to be read back. Note that
-nomai-writing.com sends 0.3, right at the edge -- part of why reading its output is
-harder than reading our own.
+The left column is `tools/hw_sweep.py` over messages somebody picked. The right is
+`tools/fuzz_roundtrip.py`, which picks the text itself -- lengths from one character
+up, mixed case, digits, punctuation, CJK, repeated characters -- and takes each one all
+the way through drawing and reading, searching the jitter seed the way the page does.
+
+The chosen messages were flattering. Trust the right-hand column for what a stranger
+will run into: at 0.2 roughly one drawing in nine does not come back.
+
+**Keep it at 0.15 or below** for anything meant to be read. nomai-writing.com sends
+0.3, well past the edge, which is part of why reading its output is harder than
+reading our own.
+
+Note also what `tools/strict_roundtrip.py`'s 600/600 does *not* say. It round trips
+through `Observation.from_grid`, which never renders anything: it shows the numbering
+is sound, not that a drawing of it comes back.
 
 The ceiling is a limitation of this decoder, not of the drawing. At 0.6 each point
 moves about 0.6 units against glyph features of 20 to 40, so the shape is still
@@ -113,6 +126,7 @@ python tools/batch_svg.py            # SVG in, text out, across the corpus
 python tools/check_shape.py          # tilt, winding, tightness: 72/72
 python tools/check_scroll.py         # conversations, written and read back: 24/24
 python tools/hunt_branching.py       # a wider net over shapes and settings: 72/72
+python tools/fuzz_roundtrip.py 29 900  # random text, drawn and read back: 844/900
 ```
 
 Run them from PowerShell — Git Bash's cp1252 console cannot print the CJK in the

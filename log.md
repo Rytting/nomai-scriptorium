@@ -971,3 +971,39 @@ renders and reads back in the page in **958 ms**, which is what matters, since t
 is what people use. The same scroll costs 20 to 30 seconds in Python: the reference
 implementation's vision is simply slower, and the seed search multiplies it. Worth
 knowing before anyone tries to batch-generate scrolls in Python.
+
+## What the green suites were not saying
+
+Asked whether the bugs were about done, and the honest way to answer was to stop
+trusting the suites for a moment and look at what they actually cover.
+
+`strict_roundtrip.py`'s 600/600 goes through `Observation.from_grid`. It never renders
+anything. That number says the *numbering* is sound; it says nothing about whether a
+drawing of it comes back. Every test that does go through rendering and vision uses
+messages somebody chose -- and both bugs found this week were turned up by someone
+typing something nobody had thought to try.
+
+So `tools/fuzz_roundtrip.py` picks the text instead: one character upward, mixed case,
+digits, punctuation, CJK, repeated characters, random winding, coil, tilt and jitter,
+all the way through drawing and reading, searching the seed the way the page does.
+
+Over 900 messages: **844 came back, 56 did not.** Broken down by jitter:
+
+| handwriting | round trips |
+|---|---|
+| 0 | 214/215 (99.5%) |
+| 0.1 | 211/221 (95.5%) |
+| 0.15 | 204/221 (92.3%) |
+| 0.2 | 215/243 (88.5%) |
+
+No new failure class: the residual is the handwriting ceiling, which has been known
+from the beginning. What is new is the *size* of it. The README said 20/20 at 0.1 and
+19/20 at 0.2, measured over twenty messages somebody picked; on random text those are
+95.5% and 88.5%. The old numbers were not wrong about what they measured. They were
+flattering about what anyone would actually meet.
+
+Signature and message length showed no signal worth reporting -- signed is very
+slightly better, length is noise.
+
+One drawing failed at jitter zero, 1 in 215. That is not the ceiling and has not been
+looked at.
