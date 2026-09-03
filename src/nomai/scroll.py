@@ -52,6 +52,9 @@ class Placement:
     gap: float = 0.0
     spiral: Spiral | None = None
     seed: int = 47
+    # whether this placement was checked and came back; False means it was the best
+    # looking of a bad set and shipped on hope
+    verified: bool = False
     elements: list = field(default_factory=list)
     drawn: dict = field(default_factory=dict)
 
@@ -71,6 +74,9 @@ SEED_STEP = 7919
 # The root's angle is free too: the whole scroll turns about its socket, so leaning it
 # a little costs nothing and gives a stubborn root somewhere else to stand.
 NUDGES = (0.0, 0.21, -0.21, 0.42, -0.42, 0.84, -0.84)
+# Angles to re-lay the whole scroll at when a reply could not be placed readably.
+# Kept short: each one lays the scroll again, which is the expensive part.
+RELAY = (0.35, -0.35, 0.9, -0.9)
 PAY_FLIP, PAY_TIGHT = 0.1, 0.04
 WANT_ROOM = 6.0
 
@@ -228,6 +234,7 @@ def _lay(spirals, tilt0: float, flip: int, tight: float,
                     if got is not None:
                         place = Placement(cand, (0.0, 0.0))
                         place.seed = got
+                        place.verified = True
                         break
         else:
             cands = choose_spot(laid, sp.parent, sp.grid, flip, tight)
@@ -239,6 +246,7 @@ def _lay(spirals, tilt0: float, flip: int, tight: float,
                     if got is not None:
                         place = c
                         place.seed = got
+                        place.verified = True
                         break
         place.spiral = sp
         laid.append(place)
@@ -287,6 +295,21 @@ def render_scroll(spirals, glyphs=None, handwriting: float = 0.0, seed: int = 47
         raise ValueError("a scroll needs at least one spiral")
     tilt0 = balance_tilt(spirals, flip, tight)
     laid = _lay(spirals, tilt0, flip, tight, glyphs, handwriting, seed, verify=True)
+    # The root is settled first, on whether it reads, and the replies then have to fit
+    # around whatever it did. If one of them could not find a placement that reads back
+    # it has been shipped on hope, and the sheet it was given is the thing to change:
+    # lean the root and write it in another hand, and everything downstream moves.
+    # Measured over fans, chains and trees of eight to ten spirals this never fires,
+    # so it costs nothing where it is not needed -- which is why it is a retry rather
+    # than a wider search up front.
+    if not all(it.verified for it in laid):
+        for k, dt in enumerate(RELAY):
+            alt = _lay(spirals, tilt0 + dt, flip, tight, glyphs, handwriting,
+                       seed + (k + 1) * SEED_STEP, verify=True)
+            if sum(it.verified for it in alt) > sum(it.verified for it in laid):
+                laid = alt
+            if all(it.verified for it in laid):
+                break
     for it in laid:
         it.elements, it.drawn = spiral_elements(
             it.spiral.grid, glyphs, handwriting, it.seed, it.layout, it.shift

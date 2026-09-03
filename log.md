@@ -942,3 +942,32 @@ overrule them, and the page already says when it has made one of these.
 
 A lone spiral was searching nothing at all, and was being warned about failures it
 need not have had. It searches its hand now too.
+
+## Re-laying the root when a reply cannot be placed
+
+Suggested from outside the code, and the instinct was right about the gap: the root is
+settled first, on whether *it* reads, and never revisited. A reply that cannot find a
+readable placement falls back to its best-looking one and ships on hope. Nothing
+notices.
+
+So the first thing was to find out whether that ever happens, before building a fix
+for nothing. `tools/stress_scroll.py` crowds the sheet -- fans and chains of eight,
+trees of nine and ten -- and counts placements that shipped unverified.
+
+**Zero.** Every reply in every one of those found a placement that reads back, and all
+four round tripped completely.
+
+Which makes the fix a *retry*, not a wider search. `_lay` now records on each placement
+whether it was verified; if any was not, the scroll is laid again with the root leaned
+and written in another hand, up to four times, keeping whichever arrangement verifies
+most. Where nothing is blocked it costs one extra comparison and no work at all.
+
+A branch that never runs in testing is a branch that has not been tested, so it was
+forced: stubbing `_hand` to refuse one reply on the un-leaned sheet gives five verified
+lays -- the first plus four retries -- against one lay when nothing is blocked.
+
+The measurement worth keeping from all this is the timing. A nine-spiral conversation
+renders and reads back in the page in **958 ms**, which is what matters, since the page
+is what people use. The same scroll costs 20 to 30 seconds in Python: the reference
+implementation's vision is simply slower, and the seed search multiplies it. Worth
+knowing before anyone tries to batch-generate scrolls in Python.

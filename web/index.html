@@ -914,6 +914,9 @@ const SEEDS = 8, SEED_STEP = 7919;
 /* The root's angle is free too: the whole scroll turns about its socket, so leaning it
    a little costs nothing and gives a stubborn root somewhere else to stand. */
 const NUDGES = [0, 0.21, -0.21, 0.42, -0.42, 0.84, -0.84];
+/* Angles to re-lay the whole scroll at when a reply could not be placed readably.
+   Kept short: each one lays the scroll again, which is the expensive part. */
+const RELAY = [0.35, -0.35, 0.9, -0.9];
 
 function handFor(grid, amount, seed0, L){
   if (!(amount > 0)) return readsBack(grid, amount, seed0, L) ? seed0 : null;
@@ -934,31 +937,50 @@ function layScroll(spirals, tilt0, flip, tight, amount, seed){
          unreadable. The layout may not change its winding or its coil, those being
          the writer's, but its angle and its hand are nobody's. */
       place = { shift: [0, 0], L: layoutFor(sp.grid.ncols, tilt0, flip, tight),
-                seed: seed0 };
+                seed: seed0, verified: false };
       if (amount !== undefined){
         for (const dt of NUDGES){
           const L = layoutFor(sp.grid.ncols, tilt0 + dt, flip, tight);
           const got = handFor(sp.grid, amount, seed0, L);
-          if (got !== null){ place = { shift: [0, 0], L, seed: got }; break; }
+          if (got !== null){
+            place = { shift: [0, 0], L, seed: got, verified: true };
+            break;
+          }
         }
       }
     } else {
       const cands = chooseSpot(laid, sp.parent, sp.grid.ncols, flip, tight);
-      place = { ...cands[0], seed: seed0 };
+      place = { ...cands[0], seed: seed0, verified: false };
       if (amount !== undefined){
         for (const c of cands){
           const got = handFor(sp.grid, amount, seed0, c.L);
-          if (got !== null){ place = { ...c, seed: got }; break; }
+          if (got !== null){ place = { ...c, seed: got, verified: true }; break; }
         }
       }
     }
-    laid.push({ L: place.L, shift: place.shift, seed: place.seed, sp });
+    laid.push({ L: place.L, shift: place.shift, seed: place.seed,
+                verified: place.verified, sp });
   });
   return laid;
 }
 function renderScroll(spirals, amount, seed, flip, tight){
   const tilt0 = balanceTilt(spirals, flip, tight);
-  const placed = layScroll(spirals, tilt0, flip, tight, amount, seed);
+  let placed = layScroll(spirals, tilt0, flip, tight, amount, seed);
+  /* The root is settled first, on whether it reads, and the replies then fit around
+     whatever it did. If one of them could not find a placement that reads back it has
+     been shipped on hope, and the sheet it was given is the thing to change: lean the
+     root, write it in another hand, and everything downstream moves. This never fires
+     on fans, chains and trees of eight to ten spirals, so it is a retry rather than a
+     wider search up front -- it costs nothing where it is not needed. */
+  const done = a => a.every(p => p.verified);
+  const kept = a => a.filter(p => p.verified).length;
+  if (amount !== undefined && !done(placed)){
+    for (let k = 0; k < RELAY.length && !done(placed); k++){
+      const alt = layScroll(spirals, tilt0 + RELAY[k], flip, tight, amount,
+                            seed + (k + 1) * SEED_STEP);
+      if (kept(alt) > kept(placed)) placed = alt;
+    }
+  }
   const laid = [], groups = [];
   placed.forEach(place => {
     const sp = place.sp;
