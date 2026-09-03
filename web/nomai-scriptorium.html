@@ -136,6 +136,35 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
 .plate svg{max-width:100%;height:auto;display:block}
 .plate.empty{color:#8a7f6d;font-family:var(--serif);font-size:20px;font-style:italic}
 /* the conversation the drawing holds, one row per spiral */
+/* The wall the scrolls are kept in. Slots are triangles because the socket is: it
+   is the same fitting, seen from the front, and a scroll is what goes in one. The
+   rules are scoped to the rack because the socket drawn on the plate has a `slot`
+   of its own, and a polygon does not want a button's box. */
+.racknote{color:var(--text-faint);font-size:12.5px;max-width:62ch;margin:0}
+.rack{display:flex;flex-wrap:wrap;gap:10px;padding:14px;border-radius:4px;
+  background:linear-gradient(160deg,var(--rock-3),var(--rock-2));
+  border:1px solid var(--edge)}
+.rack .slot{position:relative;width:104px;flex:0 0 auto;background:none;border:0;
+  padding:0;cursor:pointer;color:inherit;text-align:center;font:inherit;
+  display:flex;flex-direction:column;align-items:center;gap:5px}
+.rack .slot svg{display:block;overflow:visible}
+.rack .housing{fill:#0c0f14;stroke:var(--slot-frame);stroke-width:5;
+  stroke-linejoin:round}
+.rack .key{fill:var(--slot);fill-opacity:.14;stroke:var(--slot-core);stroke-width:3;
+  stroke-linejoin:round;transition:transform .35s cubic-bezier(.2,.86,.3,1),
+  opacity .35s ease;transform-box:fill-box;transform-origin:center;
+  filter:drop-shadow(0 0 3px var(--slot-core)) drop-shadow(0 0 8px var(--slot))}
+.rack .slot:hover .key,.rack .slot:focus-visible .key{
+  transform:translateY(-5px) scale(1.05)}
+/* taking one down is putting one in, run backwards */
+.rack .slot.taken .key{transform:translateY(-26px) rotate(150deg) scale(1.5);
+  opacity:0}
+.rack .who{font-family:var(--mono);font-size:11px;font-style:normal;
+  color:var(--text-dim);line-height:1.3}
+.rack .where{font-size:10.5px;color:var(--text-faint);line-height:1.25}
+.rack .slot[disabled]{cursor:default}
+.rack .busy{align-self:center;color:var(--text-faint);font-size:13px;padding:0 6px}
+@media (prefers-reduced-motion: reduce){.rack .key{transition:none}}
 .thread{display:flex;flex-direction:column;gap:2px}
 .trow{display:flex;gap:10px;align-items:baseline;padding:7px 10px;border-radius:3px;
   background:var(--rock-2);border:1px solid var(--edge-soft)}
@@ -282,7 +311,12 @@ footer a{color:var(--text-dim)}
 </div>
 
 <div class="composer" id="read-pane" hidden>
-  <span class="label">Someone else's scroll</span>
+  <span class="label">From the wall</span>
+  <p class="racknote">Six scrolls the Nomai left in this star system, kept here the way a
+  wall keeps them. Take one down and read it; you can answer it afterwards, which is
+  what the walls were for.</p>
+  <div class="rack" id="rack"></div>
+  <span class="label">Or someone else's scroll</span>
   <label class="drop" id="drop" tabindex="0">
     <input type="file" id="file" accept=".svg,image/svg+xml" hidden>
     <span id="drop-text">Drop a Nomai SVG here, or click to choose one</span>
@@ -1999,6 +2033,56 @@ function readStrict(obs, base){
 /* ---- page ---- */
 const $ = id => document.getElementById(id);
 
+/* Six scrolls from the game, kept as the words rather than as drawings.
+
+   A drawing of one runs to most of a megabyte, and six of those would be a page ten
+   times its own size for no gain: this page already contains the whole writer, so it
+   can etch a scroll at the moment somebody takes it off the wall. Deterministic, so
+   the scroll everyone pulls out is the same scroll -- the same seed and the same
+   layout produce the same drawing every time.
+
+   Straight apostrophes throughout: the canon uses curly ones, which do not fit the
+   Latin alphabet, and everything else is verbatim. */
+const CANON = [
+  { where: "Eye Shrine District", who: "Solanum, as a child",
+    turns: [
+      ["I don't know why everyone says the Eye is important.", "Solanum", null],
+      ["They say it brought us to this solar system, but is that good?", "Solanum", 0],
+      ["What if the Eye wanted that to happen?", "Solanum", 1],
+      ["What if the Eye isn't something good?", "Solanum", 1]] },
+  { where: "Eye Shrine District", who: "a notice, unsigned",
+    turns: [
+      ["If the Eye called to us, why won't it reveal itself?", "", null],
+      ["Did something happen to it?", "", 0],
+      ["Does the Eye no longer desire to be found?", "", 0],
+      ["Perhaps this isn't the Eye's choice.", "", 2]] },
+  { where: "The Sun Station", who: "Pye and Idaea",
+    turns: [
+      ["Science compels us to explode the sun!", "Pye", null],
+      ["Can't we change this?", "Idaea", 0],
+      ["But it's accurate.", "Pye", 1],
+      ["Here's a better one.", "Idaea", 1],
+      ["You lack a sense of humour.", "Pye", 3]] },
+  { where: "Stepping Stone District", who: "the children",
+    turns: [
+      ["Are we playing the fossil fish game tonight?", "Taget", null],
+      ["I fed the fossil fish a new lantern.", "Solanum", 0],
+      ["I'm still small enough!", "Lami", 0],
+      ["You won't be for long.", "Laevi", 2]] },
+  { where: "The Quantum Moon", who: "Solanum, at the end",
+    turns: [
+      ["This encounter feels special.", "Solanum", null],
+      ["I hope you won't mind if I think of you as a friend.", "Solanum", 0],
+      ["I may not be entirely alive.", "Solanum", 1],
+      ["Perhaps my journey has reached its end.", "Solanum", 2]] },
+  { where: "Eye Shrine District", who: "the welcome",
+    turns: [
+      ["Be welcomed in this place.", "", null],
+      ["The source of the signal is older than the universe itself.", "", 0],
+      ["The rest, we have yet to learn.", "", 1],
+      ["Enter, and open your mind to its possibilities.", "", 2]] }
+];
+
 /* Chinese, keyed by the English rather than by invented names.
    Two reasons. Adding a translation is then one line and cannot drift out of sync
    with the string it translates, and the page needs no markup changes at all: the
@@ -2082,7 +2166,23 @@ const ZH = {
   "Download SVG": "\u4e0b\u8f7d SVG",
   "Could not save": "\u5b58\u4e0d\u4e0b\u6765",
   "Try again in a moment": "\u7a0d\u540e\u518d\u8bd5\u4e00\u6b21",
-  "Saved": "存好了"
+  "Saved": "存好了",
+  "From the wall": "从墙上取",
+  "Or someone else's scroll": "或者别人的卷轴",
+  "Six scrolls the Nomai left in this star system, kept here the way a wall keeps them. Take one down and read it; you can answer it afterwards, which is what the walls were for.":
+    "挪麦人留在这个星系里的六卷卷轴，像墙那样存放在这里。取一卷下来读读看；读完还可以回复它，卷轴墙本来就是这么用的。",
+  "etching it": "正在刻录",
+  "that scroll could not be etched": "这一卷刻不出来",
+  "Eye Shrine District": "宇宙之眼神殿区",
+  "The Sun Station": "太阳站",
+  "Stepping Stone District": "垫脚石区",
+  "The Quantum Moon": "量子卫星",
+  "Solanum, as a child": "索拉南，还是孩子的时候",
+  "a notice, unsigned": "一则告示，未署名",
+  "Pye and Idaea": "派伊与伊黛娅",
+  "the children": "孩子们",
+  "Solanum, at the end": "索拉南，在最后",
+  "the welcome": "迎客之辞"
 };
 let LANG = "en";
 /* The explanatory paragraphs are written out in both languages rather than looked up:
@@ -2896,7 +2996,12 @@ function setMode(m){
     state.seen = new Set(state.scroll.map((_, i) => i));
     build(false);
   }
-  else { empty("waiting for a drawing"); $("thread").hidden = true; idleTranslator(); }
+  else {
+    empty("waiting for a drawing");
+    $("thread").hidden = true;
+    paintRack();
+    idleTranslator();
+  }
 }
 $("m-write").onclick = () => setMode("write");
 $("m-read").onclick = () => setMode("read");
@@ -2978,6 +3083,67 @@ function readDrawing(text, name){
    still churns, and sweeps the drawing with light the whole time. */
 /* The reader shows its screen even with nothing in front of it, the way the tool
    in the game reads out that there is nothing to translate. */
+/* The wall of scrolls, and taking one down.
+
+   A slot is drawn as the socket is -- a dark triangular housing with a lit triangle
+   sitting in it -- because it is the same fitting seen from the front, and what goes
+   into one is a scroll. Pulling one out turns it, the way it turns going in. */
+function paintRack(){
+  const rack = $("rack");
+  if (!rack || rack.childElementCount) return;
+  const tri = r => [[0, 1], [-0.866, -0.5], [0.866, -0.5]]
+    .map(p => (p[0] * r).toFixed(1) + "," + (p[1] * r).toFixed(1)).join(" ");
+  rack.innerHTML = CANON.map((c, i) => `
+    <button class="slot" data-scroll="${i}">
+      <svg width="64" height="58" viewBox="-32 -29 64 58" aria-hidden="true">
+        <polygon class="housing" points="${tri(25)}"/>
+        <polygon class="key" points="${tri(17)}"/>
+      </svg>
+      <span class="who">${esc(c.who)}</span>
+      <span class="where">${esc(c.where)}</span>
+    </button>`).join("");
+  rack.querySelectorAll("[data-scroll]").forEach(b =>
+    b.onclick = () => takeDown(+b.dataset.scroll, b));
+}
+
+/* Etched here and now rather than shipped. A drawing of one of these runs to most of
+   a megabyte and the page already contains the whole writer, so the wall keeps the
+   words and the scriptorium does the writing. It is deterministic -- the same hand,
+   seed and coil every time -- so the scroll everyone pulls down is the same scroll. */
+function etchCanon(c){
+  const wide = c.turns.some(([msg, sig]) => Array.from(msg + (sig || ""))
+    .some(ch => ch.codePointAt(0) >= 256));
+  setBaseUI(wide ? 200000 : 256);
+  const spirals = c.turns.map(([text, sig, parent]) => ({ text, sig, parent }));
+  for (const sp of spirals){
+    const g = gridFor(sp.text, sp.sig || "", sp.parent);
+    if (typeof g === "string") return null;
+    sp.grid = g;
+  }
+  return renderScroll(spirals, 0.12, 47, 1, 0.29).svg;
+}
+
+function takeDown(i, btn){
+  const c = CANON[i];
+  const rack = $("rack");
+  rack.querySelectorAll(".slot").forEach(b => { b.disabled = true; });
+  btn.classList.add("taken");
+  const note = document.createElement("span");
+  note.className = "busy";
+  note.textContent = t("etching it");
+  rack.appendChild(note);
+  /* let the slot finish emptying before the writer takes the thread */
+  setTimeout(() => {
+    let svg = null;
+    try { svg = etchCanon(c); } catch (err){ svg = null; }
+    note.remove();
+    rack.querySelectorAll(".slot").forEach(b => { b.disabled = false; });
+    btn.classList.remove("taken");
+    if (!svg){ fail(t("that scroll could not be etched")); return; }
+    readDrawing(svg, c.where);
+  }, 380);
+}
+
 function idleTranslator(){
   $("readings").innerHTML = `<div class="translator">
     <div class="screen"><span class="line"><span class="idle">${esc(NOTHING)}</span></span></div>

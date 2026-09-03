@@ -132,6 +132,7 @@ python tools/check_shape.py          # tilt, winding, tightness: 72/72
 python tools/check_scroll.py         # conversations, written and read back: 24/24
 python tools/hunt_branching.py       # a wider net over shapes and settings: 72/72
 python tools/fuzz_roundtrip.py 29 900  # random text, drawn and read back: 844/900
+python tools/check_canon.py         # the six scrolls on the page's wall: 6/6
 ```
 
 Run them from PowerShell — Git Bash's cp1252 console cannot print the CJK in the

@@ -1130,3 +1130,37 @@ complaint was wrong. Ink never touched, the split was exact, the seed was fine. 
 time the person looking at it was right and the number was answering a different
 question. A metric that disagrees with someone looking at the thing is a hypothesis
 about which metric to build next.
+
+### A wall to take them off
+
+The canonical scrolls were sitting in `data/canon/` where nobody would find them, and
+a page that asks you to write something in Nomai is a page that first asks you what to
+write. So the reader now opens on a wall: six scrolls the game left in this star
+system, each in a slot you can click to pull down.
+
+A slot is drawn as the socket is -- a dark triangular housing with a lit triangle in
+it -- because it is the same fitting seen from the front, and what goes into one is a
+scroll. Taking one down runs the insertion animation backwards: the triangle turns and
+lifts out.
+
+The wall keeps the words, not the drawings. One of these scrolls is half a megabyte of
+SVG and six of them would be three and a half, on a page that is a hundred and sixty
+kilobytes and does the writing itself. So a scroll is etched at the moment somebody
+takes it down -- six tenths of a second to a second and a third in the browser -- and
+because the hand, the seed and the coil are fixed, everyone pulls the same scroll off
+the wall.
+
+`tools/check_canon.py` reads the list out of the page and puts all six through the
+Python writer and reader: six of six, texts, signatures, parents and the tree. The
+list has one copy, in the page, and the checker goes and gets it.
+
+Two things fell out of putting it there. The rack's rules were written unscoped, and
+`slot` is also the class on the socket polygon drawn over the plate -- a polygon does
+not want a button's box, so they are scoped to `.rack` now. And the paragraph above the
+wall borrowed `.hint`, which carries `flex:1 1 260px` for the row it was written for;
+in the composer's column that basis is a height, and the wall sat a quarter of a screen
+below its own heading.
+
+A scroll off the wall is one you can answer. That was already true of any scroll that
+reads completely -- the reader rebuilds `state.scroll` from what it read -- so the canon
+arrives as a conversation with a reply button on every line you have translated.
