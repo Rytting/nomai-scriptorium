@@ -141,6 +141,7 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
    rules are scoped to the rack because the socket drawn on the plate has a `slot`
    of its own, and a polygon does not want a button's box. */
 .racknote{color:var(--text-faint);font-size:12.5px;max-width:62ch;margin:0}
+#rack-open{align-self:flex-start}
 .rack{display:flex;flex-wrap:wrap;gap:10px;padding:14px;border-radius:4px;
   background:linear-gradient(160deg,var(--rock-3),var(--rock-2));
   border:1px solid var(--edge)}
@@ -270,9 +271,9 @@ footer a{color:var(--text-dim)}
 <header>
   <p class="label">Outer Wilds · procedural Nomai script</p>
   <h1 id="h1">Write something in <em>Nomai</em></h1>
-  <p class="sub">Your sentence becomes one enormous integer, and that integer is spent
-  answering the questions that decide each glyph, each row, each join. The spiral is
-  what the answers look like.</p>
+  <p class="sub">The spiral is not a Nomai-looking decoration with a message tucked
+  inside it. Your sentence is what draws it — every glyph, every row, every join is
+  the writing — and the drawing on its own is enough to read it back.</p>
 </header>
 
 <div class="whoami">
@@ -312,10 +313,10 @@ footer a{color:var(--text-dim)}
 
 <div class="composer" id="read-pane" hidden>
   <span class="label">From the wall</span>
-  <p class="racknote">Six scrolls the Nomai left in this star system, kept here the way a
-  wall keeps them. Take one down and read it; you can answer it afterwards, which is
-  what the walls were for.</p>
-  <div class="rack" id="rack"></div>
+  <p class="racknote"><b>Spoilers.</b> A few scrolls already etched, straight out of
+  the game. If you have not finished it, they are better met there first.</p>
+  <button class="btn" id="rack-open">Open the wall</button>
+  <div class="rack" id="rack" hidden></div>
   <span class="label">Or someone else's scroll</span>
   <label class="drop" id="drop" tabindex="0">
     <input type="file" id="file" accept=".svg,image/svg+xml" hidden>
@@ -2049,6 +2050,11 @@ const $ = id => document.getElementById(id);
    scroll onto the larger one and double its length for a piece of punctuation. */
 const CANON = [
   { where: "Eye Shrine District", who: "Solanum, as a child",
+    zh: [
+      ["我不明白为什么大家都说宇宙之眼很重要。", "所莱内姆", null],
+      ["他们说是它把我们带到这个星系来的，可那是好事吗？爸爸告诉我，我们氏族来这里的时候死了很多挪麦。", "所莱内姆", 0],
+      ["如果宇宙之眼就是想让那件事发生呢？", "所莱内姆", 1],
+      ["如果宇宙之眼并不是什么好东西呢？", "所莱内姆", 1]],
     turns: [
       ["I don't know why everyone says the Eye is important.", "Solanum", null],
       ["They say it brought us to this solar system, but is that good? Dad told me "
@@ -2056,6 +2062,11 @@ const CANON = [
       ["What if the Eye wanted that to happen?", "Solanum", 1],
       ["What if the Eye isn't something good?", "Solanum", 1]] },
   { where: "Eye Shrine District", who: "the welcome",
+    zh: [
+      ["欢迎来到此地。这座祭坛是用来回想我们为何来到这个星系的：宇宙之眼的信号。", "", null],
+      ["我们在旅途中观测到了宇宙之眼的信号，一路循着它来到这里，寻找它的源头。", "", 0],
+      ["我们所知道的只有这些：这个信号的源头（我们选择称它为宇宙之眼）比宇宙本身还要古老。其余的，我们尚未知晓。", "", 1],
+      ["进来吧，向它的种种可能敞开你的心。", "", 2]],
     turns: [
       ["Be welcomed in this place. This shrine is a space to reflect on what brought "
        + "us here to this star system: The signal from the Eye.", "", null],
@@ -2066,6 +2077,11 @@ const CANON = [
        + "have yet to learn.", "", 1],
       ["Enter, and open your mind to its possibilities.", "", 2]] },
   { where: "Eye Shrine District", who: "a notice, unsigned",
+    zh: [
+      ["如果宇宙之眼在呼唤我们，它为什么不肯现身？为什么这么难找到它？", "", null],
+      ["是不是它出了什么事？", "", 0],
+      ["是不是信号停了？宇宙之眼是不是已经不愿意被找到了？", "", 0],
+      ["也许这不是宇宙之眼能选择的。宇宙之眼也许没办法比现在告诉我们更多了。", "", 2]],
     turns: [
       ["If the Eye called to us, why won't it reveal itself? Why is it so difficult "
        + "to locate it?", "", null],
@@ -2076,6 +2092,15 @@ const CANON = [
       ["Perhaps this isn't the Eye's choice. The Eye may not be able to communicate "
        + "with us more than it already has.", "", 2]] },
   { where: "The Sun Station", who: "Pye and Idaea",
+    zh: [
+      ["任务：科学迫使我们炸毁太阳！", "派伊", null],
+      ["我们就不能改一改吗？对着这么阴森的任务说明工作，我不太享受。", "伊代亚", 0],
+      ["可它准确啊。我们就是要为了科学进步制造一场超新星。这就是我们的任务。", "派伊", 1],
+      ["我们的任务是判断这种不负责任的壮举究竟可不可行。", "伊代亚", 2],
+      ["我这儿有个更好的。任务：判定能否促使太阳爆炸。", "伊代亚", 1],
+      ["你缺乏幽默感。", "派伊", 4],
+      ["至少我不缺道德感！", "伊代亚", 5],
+      ["劳驾你别在太阳之前先对我超新星，伊代亚。", "派伊", 6]],
     turns: [
       ["Mission: Science compels us to explode the sun!", "Pye", null],
       ["Can't we change this? I don't enjoy working in view of such a morbid mission "
@@ -2091,6 +2116,12 @@ const CANON = [
       ["Kindly refrain from going supernova on me before the sun does, Idaea.",
        "Pye", 6]] },
   { where: "Stepping Stone District", who: "the children",
+    zh: [
+      ["我们今晚还玩化石鱼游戏吗？", "塔格特", null],
+      ["我给化石鱼喂了一盏新的灯笼。现在你们到垫脚石洞去，很容易就能看见化石鱼洞的入口了。", "所莱内姆", 0],
+      ["谢谢你，所莱内姆！还好你个子小，能从安康鱼瞭望台的洞钻过去。", "莱阿维", 1],
+      ["我现在也还钻得过去！", "拉米", 2],
+      ["过不了多久就不行了。妈妈和爸爸都很高，所以你和我以后也会很高。", "莱阿维", 3]],
     turns: [
       ["Are we playing the fossil fish game tonight?", "Taget", null],
       ["I fed the fossil fish a new lantern. If you go to the Stepping Stone Cave, "
@@ -2105,6 +2136,13 @@ const CANON = [
      from different topics stitched together. A wall of scrolls holds what was written
      down. This one is written down, by the same person, as a child at school. */
   { where: "School District", who: "Solanum's report",
+    zh: [
+      ["这个宇宙的形成", "所莱内姆", null],
+      ["没有人知道这个宇宙是怎么来的，但有一件事我们是知道的：所有东西以前都非常热、非常密（挤得紧紧的）。", "所莱内姆", 0],
+      ["这个早期的宇宙一边膨胀，一边冷了下来。等它冷得够多了，粒子就能聚在一起，形成星系、恒星和行星这样的东西！", "所莱内姆", 1],
+      ["从那以后，空间一直在越来越快地变大，这件事想起来会让脑袋疼。", "所莱内姆", 2],
+      ["这个宇宙会继续变得更冷、更大，直到有一天，恒星和靠它们活着的生命都会死去。", "所莱内姆", 3],
+      ["这想起来挺吓人的，虽然科诺伊跟我说这不会发生在我们这辈子。但总有一天会发生在别人身上！", "所莱内姆", 4]],
     turns: [
       ["Formation of This Universe", "Solanum", null],
       ["No one knows how this universe was made, but one thing we do know is "
@@ -2130,8 +2168,8 @@ const CANON = [
 const ZH = {
   "Outer Wilds \u00b7 procedural Nomai script": "\u300a\u661f\u9645\u62d3\u8352\u300b\u00b7 \u7a0b\u5e8f\u751f\u6210\u7684\u632a\u9ea6\u6587\u5b57",
   "Write something in": "\u5199\u70b9\u4ec0\u4e48\uff0c\u7528",
-  "Your sentence becomes one enormous integer, and that integer is spent answering the questions that decide each glyph, each row, each join. The spiral is what the answers look like.":
-    "\u4f60\u7684\u53e5\u5b50\u4f1a\u53d8\u6210\u4e00\u4e2a\u5de8\u5927\u7684\u6574\u6570\uff0c\u800c\u8fd9\u4e2a\u6574\u6570\u88ab\u82b1\u5728\u56de\u7b54\u4e00\u8fde\u4e32\u95ee\u9898\u4e0a\uff1a\u6bcf\u4e00\u4e2a\u5b57\u5f62\u3001\u6bcf\u4e00\u884c\u3001\u6bcf\u4e00\u6761\u8fde\u63a5\u3002\u87ba\u65cb\u5c31\u662f\u90a3\u4e9b\u7b54\u6848\u7684\u6837\u5b50\u3002",
+  "The spiral is not a Nomai-looking decoration with a message tucked inside it. Your sentence is what draws it — every glyph, every row, every join is the writing — and the drawing on its own is enough to read it back.":
+    "\u8fd9\u4e2a\u87ba\u65cb\u4e0d\u662f\u5148\u753b\u4e00\u4e2a\u50cf\u632a\u9ea6\u6587\u7684\u56fe\u6848\uff0c\u518d\u628a\u4fe1\u606f\u85cf\u8fdb\u53bb\u3002\u662f\u4f60\u7684\u53e5\u5b50\u5728\u753b\u5b83\u2014\u2014\u6bcf\u4e00\u4e2a\u5b57\u5f62\u3001\u6bcf\u4e00\u884c\u3001\u6bcf\u4e00\u6761\u8fde\u63a5\u90fd\u662f\u5b57\uff0c\u5149\u9760\u8fd9\u5f20\u56fe\u5c31\u80fd\u628a\u8bdd\u8bfb\u56de\u6765\u3002",
   "You are": "\u4f60\u662f",
   "nobody in particular": "\u65e0\u540d\u6c0f",
   "Write": "\u5199",
@@ -2211,6 +2249,10 @@ const ZH = {
      所莱内姆, 派伊, 伊代亚, 眼祭坛, 垫脚石区, 太阳站, 量子卫星 -- and 挪麦 without
      the 人, which is how that localisation writes it. */
   "From the wall": "从墙上取",
+  "Spoilers.": "剧透提醒。",
+  "A few scrolls already etched, straight out of the game. If you have not finished it, they are better met there first.":
+    "\u8fd9\u91cc\u6709\u4e00\u4e9b\u5df2\u7ecf\u523b\u5f55\u597d\u7684\u5377\u8f74\uff0c\u76f4\u63a5\u53d6\u81ea\u6e38\u620f\u3002\u5982\u679c\u4f60\u8fd8\u6ca1\u901a\u5173\uff0c\u8fd9\u4e9b\u5377\u8f74\u6700\u597d\u8fd8\u662f\u5728\u6e38\u620f\u91cc\u9047\u89c1\u3002",
+  "Open the wall": "\u6253\u5f00\u5377\u8f74\u5899",
   "Or someone else's scroll": "或者别人的卷轴",
   "Six scrolls the Nomai left in this star system, kept here the way a wall keeps them. Take one down and read it; you can answer it afterwards, which is what the walls were for.":
     "挪麦在这个星系里留下的六卷卷轴，像墙那样存放在这里。取一卷下来读读看；读完还可以回复它，卷轴墙本来就是这么用的。",
@@ -3151,9 +3193,20 @@ function readDrawing(text, name){
    A slot is drawn as the socket is -- a dark triangular housing with a lit triangle
    sitting in it -- because it is the same fitting seen from the front, and what goes
    into one is a scroll. Pulling one out turns it, the way it turns going in. */
+/* Nothing is on the wall until somebody says they want to see it: these are the
+   game's own words, and a page about how the writing works should not hand somebody
+   the ending on the way past. */
+function openWall(){
+  const rack = $("rack"), btn = $("rack-open");
+  if (!rack) return;
+  rack.hidden = false;
+  if (btn) btn.hidden = true;
+  paintRack();
+}
+
 function paintRack(){
   const rack = $("rack");
-  if (!rack || rack.childElementCount) return;
+  if (!rack || rack.hidden || rack.childElementCount) return;
   const tri = r => [[0, 1], [-0.866, -0.5], [0.866, -0.5]]
     .map(p => (p[0] * r).toFixed(1) + "," + (p[1] * r).toFixed(1)).join(" ");
   rack.innerHTML = CANON.map((c, i) => `
@@ -3177,10 +3230,16 @@ function paintRack(){
    words and the scriptorium does the writing. It is deterministic -- the same hand,
    seed and coil every time -- so the scroll everyone pulls down is the same scroll. */
 function etchCanon(c){
-  const wide = c.turns.some(([msg, sig]) => Array.from(msg + (sig || ""))
+  /* A scroll comes off the wall in the language the page is in. The words are ours,
+     not the game's Chinese release: the names in them are that release's -- 所莱内姆,
+     派伊, 伊代亚, 眼祭坛区 -- and the sentences around the names are a translation of
+     our own. Chinese needs the larger alphabet, and still draws a slightly smaller
+     scroll: three times fewer characters at twice the cost each. */
+  const turns = LANG === "zh" && c.zh ? c.zh : c.turns;
+  const wide = turns.some(([msg, sig]) => Array.from(msg + (sig || ""))
     .some(ch => ch.codePointAt(0) >= 256));
   setBaseUI(wide ? 200000 : 256);
-  const spirals = c.turns.map(([text, sig, parent]) => ({ text, sig, parent }));
+  const spirals = turns.map(([text, sig, parent]) => ({ text, sig, parent }));
   for (const sp of spirals){
     const g = gridFor(sp.text, sp.sig || "", sp.parent);
     if (typeof g === "string") return null;
@@ -3377,6 +3436,7 @@ function fail(msg){
        enough that a join can be misread.`,
       `\u901a\u5e38\u662f\u624b\u5199\u611f\u592a\u91cd\u2014\u2014\u8d85\u8fc7 0.15 \u5de6\u53f3\uff0c\u5f62\u72b6\u79fb\u52a8\u5f97\u591f\u8fdc\uff0c\u4e00\u6761\u8fde\u63a5\u5c31\u53ef\u80fd\u88ab\u8ba4\u9519\u3002`);
 }
+$("rack-open").onclick = openWall;
 const drop = $("drop");
 const takeFile = f => {
   if (!f) return;

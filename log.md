@@ -1225,3 +1225,35 @@ of "Mission: Science compels us to explode the sun!".
 and what it held was the abridged text -- the same mistake, in a file. Nothing links
 it, the wall etches the real thing on demand, and the check verifies that; the history
 still has it.
+
+### Saying what it is, and a door in front of the canon
+
+The blurb under the heading described the mechanism -- your sentence becomes an
+integer, the integer is spent answering questions -- which is true and is not the
+thing a first-time reader needs to know. What they need to know is that this is not a
+Nomai-looking spiral with a message tucked inside it. The sentence is what draws the
+spiral: every glyph, every row, every join is the writing, and the drawing on its own
+is enough to read it back. That is what it says now.
+
+And the wall is behind a door. These are the game's own walls, and a page about how
+the writing works should not hand somebody the ending on the way past. The rack is
+empty and hidden until a button says to open it; nothing is even painted before then.
+
+### The same walls in Chinese
+
+The page has been bilingual for a while and the scrolls were not, which meant a reader
+in Chinese got a wall of English to translate twice. Every wall now has a Chinese twin,
+and a scroll comes off the rack in the language the page is in.
+
+The words are ours. The game has an official Chinese release and the names in these
+come from it -- 所莱内姆, 派伊, 伊代亚, 眼祭坛区, 垫脚石洞, 安康鱼瞭望台 -- but the
+sentences around the names are our own translation, not that release's text.
+
+Chinese was expected to cost: it needs the larger alphabet, seventeen and a half bits
+a character against Latin's eight. It does not. A sentence is a third of the characters
+at twice the cost each, so the drawings came out *smaller* -- 0.8 to 1.8 MB against 0.9
+to 2.4 -- and the browser etches one in half to two thirds of the time. The longest
+wall went from three and a half seconds to two.
+
+`tools/check_canon.py` now runs every wall in both languages, 12 of 12, and the parser
+that lifts the list out of the page had to learn one more key.

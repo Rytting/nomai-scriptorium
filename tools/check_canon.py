@@ -35,9 +35,9 @@ def read_canon():
     block = re.search(r"const CANON = (\[.*?\n\]);", src, re.S).group(1)
     block = re.sub(r"/\*.*?\*/", "", block, flags=re.S)
     block = re.sub(r'"\s*\+\s*"', "", block)
-    block = re.sub(r"([{,]\s*)(where|who|turns)(\s*:)", r'\1"\2"\3', block)
+    block = re.sub(r"([{,]\s*)(where|who|turns|zh)(\s*:)", r'\1"\2"\3', block)
     got = json.loads(block)
-    assert all(set(c) == {"where", "who", "turns"} for c in got), got[0]
+    assert all(set(c) == {"where", "who", "turns", "zh"} for c in got), got[0]
     return got
 
 
@@ -45,8 +45,9 @@ CANON = read_canon()
 
 ok = bad = 0
 rows = []
-for c in CANON:
-    spec = [(t, s, p) for t, s, p in c["turns"]]
+# a wall comes off the rack in the language the page is in, so both are walls
+for c, lang in [(c, lang) for c in CANON for lang in ("en", "zh")]:
+    spec = [(t, s, p) for t, s, p in c["turns" if lang == "en" else "zh"]]
     base = 200000 if any(ord(ch) >= 256 for t, s, _ in spec for ch in t + s) else 256
     grids = [write(t, base, STRICT, s or None, p) for t, s, p in spec]
     spirals = [Spiral(g, p) for g, (_, _, p) in zip(grids, spec)]
@@ -68,10 +69,10 @@ for c in CANON:
     except Exception as exc:  # noqa: BLE001
         good, note = False, f"{type(exc).__name__}: {exc}"
     ok, bad = (ok + 1, bad) if good else (ok, bad + 1)
-    rows.append((c["who"], c["where"], len(spec), good, note))
+    rows.append((c["who"], lang, c["where"], len(spec), good, note))
 
 w = max(len(r[0]) for r in rows)
-for who, where, n, good, note in rows:
-    print(f"{who:<{w}}  {where:<24}  {n} spirals  "
+for who, lang, where, n, good, note in rows:
+    print(f"{who:<{w}}  {lang}  {where:<24}  {n} spirals  "
           + ("ok" if good else "FAIL " + note[:44]))
 print(f"\n{ok} ok, {bad} failed")
