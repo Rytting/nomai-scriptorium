@@ -66,9 +66,16 @@ spiral it answers, which is used to check the tree the geometry gives rather tha
 supply it.
 
 `python tools/check_scroll.py` round trips four conversation shapes across both
-windings and three tightnesses: 22 of 24. The two that fail are drawings that cannot
-be read at the winding and coil asked for, and are either the root -- whose winding and
-coil the layout is not free to change -- or a reply for which no placement helped.
+windings and three tightnesses: 24 of 24. `python tools/hunt_branching.py` throws a
+wider net -- six shapes against both windings, three coils and two handwriting
+levels -- and gets 72 of 72.
+
+What the layout may change to make a spiral readable, and what it may not: the hand
+(the jitter seed) is nobody's, so it is searched; the root's angle is nobody's either,
+since the whole scroll turns about its socket; a reply's place, side, coil and winding
+are the layout's to pick. The root's coil and winding belong to the writer, so if a
+drawing cannot be read at the ones asked for, the page says so rather than handing
+over something that will not come back.
 
 ## Handwriting
 
@@ -104,7 +111,8 @@ python tools/validate.py             # port, ask sequence, decoder: 12/12
 python tools/strict_roundtrip.py     # strict dialect round trip: 600/600
 python tools/batch_svg.py            # SVG in, text out, across the corpus
 python tools/check_shape.py          # tilt, winding, tightness: 72/72
-python tools/check_scroll.py         # conversations, written and read back: 22/24
+python tools/check_scroll.py         # conversations, written and read back: 24/24
+python tools/hunt_branching.py       # a wider net over shapes and settings: 72/72
 ```
 
 Run them from PowerShell — Git Bash's cp1252 console cannot print the CJK in the

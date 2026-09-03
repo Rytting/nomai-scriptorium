@@ -900,3 +900,45 @@ twelve of twelve and check_shape.py seventy-two of seventy-two.
 The two that still fail are a different thing: a drawing that cannot be read at the
 winding and coil asked for. The layout already retries a reply elsewhere and the page
 already warns when the root is one of them, so neither fails silently.
+
+## "Mixed luck with the branching"
+
+The author tried the page and said that. Not "broken" -- which is the shape of
+something that fails sometimes, so the hunt was a wide net rather than a bisect:
+six conversation shapes across both windings, three coils and two handwriting levels,
+recording for every failure whether the guilty spiral also fails on its own.
+
+Three guesses died on the way, which is worth writing down because each one looked
+obvious.
+
+*Two spirals are touching, so the split merges them.* No: in both failing scrolls the
+split returned exactly the right number of groups with exactly the right stroke counts.
+
+*The coordinates round differently once a spiral is shifted across the sheet.* No:
+`_fmt` rounds to six decimals absolutely, so shared points stay bit-identical wherever
+they sit.
+
+*It is the tilt.* No: the offending grids read at 36 of 36 tilts.
+
+It was **the handwriting seed**. Same grid, same layout, seed 249 unreadable and seed
+47 fine. And `reads_back` was checking with that one seed, so when it failed it failed
+for every candidate placement, and `_lay` silently kept the first one.
+
+The seed is free -- nobody can tell which hand a spiral was written in -- so it should
+have been searched all along, exactly like the nonce in `write`. Two more free
+variables were being wasted the same way: the root was never verified at all, though
+its angle is free because the whole scroll turns about its socket; and `choose_spot`
+returned the eight best placements, which for some grids were eight placements of the
+same winding, leaving a reply that only reads at the other one with nowhere to go.
+
+So: search the seed, verify the root and nudge its angle, and keep the best of every
+hand and coil in the shortlist. Scrolls went 22 -> **24 of 24**, the wide net 69 ->
+**72 of 72**, and the page 21 -> 23 of 24.
+
+The one the page still misses is honest and now provably so: that root reads at 0 of
+56 combinations of angle and hand at the winding and coil it was asked for, and reads
+immediately at the other winding. The writer chose those two, the layout may not
+overrule them, and the page already says when it has made one of these.
+
+A lone spiral was searching nothing at all, and was being warned about failures it
+need not have had. It searches its hand now too.

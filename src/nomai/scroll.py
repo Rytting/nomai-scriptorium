@@ -51,6 +51,7 @@ class Placement:
     shift: Point
     gap: float = 0.0
     spiral: Spiral | None = None
+    seed: int = 47
     elements: list = field(default_factory=list)
     drawn: dict = field(default_factory=dict)
 
@@ -61,6 +62,15 @@ class Placement:
 # and the fit recovers winding and tightness for each independently.
 SPOTS = (0.92, 0.78, 0.64, 0.5, 0.36, 0.22, 0.99, 0.1)
 REACH = (1.0, 1.5, 2.2, 3.2)
+# The hand a spiral is written in. Nobody can tell which one was used, so it is free
+# to change, and it turns out to matter: for a few grids one jitter pattern moves a
+# point far enough that the reader loses the drawing while the next pattern is fine.
+# Same bargain as the nonce search in `write` -- try until the output reads.
+SEEDS = 8
+SEED_STEP = 7919
+# The root's angle is free too: the whole scroll turns about its socket, so leaning it
+# a little costs nothing and gives a stubborn root somewhere else to stand.
+NUDGES = (0.0, 0.21, -0.21, 0.42, -0.42, 0.84, -0.84)
 PAY_FLIP, PAY_TIGHT = 0.1, 0.04
 WANT_ROOM = 6.0
 
@@ -142,7 +152,20 @@ def choose_spot(laid, parent_idx: int, grid, flip: int, tight: float):
                                  - 0.55 * pl.gap - 3 * below - pay * want)
                         ranked.append((score, pl))
     ranked.sort(key=lambda r: -r[0])
-    return [pl for _, pl in ranked[:8]]
+    # The shortlist has to be *varied*, not just good. Some grids cannot be read at one
+    # winding at all -- no seed, tilt or coil rescues them -- so a shortlist that
+    # happens to be eight placements of the same hand leaves such a reply nowhere to
+    # go, and it ships unreadable. Keeping the best of every hand and coil alongside
+    # the best overall guarantees the option is reachable when verification needs it.
+    out, seen = [], set()
+    for score, pl in ranked:
+        key = (pl.layout.flip, round(pl.layout.b, 3))
+        if len(out) < 8 or key not in seen:
+            out.append(pl)
+            seen.add(key)
+        if len(out) >= 14:
+            break
+    return out
 
 
 def _same_structure(a: Observation, b: Observation) -> bool:
@@ -172,20 +195,50 @@ def reads_back(grid, glyphs, handwriting: float, seed: int,
         return False
 
 
+def _hand(grid, glyphs, handwriting: float, seed0: int, layout: SpiralLayout):
+    """A seed this placement reads back at, or None if it never does.
+
+    A drawing with no jitter has only one hand to write in, so there is nothing to
+    search: it either reads or it does not.
+    """
+    if handwriting <= 0:
+        return seed0 if reads_back(grid, glyphs, handwriting, seed0, layout) else None
+    for k in range(SEEDS):
+        s = seed0 + k * SEED_STEP
+        if reads_back(grid, glyphs, handwriting, s, layout):
+            return s
+    return None
+
+
 def _lay(spirals, tilt0: float, flip: int, tight: float,
          glyphs=None, handwriting: float = 0.0, seed: int = 47, verify: bool = False):
     laid: list[Placement] = []
     for idx, sp in enumerate(spirals):
+        seed0 = seed + idx * 101
         if idx == 0:
+            # The root was never checked at all, which is how a whole scroll could come
+            # out unreadable: the layout may not change its winding or its coil, those
+            # being the writer's, but its angle and its hand are nobody's.
             place = Placement(SpiralLayout(sp.grid.ncols, tilt0, flip, tight), (0.0, 0.0))
+            place.seed = seed0
+            if verify:
+                for dt in NUDGES:
+                    cand = SpiralLayout(sp.grid.ncols, tilt0 + dt, flip, tight)
+                    got = _hand(sp.grid, glyphs, handwriting, seed0, cand)
+                    if got is not None:
+                        place = Placement(cand, (0.0, 0.0))
+                        place.seed = got
+                        break
         else:
             cands = choose_spot(laid, sp.parent, sp.grid, flip, tight)
             place = cands[0]
+            place.seed = seed0
             if verify:
                 for c in cands:
-                    if reads_back(sp.grid, glyphs, handwriting, seed + idx * 101,
-                                  c.layout):
+                    got = _hand(sp.grid, glyphs, handwriting, seed0, c.layout)
+                    if got is not None:
                         place = c
+                        place.seed = got
                         break
         place.spiral = sp
         laid.append(place)
@@ -234,9 +287,9 @@ def render_scroll(spirals, glyphs=None, handwriting: float = 0.0, seed: int = 47
         raise ValueError("a scroll needs at least one spiral")
     tilt0 = balance_tilt(spirals, flip, tight)
     laid = _lay(spirals, tilt0, flip, tight, glyphs, handwriting, seed, verify=True)
-    for idx, it in enumerate(laid):
+    for it in laid:
         it.elements, it.drawn = spiral_elements(
-            it.spiral.grid, glyphs, handwriting, seed + idx * 101, it.layout, it.shift
+            it.spiral.grid, glyphs, handwriting, it.seed, it.layout, it.shift
         )
 
     els: list[str] = []

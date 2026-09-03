@@ -595,6 +595,9 @@ function layoutFor(ncols, tilt, flip, tight){
     return 1 + (-1 + Math.sqrt(1 + 2 * delta * k * T)) / delta;
   };
   return {
+    /* the shape parameters, so a scroll can tell one placement's hand and coil from
+       another's when it shortlists them */
+    b, flip: f,
     ncols, box, fraction, slopeAt, colAt,
     /* the point the path winds into, in the same coordinates place() returns --
        what "away from the spiral" is measured against */
@@ -837,7 +840,18 @@ function chooseSpot(laid, parentIdx, ncols, flip, tight){
     ranked.push({ score, pl });
   }
   ranked.sort((a, b) => b.score - a.score);
-  return ranked.slice(0, 8).map(r => r.pl);
+  /* The shortlist has to be varied, not just good. Some grids cannot be read at one
+     winding at all -- no seed, tilt or coil rescues them -- so a shortlist that
+     happens to be eight placements of the same hand leaves such a reply nowhere to go
+     and it ships unreadable. Keeping the best of every hand and coil alongside the
+     best overall means the option is there when verification needs it. */
+  const out = [], seen = new Set();
+  for (const r of ranked){
+    const key = r.pl.L.flip + ":" + r.pl.L.b.toFixed(3);
+    if (out.length < 8 || !seen.has(key)){ out.push(r.pl); seen.add(key); }
+    if (out.length >= 14) break;
+  }
+  return out;
 }
 /* One spiral on its own, in the placement being considered -- what the reader will
    see once it cuts the scroll apart. */
@@ -892,20 +906,53 @@ function balanceTilt(spirals, flip, tight){
   if (!n2 || (sx === 0 && sy === 0)) return 0;
   return -Math.PI / 2 - Math.atan2(sy / n2, sx / n2);
 }
+/* The hand a spiral is written in. Nobody can tell which one was used, so it is free
+   to change, and it turns out to matter: for some grids one jitter pattern moves a
+   point far enough that the reader loses the drawing while the next pattern is fine.
+   Same bargain as the nonce search when writing -- try until the output reads. */
+const SEEDS = 8, SEED_STEP = 7919;
+/* The root's angle is free too: the whole scroll turns about its socket, so leaning it
+   a little costs nothing and gives a stubborn root somewhere else to stand. */
+const NUDGES = [0, 0.21, -0.21, 0.42, -0.42, 0.84, -0.84];
+
+function handFor(grid, amount, seed0, L){
+  if (!(amount > 0)) return readsBack(grid, amount, seed0, L) ? seed0 : null;
+  for (let k = 0; k < SEEDS; k++){
+    const s2 = seed0 + k * SEED_STEP;
+    if (readsBack(grid, amount, s2, L)) return s2;
+  }
+  return null;
+}
+
 function layScroll(spirals, tilt0, flip, tight, amount, seed){
   const laid = [];
   spirals.forEach((sp, idx) => {
+    const seed0 = seed + idx * 101;
     let place;
     if (idx === 0){
-      place = { shift: [0, 0], L: layoutFor(sp.grid.ncols, tilt0, flip, tight) };
+      /* The root was never checked at all, which is how a whole scroll could come out
+         unreadable. The layout may not change its winding or its coil, those being
+         the writer's, but its angle and its hand are nobody's. */
+      place = { shift: [0, 0], L: layoutFor(sp.grid.ncols, tilt0, flip, tight),
+                seed: seed0 };
+      if (amount !== undefined){
+        for (const dt of NUDGES){
+          const L = layoutFor(sp.grid.ncols, tilt0 + dt, flip, tight);
+          const got = handFor(sp.grid, amount, seed0, L);
+          if (got !== null){ place = { shift: [0, 0], L, seed: got }; break; }
+        }
+      }
     } else {
       const cands = chooseSpot(laid, sp.parent, sp.grid.ncols, flip, tight);
-      place = cands[0];
-      if (amount !== undefined)
-        place = cands.find(c => readsBack(sp.grid, amount, seed + idx * 101, c.L))
-             || cands[0];
+      place = { ...cands[0], seed: seed0 };
+      if (amount !== undefined){
+        for (const c of cands){
+          const got = handFor(sp.grid, amount, seed0, c.L);
+          if (got !== null){ place = { ...c, seed: got }; break; }
+        }
+      }
     }
-    laid.push({ L: place.L, shift: place.shift, sp });
+    laid.push({ L: place.L, shift: place.shift, seed: place.seed, sp });
   });
   return laid;
 }
@@ -913,9 +960,9 @@ function renderScroll(spirals, amount, seed, flip, tight){
   const tilt0 = balanceTilt(spirals, flip, tight);
   const placed = layScroll(spirals, tilt0, flip, tight, amount, seed);
   const laid = [], groups = [];
-  placed.forEach((place, idx) => {
+  placed.forEach(place => {
     const sp = place.sp;
-    const parts = spiralParts(sp.grid, amount, seed + idx * 101, place.L, place.shift);
+    const parts = spiralParts(sp.grid, amount, place.seed, place.L, place.shift);
     laid.push({ L: place.L, shift: place.shift, parts, sp });
   });
   /* every spiral first, then the joins, so a join is never hidden under a glyph */
@@ -1983,11 +2030,19 @@ function build(grow, growIdx){
     if (typeof g === "string"){ empty(g); return; }
     sp.grid = g;
   }
-  let L;
+  let L, hand = state.seed;
   if (sc.length === 1){
-    state.svg = renderSVG(sc[0].grid, state.hw, state.seed, state.tilt, state.flip,
-                          state.tight);
     L = layoutFor(sc[0].grid.ncols, state.tilt, state.flip, state.tight);
+    /* Which hand it is written in is nobody's business but the drawing's, and for
+       some grids one jitter pattern moves a point far enough that the reader loses
+       it while the next is fine. A scroll already searches this for every spiral;
+       a lone one was left out, and warned about failures it need not have had. */
+    if (state.dialect === "strict"){
+      const got = handFor(sc[0].grid, state.hw, state.seed, L);
+      if (got !== null) hand = got;
+    }
+    state.svg = renderSVG(sc[0].grid, state.hw, hand, state.tilt, state.flip,
+                          state.tight);
   } else {
     /* a scroll turns itself upright about its socket, so the tilt control steps
        aside -- there is nothing sensible for it to mean once replies are attached */
@@ -1999,7 +2054,7 @@ function build(grow, growIdx){
      winding and coil are the writer's own choice. So check it and say so, rather
      than handing over a drawing that quietly will not come back. */
   const shaky = state.dialect === "strict"
-    && !readsBack(sc[0].grid, state.hw, state.seed, L);
+    && !readsBack(sc[0].grid, state.hw, hand, L);
   state.track = trackFromLayout(L);
   state.socket = socketFor(state.track);
   beams(false);
