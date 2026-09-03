@@ -251,6 +251,9 @@ footer a{color:var(--text-dim)}
 .drop:hover,.drop.over{border-color:var(--ink-soft);color:var(--text)}
 .drop:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .reading.bad{border-left-color:var(--warn)}
+/* tight under the plate: the 28px the page puts between its blocks would read as
+   two separate things, and this is one -- a device held up to a wall */
+.tcell:not(:empty){margin-top:-19px;display:flex;flex-direction:column}
 .translator{display:flex;flex-direction:column;gap:12px}
 .screen{border:2px solid #cfd6dc;border-radius:6px;padding:20px 22px;min-height:104px;
   display:flex;align-items:center;justify-content:center;text-align:center;
@@ -346,6 +349,11 @@ footer a{color:var(--text-dim)}
   <div id="art"></div>
 </div>
 
+<!-- The translator lives here rather than down in the panel: it is a thing you
+     point at the wall, so it belongs against the wall, and everything it produces --
+     the lines it recovers, then the numbers -- reads downwards from under it. -->
+<div class="tcell" id="tcell"></div>
+
 <div class="thread" id="thread" hidden></div>
 
 <div class="panel">
@@ -394,9 +402,9 @@ footer a{color:var(--text-dim)}
     </div>
   </div>
 
-  <div class="stats" id="stats"></div>
-
   <div class="readings" id="readings"></div>
+
+  <div class="stats" id="stats"></div>
 
   <div class="actions" id="write-actions">
     <button class="btn primary" id="write">Write it</button>
@@ -3151,6 +3159,8 @@ function setMode(m){
   $("write-actions").hidden = m !== "write";
   $("write-controls").hidden = m !== "write";
   if (m === "write"){
+    /* nothing to point at a drawing you are writing */
+    $("tcell").innerHTML = "";
     state.seen = new Set(state.scroll.map((_, i) => i));
     build(false);
   }
@@ -3323,7 +3333,7 @@ function takeDown(i, btn){
 }
 
 function idleTranslator(){
-  $("readings").innerHTML = `<div class="translator">
+  $("tcell").innerHTML = `<div class="translator">
     <div class="screen"><span class="line"><span class="idle">${esc(NOTHING)}</span></span></div>
     <div class="tbar"><i></i></div>
     <button class="btn hold" disabled>${t("Hold to translate")}</button>
@@ -3393,7 +3403,7 @@ function paintTranslator(){
 }
 
 function translator(){
-  $("readings").innerHTML = `<div class="translator">
+  $("tcell").innerHTML = `<div class="translator">
     <div class="screen"><span class="line" id="line"></span></div>
     <div class="tbar"><i id="tfill"></i></div>
     <button class="btn hold" id="translate" aria-pressed="false">${t("Hold to translate")}</button>

@@ -1362,3 +1362,22 @@ line in the larger alphabet would have drawn it half as long again for nothing.
 `setSigned` grew a second argument on the way. Pressing **Signed** should put the
 caret in the name box; setting the opening line should not, and a page that takes the
 caret on load is rude.
+
+### The translator belongs against the wall
+
+It had been living in the settings panel, which put the stats table between it and the
+drawing: you held the thing up to a wall that was two blocks further up the page. It is
+a device you point at a wall, so it sits under the wall now, eight pixels down instead
+of the twenty-eight the page puts between separate things -- because this is not a
+separate thing.
+
+Everything it produces reads downwards from under the button, in the order it arrives:
+the lines it recovers, then the conversation they turn out to be, then the numbers.
+The stats table went last. It is the least urgent thing on the page and it had been
+first.
+
+The translator now renders into its own cell between the plate and the thread rather
+than into `#readings`, which is what let the two separate -- the notes it appends
+after a scroll is finished still go to `#readings`, below. The one thing this
+introduced is a cell that must be emptied when the mode changes, because writing a
+drawing is not something you point a translator at, and nothing else was clearing it.
