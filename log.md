@@ -1043,3 +1043,43 @@ should not have to give up the first to carry the second. Each ink has a lit twi
 -- the same hue with the lamp on behind it -- so an unread spiral of yours is bright
 violet and an unread one of theirs is bright orange, and reading either only puts the
 light out.
+
+## Replies were being pulled into the coil
+
+Reported from looking at it: replies attach from the inside and tangle with the parent.
+Two measurements were needed before any of that could be fixed, and the first one said
+the complaint was wrong, which it was not.
+
+`tools/check_overlap.py` measures the closest pair of drawn points between different
+spirals. Across thirty scrolls the ink never met -- the nearest was 99 units, two and a
+half glyph widths. So nothing *collides*. What was actually happening is that a reply
+threads between the parent's turns without touching anything, which measures clear and
+looks tangled.
+
+The second measurement found it. Counting where accepted placements attached:
+
+    0.36  ####################### 23
+    0.1   ################# 17
+    0.92  #### 4
+    0.99  #### 4
+
+`choose_spot`'s own comment says it walks the outer end inward, "the turns are furthest
+apart out there". The code was doing the opposite, and the reason is a unit. The
+distance charge was `0.55 * gap` in raw units, and `gap` scales with the local size of
+the parent -- half as large at the inner end, where the band is half as wide. So
+standing off at the inner end cost half as much, and the search quietly preferred the
+middle of the coil every time.
+
+Charging in band widths instead (`gap / scale`) removes the bias; an explicit pull
+toward the outer end makes the code do what the comment promised. Attaching on the
+inward normal is charged for outright now rather than being a free choice -- nothing
+has to touch for that to look wrong.
+
+Afterwards: attachment concentrates at the outer end (21 at 0.99, 10 at 0.92, 13 at
+0.78 out of 72), and no placement chose the inward side at all.
+
+That change on its own made one scroll in thirty bring ink within a glyph width, since
+crowding the outer end is crowding. So a placement whose glyph origins come closer than
+four times `K * MAX_SCALE` is now disqualified rather than merely marked down -- a
+figure taken from the measurement above, not guessed. Back to none in thirty, with the
+round trips unchanged at 24 of 24 and the page at 23 of 24.

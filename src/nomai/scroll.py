@@ -50,6 +50,8 @@ class Placement:
     layout: SpiralLayout
     shift: Point
     gap: float = 0.0
+    # the local scale where this hangs, so distance can be charged in band widths
+    reach_scale: float = 1.0
     spiral: Spiral | None = None
     seed: int = 47
     # whether this placement was checked and came back; False means it was the best
@@ -78,7 +80,16 @@ NUDGES = (0.0, 0.21, -0.21, 0.42, -0.42, 0.84, -0.84)
 # Kept short: each one lays the scroll again, which is the expensive part.
 RELAY = (0.35, -0.35, 0.9, -0.9)
 PAY_FLIP, PAY_TIGHT = 0.1, 0.04
+# Attaching on the inward normal grows a reply into the parent's own coil. Nothing has
+# to touch for that to look tangled, so it is a last resort rather than a choice.
+PAY_INWARD = 0.9
+# How strongly the outer end is preferred, in units of `want`.
+OUTER_PULL = 0.5
 WANT_ROOM = 6.0
+# Below this the ink of two spirals starts to meet, whatever the score says. Measured
+# rather than guessed: across thirty scrolls, glyph origins that far apart left about
+# eighty units between the nearest drawn points, which is two glyph widths.
+TOO_CLOSE = 4.0
 
 
 def _tights(b: float) -> list[float]:
@@ -105,7 +116,9 @@ def attach(parent: Placement, t: float, side: int, reach: float,
     # The child's tail tangent must point back at the parent. `tilt` adds straight to
     # that angle -- it is pi/2 at tilt 0 -- so the whole placement is one translation.
     tilt = math.atan2(-ny, -nx) - math.pi / 2
-    return Placement(SpiralLayout(child_ncols, tilt, flip, tight), at, gap)
+    place = Placement(SpiralLayout(child_ncols, tilt, flip, tight), at, gap)
+    place.reach_scale = p["scale"]
+    return place
 
 
 def centres(grid, layout: SpiralLayout, shift: Point) -> list[Point]:
@@ -154,8 +167,21 @@ def choose_spot(laid, parent_idx: int, grid, flip: int, tight: float):
                         below = max(0.0, max(q[1] for q in pts))
                         pay = (PAY_FLIP if fl != flip else 0.0) \
                             + (PAY_TIGHT if tw != tight else 0.0)
-                        score = (min(clearance(pts, taken), want)
-                                 - 0.55 * pl.gap - 3 * below - pay * want)
+                        if side < 0:
+                            pay += PAY_INWARD
+                        # Charge for standing off in band widths, not raw units. The
+                        # band is half as wide at the inner end, so a plain distance
+                        # charge is half as expensive there, and the search was being
+                        # pulled quietly into the middle of the parent's coil -- the
+                        # opposite of what the comment above claims. Prefer the outer
+                        # end outright too, since that is where the room is.
+                        room = clearance(pts, taken)
+                        score = (min(room, want)
+                                 - 0.55 * pl.gap / pl.reach_scale
+                                 + OUTER_PULL * want * t
+                                 - 3 * below - pay * want)
+                        if room < TOO_CLOSE * K * MAX_SCALE:
+                            score -= 50 * want      # not a placement, whatever else
                         ranked.append((score, pl))
     ranked.sort(key=lambda r: -r[0])
     # The shortlist has to be *varied*, not just good. Some grids cannot be read at one

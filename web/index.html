@@ -796,7 +796,9 @@ function attach(parentL, parentShift, t, side, reach, flip, tight, childNcols){
   /* The child's tail tangent must point back at the parent. tilt adds straight to
      that angle -- it is pi/2 at tilt 0 -- so the whole placement is one translation. */
   const tilt = Math.atan2(-ny, -nx) - Math.PI / 2;
-  return { shift: at, gap, L: layoutFor(childNcols, tilt, flip, tight) };
+  /* the local scale where this hangs, so a distance can be charged in band widths */
+  return { shift: at, gap, reachScale: p.scale,
+           L: layoutFor(childNcols, tilt, flip, tight) };
 }
 /* Every glyph's origin, which is enough to tell whether two spirals are on top of
    each other without walking every drawn vertex. */
@@ -834,6 +836,15 @@ const REACH = [1, 1.5, 2.2, 3.2];
    coiled to different degrees, and that is what it should look like. The charge is
    there to keep a change from being arbitrary, not to keep the scroll uniform. */
 const PAY_FLIP = 0.1, PAY_TIGHT = 0.04;
+/* Attaching on the inward normal grows a reply into the parent's own coil. Nothing
+   has to touch for that to look tangled, so it is a last resort, not a choice. */
+const PAY_INWARD = 0.9;
+/* How strongly the outer end is preferred, in units of `want`. */
+const OUTER_PULL = 0.5;
+/* Below this the ink of two spirals starts to meet, whatever the score says. Measured
+   rather than guessed: across thirty scrolls, glyph origins this far apart left about
+   eighty units between the nearest drawn points. */
+const TOO_CLOSE = 4;
 let WANT_ROOM = 6;
 const tights = b => [b, Math.min(0.6, b * 1.4), Math.max(0.15, b * 0.72)]
   .filter((v, i, a) => a.indexOf(v) === i);
@@ -857,9 +868,16 @@ function chooseSpot(laid, parentIdx, ncols, flip, tight){
        snugly was flung to the far end of the sheet on a long tether. Capping the
        reward at `want` and charging for the distance means a reply only stands off
        as far as it actually has to. */
-    const pay = (fl !== flip ? PAY_FLIP : 0) + (tw !== tight ? PAY_TIGHT : 0);
-    const score = Math.min(clearance(pts, taken), want)
-                - 0.55 * pl.gap - 3 * below - pay * want;
+    const pay = (fl !== flip ? PAY_FLIP : 0) + (tw !== tight ? PAY_TIGHT : 0)
+              + (side < 0 ? PAY_INWARD : 0);
+    /* Charge for standing off in band widths, not raw units: the band is half as wide
+       at the inner end, so a plain distance charge is half as expensive there and the
+       search was being pulled quietly into the middle of the parent's coil. Prefer
+       the outer end outright too, since that is where the room is. */
+    const room = clearance(pts, taken);
+    let score = Math.min(room, want) - 0.55 * pl.gap / pl.reachScale
+              + OUTER_PULL * want * t - 3 * below - pay * want;
+    if (room < TOO_CLOSE * K * MAX_SCALE) score -= 50 * want;
     ranked.push({ score, pl });
   }
   ranked.sort((a, b) => b.score - a.score);
