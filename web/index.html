@@ -11,6 +11,7 @@
   --ok:#4f9d69; --warn:#c9973f; --off:#6d7c8d;
   --beam:#6ef2c0; --beam-deep:#0d9c78; --beam-core:#f0fff9; --screen-1:#0c3038; --screen-2:#061c23; --screen-ink:#8ff0d4;
   --slot:#8f86ff; --slot-core:#e6e2ff; --slot-frame:#3a3550;
+  --unread:#2fd6a6;
   --ink-none:#104e8b; --ink-mine:#5c47b8; --ink-theirs:#c26610;
   --sans:'Archivo',system-ui,sans-serif;
   --serif:'Instrument Serif',Georgia,'Songti SC','Noto Serif CJK SC',
@@ -100,6 +101,13 @@ svg.beams.on{opacity:1}
    empty slot; the bright triangle is the scroll, and it turns as it goes in. */
 svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
   pointer-events:none;overflow:visible}
+/* A spiral you have not translated yet is lit, the way an unread message is. Reading
+   it puts it out. */
+#art g[data-spiral].unread path[stroke-width]{stroke:var(--unread)}
+#art g[data-spiral].unread path:not([stroke-width]){fill:var(--unread)}
+#art g[data-spiral].unread{filter:drop-shadow(0 0 5px var(--unread))}
+#art g[data-spiral]{transition:opacity .3s ease}
+#art g[data-spiral][hidden]{display:none}
 .socket polygon{transform-box:fill-box;transform-origin:center}
 .socket .housing{fill:none;stroke:var(--slot-frame);stroke-width:9;opacity:.5;
   stroke-linejoin:round}
@@ -1011,7 +1019,7 @@ function renderScroll(spirals, amount, seed, flip, tight){
     const np = nearestPair(theirs, mine);
     joins.push(joinLine(np.p, np.q));
   });
-  groups.push('<g data-joins="1">' + joins.join("") + "</g>");
+  joins.forEach((j, k) => groups.push('<g data-join="' + k + '">' + j + "</g>"));
   /* one box round the lot, still with the root's socket at the bottom middle */
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
   for (const it of laid) for (const pts of it.parts.drawnAt.values()) for (const p of pts){
@@ -1549,6 +1557,67 @@ function socketFor(track){
   const p = track.at(1), R = SOCKET_R * K * p.scale;
   return { cx: p.x, cy: p.y + R * 0.5, R: R };
 }
+/* A drawing that came from somewhere else has no groups in it -- the Python side
+   emits a flat list of paths, and so did we until recently -- so the reader's own
+   split is used to put them back. Once each spiral owns a <g>, everything else here
+   (the ink, the glow, hiding, growing) addresses a scroll the same way whoever drew
+   it wrote it out. */
+function groupDrawing(where, joinAt){
+  const art = $("art");
+  const base = art.querySelector("svg:not(.beams):not(.socket-layer)");
+  /* a drawing that already names its spirals and its joins is left as it is */
+  if (!base || (base.querySelector("g[data-spiral]") && base.querySelector("g[data-join]")))
+    return;
+  const paths = [...base.querySelectorAll("path")];
+  where.forEach((idxs, i) => {
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("data-spiral", i);
+    base.appendChild(g);
+    for (const k of idxs) if (paths[k]) g.appendChild(paths[k]);
+  });
+  joinAt.forEach((parts, k) => {
+    const gj = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    gj.setAttribute("data-join", k);
+    base.appendChild(gj);
+    for (const p of parts) if (paths[p]) gj.appendChild(paths[p]);
+  });
+}
+
+/* Reading a wall is not being handed the whole wall. Only the root is there when a
+   scroll arrives; a reply appears when the spiral it answers has been translated,
+   which is how the conversation actually unfolds for whoever finds it. */
+function revealable(i){
+  const p = state.parents ? state.parents[i] : null;
+  return p === null || p === undefined || state.seen.has(p);
+}
+function paintReveal(grow){
+  const art = $("art");
+  const gs = [...art.querySelectorAll("g[data-spiral]")];
+  gs.forEach((g, i) => {
+    const on = revealable(i);
+    const was = !g.hidden;
+    g.hidden = !on;
+    g.classList.toggle("unread", on && !state.seen.has(i));
+    if (on && !was && grow){
+      const turns = [...g.querySelectorAll("g[data-turn]")];
+      if (turns.length){
+        turns.forEach(x => x.classList.remove("lit"));
+        turns.sort((a, b) => +b.dataset.turn - +a.dataset.turn);
+        const step = Math.min(85, 900 / turns.length);
+        turns.forEach((x, k) => setTimeout(() => x.classList.add("lit"), k * step));
+      } else {
+        g.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, easing: "ease-out" });
+      }
+    }
+  });
+  /* a join arrives with the reply it holds: it means nothing until both of its ends
+     are on the wall, and it should not be a line pointing at nothing */
+  art.querySelectorAll("[data-join]").forEach(jg => {
+    const e = state.edges && state.edges[+jg.dataset.join];
+    jg.hidden = !e || !gs[e[0]] || !gs[e[1]] || gs[e[0]].hidden || gs[e[1]].hidden;
+  });
+}
+
 /* Mounted separately from the drawing, because a spiral we read arrives on the
    plate before it has been analysed and the socket is not known until the fit is. */
 function mountSocket(){
@@ -1601,6 +1670,9 @@ function paintThread(){
   sc.forEach((sp, k) => { if (sp.parent != null) depth[k] = depth[sp.parent] + 1; });
   box.hidden = false;
   box.innerHTML = sc.map((sp, k) => {
+    /* A row for a spiral that is not on the wall yet would give away how many replies
+       are coming, which is the one thing the reveal is for. */
+    if (state.mode === "read" && !revealable(k)) return "";
     /* per row, not per scroll: in a conversation you translate one spiral at a time,
        so some rows are open while their neighbours are still churning */
     const open = state.seen.has(k);
@@ -1897,6 +1969,7 @@ function readDrawing(text, name){
   const parents = firsts.map(r => r && r.parent !== undefined ? r.parent : null);
   const tree = firsts.every(Boolean) && scroll.spirals.length > 1
     ? checkTree(scroll.edges, parents, firsts.length) : null;
+  /* drawn as one piece again once everything has been read */
   $("stats").innerHTML = [
     scroll.spirals.length > 1 ? ["spirals", scroll.spirals.length] : null,
     ["glyphs", scroll.spirals.reduce((a, o) => a + o[0].glyphs.size, 0)],
@@ -1926,6 +1999,11 @@ function readDrawing(text, name){
   }
   state.seen = new Set();
   state.sel = 0;
+  state.parents = firsts.every(Boolean) ? parents : firsts.map(() => null);
+  state.edges = scroll.edges;
+  groupDrawing(scroll.where, scroll.joinAt);
+  applyInk(firsts.map(r => (r && r.sig) || ""));
+  paintReveal(false);
   paintThread();
   state.pending = { per, name, tree, obs: scroll.spirals };
   translator();
@@ -1958,6 +2036,7 @@ let tprog = 0, thold = false, traf = null, tlast = 0;
 
 function selectSpiral(i){
   if (!state.pending || !state.pending.per[i]) return;
+  if (!revealable(i)) return;      /* not found yet, so not something to point at */
   state.sel = i;
   tprog = 0; thold = false;
   if (traf){ cancelAnimationFrame(traf); traf = null; }
@@ -1991,7 +2070,7 @@ function paintTranslator(){
   if (!line) return;
   line.parentElement.classList.toggle("many", per.length > 1);
   line.innerHTML = per.map((_, i) => screenLine(i)).join("<br>");
-  const left = per.filter((_, i) => !state.seen.has(i)).length;
+  const left = per.filter((_, i) => !state.seen.has(i) && revealable(i)).length;
   btn.disabled = !left;
   btn.textContent = !left ? t("All translated")
     : per.length > 1
@@ -2033,8 +2112,10 @@ function translator(){
     btn.setAttribute("aria-pressed", "false");
     beams("idle");
     state.seen.add(state.sel);
-    /* move on to the next one that has not been read, so holding again just works */
-    const next = state.pending.per.findIndex((_, i) => !state.seen.has(i));
+    /* whatever answered it can now appear, and it grows the way it was written */
+    paintReveal(true);
+    /* move on to the next one that is on the wall and still unread */
+    const next = state.pending.per.findIndex((_, i) => !state.seen.has(i) && revealable(i));
     paintThread();
     if (next >= 0) selectSpiral(next); else { paintTranslator(); done(); }
   }

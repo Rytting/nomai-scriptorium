@@ -137,8 +137,11 @@ function spikeResidual(bodyStrokes, stroke){
 function parseSVG(text){
   const strokes = [], dots = [];
   const re = /<path([^>]*)>/g;
-  let m;
+  let m, at = -1;
   while ((m = re.exec(text)) !== null){
+    /* which <path> this was, counting every one so the number lines up with
+       querySelectorAll("path") on the drawing once it is in the document */
+    at++;
     const attrs = m[1];
     const d = /[\s;"]d="([^"]*)"/.exec(attrs);
     if (!d) continue;
@@ -153,8 +156,10 @@ function parseSVG(text){
     if (!pts.length) continue;
     if (!/stroke-width/.test(attrs)){
       const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
-      dots.push([(Math.min(...xs) + Math.max(...xs)) / 2,
-                 (Math.min(...ys) + Math.max(...ys)) / 2]);
+      const dot = [(Math.min(...xs) + Math.max(...xs)) / 2,
+                   (Math.min(...ys) + Math.max(...ys)) / 2];
+      dot.at = at;
+      dots.push(dot);
       continue;
     }
     let closed = /[Zz]/.test(body);
@@ -162,7 +167,7 @@ function parseSVG(text){
     if (closed && p.length > 1 &&
         Math.abs(p[0][0] - p[p.length - 1][0]) < 1e-6 &&
         Math.abs(p[0][1] - p[p.length - 1][1]) < 1e-6) p = p.slice(0, -1);
-    strokes.push({ pts: p, closed });
+    strokes.push({ pts: p, closed, at });
   }
   return { strokes, dots };
 }
@@ -218,7 +223,28 @@ function splitScroll(strokes, dots){
      numbering the parent indices are written against. */
   const out = (big.length ? big : [...groups.values()]).sort((a, b) => a.first - b.first);
   const joins = [...beaded].map(i => strokes[i]);
-  return { groups: out.map(g => g.strokes), joins };
+
+  /* Which <path> elements each spiral owns, so the drawing on screen can be taken
+     apart the same way the strokes were. A dot belongs to whichever spiral has a
+     vertex under it -- exact, since that is where dots are put. */
+  const home = new Map();
+  out.forEach((g, i) => { for (const st of g.strokes) for (const p of st.pts) home.set(pkey(p), i); });
+  const where = out.map(g => g.strokes.map(st => st.at));
+  /* A join is a line and the bead on it, kept together so the pair can be shown or
+     hidden as the one thing it is. */
+  const joinAt = joins.map(st => [st.at]);
+  for (const d of dots){
+    const i = home.get(pkey(d));
+    if (i !== undefined){ where[i].push(d.at); continue; }
+    let best = -1, bd = Infinity;
+    joins.forEach((st, k) => {
+      const mx = (st.pts[0][0] + st.pts[1][0]) / 2, my = (st.pts[0][1] + st.pts[1][1]) / 2;
+      const q = (mx - d[0]) ** 2 + (my - d[1]) ** 2;
+      if (q < bd){ bd = q; best = k; }
+    });
+    if (best >= 0) joinAt[best].push(d.at);
+  }
+  return { groups: out.map(g => g.strokes), joins, where, joinAt };
 }
 
 /* ---------- clustering, and telling spikes from connections ---------- */
@@ -696,18 +722,21 @@ function analyzeScroll(svgText){
   const { strokes, dots } = parseSVG(svgText);
   if (strokes.length < 2) throw new Error("no Nomai strokes found in that file");
   const { groups, joins } = splitScroll(strokes, dots);
+  const split = splitScroll(strokes, dots);
   return { spirals: groups.map(observeAll), joins, groups,
-           edges: joinEdges(groups, joins) };
+           edges: joinEdges(groups, joins), where: split.where, joinAt: split.joinAt };
 }
 /* Which two spirals each join actually holds together. Its endpoints sit on glyph
    vertices, bit-identically, so this is a lookup and not a nearest-neighbour guess. */
 function joinEdges(groups, joins){
   const owner = new Map();
   groups.forEach((g, i) => { for (const st of g) for (const p of st.pts) owner.set(pkey(p), i); });
+  /* one entry per join, in the same order, so join k's two ends are edges[k] --
+     a null where a join's end landed on nothing */
   const edges = [];
   for (const j of joins){
     const a = owner.get(pkey(j.pts[0])), b = owner.get(pkey(j.pts[1]));
-    if (a !== undefined && b !== undefined && a !== b) edges.push([a, b]);
+    edges.push(a !== undefined && b !== undefined && a !== b ? [a, b] : null);
   }
   return edges;
 }
@@ -715,7 +744,9 @@ function joinEdges(groups, joins){
    `parents` comes from frame 3, one entry per spiral, null for a root. */
 function checkTree(edges, parents, count){
   const adj = new Map();
-  for (const [a, b] of edges){
+  for (const e of edges){
+    if (!e) continue;
+    const [a, b] = e;
     if (!adj.has(a)) adj.set(a, []); if (!adj.has(b)) adj.set(b, []);
     adj.get(a).push(b); adj.get(b).push(a);
   }

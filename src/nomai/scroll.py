@@ -287,6 +287,9 @@ def join_svg(p: Point, q: Point) -> list[str]:
             _dot(((p[0] + q[0]) / 2, (p[1] + q[1]) / 2))]
 
 
+NL = chr(10)
+
+
 def render_scroll(spirals, glyphs=None, handwriting: float = 0.0, seed: int = 47,
                   flip: int = 1, tight: float = SPIRAL_B) -> str:
     """A list of Spirals -> one SVG holding the whole conversation."""
@@ -315,10 +318,13 @@ def render_scroll(spirals, glyphs=None, handwriting: float = 0.0, seed: int = 47
             it.spiral.grid, glyphs, handwriting, it.seed, it.layout, it.shift
         )
 
+    # Grouped by spiral, and every join named, so a reader can put one spiral on the
+    # wall without the rest of them -- which is how a conversation is actually found.
     els: list[str] = []
-    for it in laid:
-        els.extend(it.elements)
+    for idx, it in enumerate(laid):
+        els.append(f'<g data-spiral="{idx}">' + NL.join(it.elements) + "</g>")
     # the joins last, so one is never hidden under a glyph
+    k = 0
     for idx, it in enumerate(laid):
         if idx == 0:
             continue
@@ -326,7 +332,8 @@ def render_scroll(spirals, glyphs=None, handwriting: float = 0.0, seed: int = 47
         mine = [p for v in it.drawn.values() for p in v]
         theirs = [p for v in par.drawn.values() for p in v]
         _, a, b = _nearest_pair(theirs, mine)
-        els.extend(join_svg(a, b))
+        els.append(f'<g data-join="{k}">' + NL.join(join_svg(a, b)) + "</g>")
+        k += 1
 
     xs = [p[0] for it in laid for v in it.drawn.values() for p in v]
     ys = [p[1] for it in laid for v in it.drawn.values() for p in v]
@@ -414,7 +421,13 @@ def split_scroll(strokes, dots, eps: float = 0.05):
 
 
 def join_edges(groups, joins):
-    """Which two spirals each join held together, by exact vertex lookup."""
+    """Which two spirals each join held together, by exact vertex lookup.
+
+    One entry per join, in the same order, so join k's two ends are `edges[k]`, with
+    None where an end landed on nothing. The page needs that alignment to show a join
+    at the moment the reply it holds appears, and the two implementations are kept the
+    same whether or not this one has a use for it.
+    """
     owner: dict[str, int] = {}
     for i, g in enumerate(groups):
         for st in g:
@@ -424,8 +437,7 @@ def join_edges(groups, joins):
     for j in joins:
         a = owner.get(_key(j.points[0]))
         b = owner.get(_key(j.points[1]))
-        if a is not None and b is not None and a != b:
-            edges.append((a, b))
+        edges.append((a, b) if a is not None and b is not None and a != b else None)
     return edges
 
 
@@ -436,7 +448,10 @@ def check_tree(edges, parents, count: int):
     (ok, why): the parent index is a *check* on the segmentation, not its source.
     """
     adj: dict[int, list[int]] = {}
-    for a, b in edges:
+    for e in edges:
+        if e is None:
+            continue
+        a, b = e
         adj.setdefault(a, []).append(b)
         adj.setdefault(b, []).append(a)
     roots = [i for i, p in enumerate(parents) if p is None]

@@ -1007,3 +1007,31 @@ slightly better, length is noise.
 
 One drawing failed at jitter zero, 1 in 215. That is not the ceiling and has not been
 looked at.
+
+## A wall is found, not handed over
+
+Two things, and they turn out to be the same thing. A scroll arriving should show only
+its root; a reply appears when the spiral it answers has been translated. And a spiral
+you have not read yet should be lit, the way an unread message is, and go out when you
+read it.
+
+The obstacle was that a drawing from somewhere else has no groups in it. The Python
+renderer emitted a flat list of paths, and so did the page until recently, so there was
+nothing to show or hide. Rather than require groups, the reader's own split now says
+which `<path>` belongs to which spiral: `parseSVG` records the index of every path it
+sees, `splitScroll` carries those through, and dots are assigned by the vertex they
+sit on. The page then wraps the paths into groups after the fact. A completely flat
+file comes back as four spiral groups and three join groups with no path left over.
+
+Both writers now name their joins individually rather than lumping them into one
+group, because a join means nothing until both of its ends are on the wall and should
+not be a line pointing at nothing. That needed `joinEdges` to stay index-aligned with
+the joins -- a null where an end landed nowhere -- and Python was brought along even
+though it has no use for the alignment, because the two implementations are kept the
+same on purpose.
+
+The row list follows the wall. A row for a spiral that has not been reached would give
+away how many replies are coming, which is the one thing the reveal is for.
+
+None of this happens while writing. You wrote it; nothing is hidden from you and
+nothing glows.
