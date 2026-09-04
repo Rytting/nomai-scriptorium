@@ -532,10 +532,13 @@ footer a{color:var(--text-dim)}
 @keyframes ring-turn{from{transform:translateX(0)}
   to{transform:translateX(calc(-1 * var(--step,50%)))}}
 
-.said{margin:0;text-align:right;font-family:var(--mono);font-size:11px;line-height:1.5;
-  opacity:0;transition:opacity .28s ease .1s}
-.recorder.open .said{opacity:1}
-.said a{color:var(--text-dim)}
+/* Scoped, and not called `said`. It was, and `.said` is also the class on every line
+   of a thread -- so `opacity:0` here made every message anybody translated invisible,
+   in a row that still had its rewrite and reply links sitting beside the nothing. */
+.recorder .pot-line{margin:0;text-align:right;font-family:var(--mono);font-size:11px;
+  line-height:1.5;opacity:0;transition:opacity .28s ease .1s}
+.recorder.open .pot-line{opacity:1}
+.recorder .pot-line a{color:var(--text-dim)}
 
 .drop{display:flex;align-items:center;justify-content:center;min-height:96px;
   border:1px dashed var(--edge);border-radius:3px;background:var(--rock-2);
@@ -773,7 +776,7 @@ footer a{color:var(--text-dim)}
         <ellipse class="eye" cx="0" cy="-1.6" rx="4.4" ry="1.9"/>
       </svg>
     </button>
-    <p class="said" id="pot-said"></p>
+    <p class="pot-line" id="pot-said"></p>
   </div>
 </footer>
 </div>
@@ -3875,7 +3878,7 @@ function takeDown(i, btn){
 
 /* Which build this is. Filled in from git when the page is built; `dev` when the
    source file is opened straight from disk. */
-const BUILD = /*__BUILD__*/{ rev: "v1.0-2-g5cc2f56", date: "2026-09-04" };
+const BUILD = /*__BUILD__*/{ rev: "v1.0-3-gce13634", date: "2026-09-04" };
 const REPO = "github.com/Rytting/nomai-scriptorium";
 
 /* The same writer, on a straight track instead of a coiled one. Everything that

@@ -1702,3 +1702,31 @@ because its values were words that had been translated once already and translat
 them twice would have been guesswork -- so switching language in read mode left the
 table in the language before. The values are numbers now, so the walker can have the
 whole thing, and it changes with everything else.
+
+### The same mistake twice
+
+"Not that, the spirals are fine and they look good. I mean after translating you cannot
+see your own message."
+
+Mine, and recent. The recorder's plain-text line was given `class="said"` with
+`opacity:0` until the disc is open -- and `said` is also the class on the text of every
+row in a thread. So the moment that CSS shipped, every message anybody wrote or
+translated went invisible, in a row that still had its **rewrite** and **reply** links
+sitting neatly beside the nothing. The text was always there. It was transparent.
+
+The rule is scoped and renamed now, and the row text comes back at full opacity in both
+modes.
+
+What is worth writing down is that this is the second time. The rack's rules were
+written unscoped too, and `slot` collided with the socket polygon on the plate; there
+is a comment in the stylesheet, three commits old, explaining why those had to be
+scoped to `.rack`. Then a generic word was used again, for a page-wide element, without
+checking whether the page already had one. The comment was written and not read.
+
+Cheap check that would have caught both: before adding a class, grep for it.
+
+It also says something about which failures find you. A wrong colour or a crooked
+margin is visible the moment it lands. `opacity:0` on somebody else's element is
+visible only if you happen to look at that element afterwards, and I had been looking
+at the recorder. It took a person using the page for its actual purpose -- writing
+something and reading it back -- to see it at all.
