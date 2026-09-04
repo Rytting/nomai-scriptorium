@@ -12,6 +12,7 @@
   --ui-accent:#17558f; --ui-accent-hover:#3d7ab8; --ui-on-accent:#fff;
   --ui-focus:#d08b3c;
   --mode-idle:#b96829; --mode-active:#ed8b32; --mode-glow:rgba(237,139,50,.35);
+  --ring-ink:#6d7f96;
   --tablet-wash:rgba(17,25,30,.86);
   --rock:#0e1319; --rock-2:#161d26; --rock-3:#1f2833;
   --stone:#f2e4ce; --ink:#17558f; --ink-soft:#3d7ab8;
@@ -33,6 +34,7 @@
   --ui-accent:#876326; --ui-accent-hover:#75531d; --ui-on-accent:#fff5dd;
   --ui-focus:#a67b34;
   --mode-idle:#b96829; --mode-active:#ed8b32; --mode-glow:rgba(237,139,50,.35);
+  --ring-ink:#6d7f96;
   --tablet-wash:rgba(247,241,221,.60);
   --rock:#e9e3d7; --rock-2:#f4efe6; --rock-3:#fbf8f2;
   --text:#1c2530; --text-dim:#546374; --text-faint:#8695a6;
@@ -70,6 +72,7 @@
     --tablet-focus-shadow:inset 0 1px 0 rgba(228,240,245,.48),inset 0 -2px 4px rgba(28,43,51,.28),0 0 0 1px #b7d9e7,0 0 12px rgba(167,214,235,.20);
     --rail-fill:linear-gradient(#647779,#abbcbd 55%,#829697);
     --rail-shadow:inset 0 3px 6px rgba(15,29,34,.48),inset 0 -1px 1px rgba(220,240,245,.45);
+    --ring-ink:#bcd6ff;
   }
 }
 :root[data-theme="dark"]{
@@ -102,6 +105,7 @@
   --tablet-focus-shadow:inset 0 1px 0 rgba(228,240,245,.48),inset 0 -2px 4px rgba(28,43,51,.28),0 0 0 1px #b7d9e7,0 0 12px rgba(167,214,235,.20);
   --rail-fill:linear-gradient(#647779,#abbcbd 55%,#829697);
   --rail-shadow:inset 0 3px 6px rgba(15,29,34,.48),inset 0 -1px 1px rgba(220,240,245,.45);
+  --ring-ink:#bcd6ff;
 }
 *{box-sizing:border-box}
 ::selection{background:var(--ui-accent);color:var(--ui-on-accent)}
@@ -493,46 +497,45 @@ footer a{color:var(--text-dim)}
 
    What this page has to report about itself is what version it is and where it comes
    from, and that is exactly the kind of thing those discs are for. */
-.recorder{position:relative;align-self:flex-start;display:flex;flex-direction:column;
-  align-items:flex-start;gap:2px}
+.recorder{position:relative;align-self:flex-end;display:flex;
+  flex-direction:column;align-items:flex-end;gap:3px;color:var(--text-faint)}
 .pot{appearance:none;background:none;border:0;padding:4px 2px;cursor:pointer;
-  display:block;line-height:0;color:var(--text-faint)}
+  display:block;line-height:0;color:inherit}
 .pot svg{width:62px;height:30px;display:block;overflow:visible}
 .pot .shell{fill:var(--rock-3);stroke:var(--edge);stroke-width:1.5}
 .pot .lip{fill:none;stroke:var(--edge);stroke-width:1.2;opacity:.85}
 .pot .eye{fill:var(--edge);opacity:.9;transition:fill .25s ease,opacity .25s ease}
-.pot:hover .eye,.pot[aria-expanded="true"] .eye{fill:#8fb6ff;opacity:1}
+.pot:hover .eye,.pot[aria-expanded="true"] .eye{fill:var(--ring-ink);opacity:1}
 .pot:focus-visible{outline:2px solid var(--ui-focus);outline-offset:2px;border-radius:4px}
 
-.rings{position:absolute;bottom:calc(100% - 2px);left:0;z-index:6;
-  display:flex;flex-direction:column;gap:9px;padding-bottom:10px;
+/* The rings are the size of the disc, because that is where they were: a ring wider
+   than the thing it folds back into is a ring that never came out of it. Drawn the
+   way the disc is -- two rims and the band between them, seen from the same angle. */
+.rings{position:absolute;bottom:calc(100% - 4px);right:0;z-index:6;width:62px;
+  display:flex;flex-direction:column;align-items:center;gap:1px;padding-bottom:5px;
   pointer-events:none}
-.ring{position:relative;height:34px;overflow:hidden;border-radius:17px;
-  background:linear-gradient(#080e26,#1a2450 46%,#060a1c);
-  box-shadow:0 6px 18px rgba(4,8,22,.55),inset 0 1px 0 rgba(160,190,255,.32),
-    inset 0 -2px 6px rgba(2,4,14,.7);
-  opacity:0;transform:translateY(14px) scaleY(.55);
-  transition:opacity .34s ease,transform .38s cubic-bezier(.2,.86,.3,1)}
-.ring:nth-child(2){transition-delay:.09s}
+.ring{width:62px;height:26px;flex:none;opacity:0;transform:translateY(11px) scaleY(.5);
+  transition:opacity .3s ease,transform .36s cubic-bezier(.2,.86,.3,1)}
+.ring:nth-child(1){transition-delay:.09s}
 .recorder.open .ring{opacity:1;transform:none}
-/* the band is laid down twice end to end, so sliding it exactly one width along
-   returns it to where it started and the turn has no seam in it */
-.band{position:absolute;top:0;left:0;height:100%;display:flex;align-items:center;
-  gap:0;animation:ring-turn var(--turn,22s) linear infinite}
-.band svg{height:60%;width:auto;flex:none;overflow:visible;
-  filter:drop-shadow(0 0 3px #86a6ff) drop-shadow(0 0 9px rgba(120,160,255,.8))}
-.band svg [stroke]{stroke:#dbe8ff}
-.band svg [fill]:not([fill="none"]){fill:#dbe8ff}
-@keyframes ring-turn{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-.ring-plain{margin:0;padding-top:2px;font-family:var(--mono);font-size:11.5px;
-  color:var(--text-faint);opacity:0;transition:opacity .3s ease .12s}
-.recorder.open .ring-plain{opacity:1}
-.ring-plain a{color:var(--text-dim)}
-@media (prefers-reduced-motion: reduce){
-  .band{animation:none}
-  .ring{transition:opacity .2s ease}
-  .recorder.open .ring{transform:none}
-}
+.ring svg{width:100%;height:100%;display:block;overflow:visible}
+.ring .rim{fill:none;stroke:var(--edge);stroke-width:1.2}
+.ring .side{fill:var(--rock-3);stroke:none}
+/* The band is scaled down hard to fit a ring this size, and a stroke width given in
+   the glyph's own units goes down with it until there is nothing left to see. This
+   one is measured in the ring's units instead, so the line stays a line. */
+.ring .glyph{stroke:var(--ring-ink);stroke-width:.75;fill:none;
+  vector-effect:non-scaling-stroke}
+.ring .glyph.solid{fill:var(--ring-ink);stroke:none}
+/* laid down twice end to end, so sliding it exactly one width has no seam in it */
+.ring .turn{animation:ring-turn var(--turn,15s) linear infinite}
+@keyframes ring-turn{from{transform:translateX(0)}
+  to{transform:translateX(calc(-1 * var(--step,50%)))}}
+
+.said{margin:0;text-align:right;font-family:var(--mono);font-size:11px;line-height:1.5;
+  opacity:0;transition:opacity .28s ease .1s}
+.recorder.open .said{opacity:1}
+.said a{color:var(--text-dim)}
 
 .drop{display:flex;align-items:center;justify-content:center;min-height:96px;
   border:1px dashed var(--edge);border-radius:3px;background:var(--rock-2);
@@ -759,7 +762,7 @@ footer a{color:var(--text-dim)}
         <ellipse class="eye" cx="0" cy="-1.6" rx="4.4" ry="1.9"/>
       </svg>
     </button>
-    <p class="ring-plain" id="pot-said"></p>
+    <p class="said" id="pot-said"></p>
   </div>
 </footer>
 </div>
@@ -2927,7 +2930,7 @@ function bandLayout(ncols){
     return p => [p[0] + px, p[1] + py];
   } };
 }
-function bandSVG(text, seed){
+function bandParts(text, seed){
   let grid = null;
   for (let nonce = 1; nonce <= 48 && !grid; nonce++){
     const x = encode(text, 256, "strict", nonce, "", null);
@@ -2945,31 +2948,71 @@ function bandSVG(text, seed){
   const x0 = Math.min(...xs) - m, y0 = Math.min(...ys) - m;
   const w = Math.max(...xs) - Math.min(...xs) + 2 * m;
   const h = Math.max(...ys) - Math.min(...ys) + 2 * m;
-  return '<svg viewBox="' + [x0, y0, w, h].map(f).join(" ") + '" preserveAspectRatio='
-    + '"xMidYMid meet" aria-hidden="true">' + [...parts.byCol.values()].flat().join("")
-    + "</svg>";
+  return { vb: [x0, y0, w, h], body: [...parts.byCol.values()].flat().join("") };
 }
-/* Written once, the first time somebody asks: it is a second of work and most
+/* One ring: two rims and the band between them, seen from the angle the disc is,
+   with the writing running round the front of it. The writing is small -- it has to
+   be, to have come out of a disc this size -- so at this scale it reads as what it
+   is, a line of text going past, rather than as something to sit and decode. */
+function ringSVG(band, id, rx){
+  /* Flatter than the disc and a little deeper, for one reason: the side wall of a
+     ring seen at an angle is a crescent, and only the strip that is inside it at the
+     edges as well as the middle can carry writing all the way across. A rounder
+     ellipse leaves that strip too thin and the line breaks up at both ends. */
+  const ry = rx * 0.22, h = 10, W = 2 * rx;
+  /* the front of the cylinder: the near half of the top rim, down, and back along
+     the near half of the bottom one */
+  const side = "M " + -rx + " 0 A " + rx + " " + ry + " 0 0 0 " + rx + " 0 L " + rx
+    + " " + h + " A " + rx + " " + ry + " 0 0 1 " + -rx + " " + h + " Z";
+  const bandH = (h - ry) * 0.66, top = ry + (h - ry - bandH) / 2;
+  const vb = band.vb, scale = bandH / vb[3], w = vb[2] * scale;
+  /* Enough copies laid end to end that one of them can slide the whole way off the
+     left without ever leaving a gap on the right, and the step is exactly one copy
+     -- which is why the turn has no seam in it. */
+  const copies = Math.max(2, Math.ceil(W / w) + 1);
+  let band_ = "";
+  for (let c = 0; c < copies; c++)
+    band_ += '<g transform="translate(' + f(-rx + c * w) + ',0) scale(' + f(scale)
+      + ') translate(' + f(-vb[0]) + ',' + f(-vb[1]) + ')">' + band.body + "</g>";
+  return '<svg viewBox="-31 -10.5 62 26" aria-hidden="true">'
+    + '<clipPath id="' + id + '"><path d="' + side + '"/></clipPath>'
+    + '<ellipse class="rim" cx="0" cy="' + h + '" rx="' + rx + '" ry="' + ry + '"/>'
+    + '<path class="side" d="' + side + '"/>'
+    + '<g clip-path="url(#' + id + ')"><g class="turn" style="--turn:'
+    + Math.max(8, Math.round(w / 2.2)) + "s;--step:" + f(100 / copies) + '%">'
+    + '<g transform="translate(0,' + f(top) + ')">' + band_ + "</g>"
+    + "</g></g>"
+    + '<ellipse class="rim" cx="0" cy="0" rx="' + rx + '" ry="' + ry + '"/></svg>';
+}
+/* Written while nothing else is happening: about a second of encoding, and most
    readers will never open it. */
 let potSaid = false;
 function fillPot(){
   if (potSaid) return;
   potSaid = true;
   const lines = [BUILD.date ? BUILD.rev + " " + BUILD.date : BUILD.rev, REPO];
+  const said = [];
   lines.forEach((line, i) => {
+    const band = bandParts(line, 21 + i * 9);
     const ring = $("ring-" + i);
-    const art = bandSVG(line, 21 + i * 9);
-    if (!art){ ring.remove(); return; }
-    ring.innerHTML = '<div class="band">' + art + art + "</div>";
-    /* the ring is as long as what is written on it */
-    const svg = ring.querySelector("svg");
-    const vb = svg.getAttribute("viewBox").split(" ").map(Number);
-    ring.style.width = Math.round(34 * 0.6 * (vb[2] / vb[3])) + 28 + "px";
-    ring.querySelector(".band").style.setProperty("--turn",
-      Math.round(7 + vb[2] / vb[3] * 2.4) + "s");
+    if (!band){ ring.remove(); } else {
+      /* They came out of the disc stacked inside one another, so they cannot all
+         be the same size: the one that was innermost is the one that ends up on
+         top, and it is the smallest. */
+      ring.innerHTML = ringSVG(band, "ring-clip-" + i, [20, 25][i] || 25);
+      ring.querySelectorAll("[stroke]").forEach(e => {
+        if (e.getAttribute("stroke") !== "none") e.setAttribute("class", "glyph");
+      });
+      ring.querySelectorAll("[fill]").forEach(e => {
+        if (e.getAttribute("fill") !== "none" && !e.getAttribute("class"))
+          e.setAttribute("class", "glyph solid");
+      });
+    }
+    said.push(i === 1
+      ? '<a href="https://' + line + '" rel="noopener">' + esc(line) + "</a>"
+      : esc(line));
   });
-  $("pot-said").innerHTML = esc(lines[0]) + ' &middot; <a href="https://' + REPO
-    + '" rel="noopener">' + esc(REPO) + "</a>";
+  $("pot-said").innerHTML = said.join("<br>");
 }
 function setPot(on){
   fillPot();

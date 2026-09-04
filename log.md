@@ -1568,3 +1568,24 @@ weightless.
 `build_page.py` stamps the build from git, so the disc says `ac68e8f 2026-09-04` and
 not whatever somebody last typed. A page saved to disk has no server to ask, and this
 page is meant to be saved to disk.
+
+The first version of it was wrong in a way worth writing down. The rings were wide
+slabs, four hundred pixels of glowing navy across a disc sixty pixels across, and they
+covered two lines of the footer while they were up. Two objections, and the second is
+the one that mattered: *how would that fold back into this?* A ring wider than the disc
+it came out of is a ring that was never in it.
+
+So they are the size of the disc now, drawn the way the disc is -- two rims and the
+band between them, at the same angle, in line rather than in glowing slab -- and they
+sit at the right-hand end of the footer where there are no words to cover. And they are
+not the same size as each other, because they came out stacked inside one another: the
+one that was innermost is the smallest and ends up on top. Like an onion.
+
+Two things fought back. A stroke width set in the glyph's own units disappears when
+the band is scaled down by a factor of forty; `vector-effect: non-scaling-stroke`
+measures it in the ring's units instead, and the line stays a line. And the side wall
+of a ring seen at an angle is a crescent, not a rectangle: only the strip that is
+inside it at the edges as well as in the middle can carry writing the whole way
+across. The first attempt put the band above that strip and the ends were shaved off,
+which read as clumps rather than as a sentence. A flatter ellipse and a band placed in
+the common strip fixed it.
