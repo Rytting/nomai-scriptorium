@@ -3006,21 +3006,17 @@ function paint(sc, widened, shaky){
     r.innerHTML = `<div class="reading only"><span class="tag">${t("reading")}</span>`
       + `<span class="t">${rec.sig ? `<span class="who">` + esc(rec.sig) + `:</span> ` : ""}`
       + `${esc(rec.text)}</span></div>`
-      + note(
-        `One exact decoding, matching the original input.`,
-        `\u89e3\u7801\u7ed3\u679c\u552f\u4e00\uff0c\u4e0e\u8f93\u5165\u5185\u5bb9\u4e00\u81f4\u3002`)
+      /* The line above already shows what came back out of the drawing, and the
+         header already says the encoding is exact. Saying it a third time here, over
+         the table, was three sentences for a fact nobody was doubting. What stays is
+         what warns: the alphabet changing under you, and a drawing that will not read
+         back. */
       + wide + shake;
   } else {
     r.innerHTML = `<div class="reading only"><span class="tag">${t("scroll")}</span>`
       + `<span class="t">${LANG === "zh"
           ? `${sc.length} \u6761\u87ba\u65cb\uff0c\u5176\u4e2d ${sc.length - 1} \u6761\u662f\u56de\u590d`
           : `${sc.length} spirals, ${sc.length - 1} of them replies`}</span></div>`
-      + note(
-        `One drawing holding the whole conversation, plugged into its wall at a single
-         socket. Each reply records which spiral it answers, so a reader can check the
-         tree it sees against the tree that was written. Tilt steps aside here: a scroll
-         turns itself upright about its socket.`,
-        `\u4e00\u5f20\u56fe\u88c5\u4e0b\u4e86\u6574\u6bb5\u5bf9\u8bdd\uff0c\u53ea\u9760\u4e00\u4e2a\u63d2\u69fd\u63d2\u5728\u5899\u4e0a\u3002\u6bcf\u6761\u56de\u590d\u90fd\u8bb0\u7740\u5b83\u56de\u7684\u662f\u54ea\u4e00\u6761\uff0c\u6240\u4ee5\u8bfb\u7684\u4eba\u53ef\u4ee5\u62ff\u770b\u5230\u7684\u90a3\u68f5\u6811\u53bb\u6838\u5199\u4e0b\u7684\u90a3\u68f5\u3002\u503e\u659c\u5728\u8fd9\u91cc\u4f1a\u9000\u573a\uff1a\u5377\u8f74\u4f1a\u81ea\u5df1\u7ed5\u7740\u63d2\u69fd\u7ad9\u76f4\u3002`)
       + wide + shake;
   }
 }
@@ -3485,12 +3481,10 @@ function translator(){
   function done(){
     const { per, name, tree } = state.pending;
     if (per.length > 1){
+      /* A scroll that came back whole says so by being on screen whole -- the rows
+         are there and the drawing is joined up. Only the failure needs words. */
       $("readings").insertAdjacentHTML("beforeend", tree && tree.ok
-        ? note(
-          `A scroll: ${per.length} spirals, ${per.length - 1} of them replies. Which
-           spiral each one answers is written into its own numbering, and it agrees
-           with the way they are drawn.`,
-          `\u4e00\u5377\u5bf9\u8bdd\uff1a${per.length} \u6761\u87ba\u65cb\uff0c\u5176\u4e2d ${per.length - 1} \u6761\u662f\u56de\u590d\u3002\u6bcf\u6761\u56de\u7684\u662f\u54ea\u4e00\u6761\uff0c\u90fd\u5199\u5728\u5b83\u81ea\u5df1\u7684\u7f16\u53f7\u91cc\uff0c\u800c\u4e14\u548c\u5b83\u4eec\u753b\u51fa\u6765\u7684\u6837\u5b50\u5bf9\u5f97\u4e0a\u3002`)
+        ? ""
         : note(
           `A scroll of ${per.length} spirals. ${tree ? esc(tree.why)
            : "Not every spiral could be read"}, so the conversation cannot be trusted
@@ -3503,10 +3497,7 @@ function translator(){
     const show = r2 => r2.sig
       ? `<span class="who">${esc(r2.sig)}:</span> ${esc(r2.text)}` : esc(r2.text);
     if (readings.length === 1){
-      $("readings").insertAdjacentHTML("beforeend", note(
-        `Read straight off the drawing, with nothing to guess between.
-         ${esc(name || "This file")} was written in the unambiguous dialect.`,
-        `\u76f4\u63a5\u4ece\u56fe\u4e0a\u8bfb\u51fa\u6765\u7684\uff0c\u4e2d\u95f4\u6ca1\u6709\u4efb\u4f55\u731c\u6d4b\u3002${esc(name || "\u8fd9\u4e2a\u6587\u4ef6")}\u662f\u7528\u65e0\u6b67\u4e49\u65b9\u8a00\u5199\u7684\u3002`));
+      /* it read; the line is on the screen above */
     } else if (readings.length > 1){
       $("readings").insertAdjacentHTML("beforeend",
         readings.slice(1, 5).map(alt =>

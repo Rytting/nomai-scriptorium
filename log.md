@@ -1412,3 +1412,24 @@ a mouse -- the button is still 92 by 86 with the label hidden until you hover it
 on a touch device it grows to 92 by 107 with 写 / 读一卷 under the two faces. Which is
 the right trade: a tooltip is a second look at something you can already see, and on a
 phone it was standing in for a label that had been removed.
+
+### The paragraphs that only said it worked
+
+"The narration above the table -- change it, or just drop it. It is a bit redundant."
+
+It was. Four paragraphs came out, and they had one thing in common: every one of them
+was announcing a success. "One exact decoding, matching the original input" sat under
+a line that was already showing what came back out, on a page whose header already says
+the encoding is exact -- the third telling of a fact nobody was doubting. The scroll
+one explained that each reply records what it answers and that the reader can check the
+tree, over a drawing where the replies are visibly joined to what they answer. The two
+in the reader said a scroll came back whole, above the rows it came back into.
+
+A page that has just done the thing does not need to say it did the thing. What is left
+above the table is one line of fact -- what the spiral says, or how many spirals and how
+many of them are replies -- and then the numbers.
+
+Every paragraph that warns stayed, and they are the ones worth having: the drawing that
+will not read back, the alphabet changing under you, a tree that disagrees with itself,
+more than one sentence fitting, no sentence fitting, handwriting too heavy to survive
+the trip. Those say something the screen cannot show you.
