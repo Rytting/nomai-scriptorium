@@ -1612,3 +1612,40 @@ build dirty.
 So the first tag, at sixty-nine commits and three days: the writer and the reader,
 branching scrolls, six canonical walls in two languages, day and night, and a disc that
 says which version it is in the writing the page is about.
+
+### Two minutes proving a failure
+
+A pasted paragraph froze the page. Not slowly -- completely, for long enough that it
+looked dead.
+
+Reading a drawing back costs far more than drawing it, and the cost climbs much faster
+than the length. Measured: **0.43 s at 219 turns, 14.2 s at 521**. Two and a half times
+the length, thirty-three times the work. And `handFor` tries eight hands before giving
+up, each one a full read: **about 114 seconds with the page nailed shut**, all of it
+spent proving that a drawing does not read back.
+
+Worse, `reshape` calls `build`, so every nudge of the wind or coil slider paid it
+again. The likely sequence for anybody who hit this is: press Write, wait, wonder,
+touch a slider, and now it is truly gone.
+
+Two things made that paragraph so large. It is 307 characters, and it contains two
+curly quotation marks, which live outside Latin and push the whole thing onto the
+larger alphabet -- and that alphabet costs about two and a half times the turns per
+character. 180 plain characters is 145 turns; 307 with two typographic quotes in them
+is 521.
+
+The search has a clock now, and above the size where even one attempt is too slow to
+make anybody wait it is not started at all: a drawing that appears unchecked is worth
+more than a checked one that never does. Writing that paragraph now takes **117 ms**
+and each slider tick **75-90 ms**. Ordinary text is unaffected -- 55 turns still
+verified in 61 ms, 239 turns in 304 ms.
+
+And it says which of the two happened. "No hand read back" and "there was no time to
+ask" look the same from outside and are not the same thing, and the second one must
+not be dressed up as the first: the page now says it drew this but did not check it,
+and that long spirals are the ones that most often fail, rather than claiming to know
+that this one does.
+
+What this does not fix is the reason any of it is slow. `observe` is superlinear in the
+number of turns and that is the real ceiling; the clock only stops it being paid for
+nothing.

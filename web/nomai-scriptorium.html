@@ -1405,11 +1405,26 @@ const NUDGES = [0, 0.21, -0.21, 0.42, -0.42, 0.84, -0.84];
    Kept short: each one lays the scroll again, which is the expensive part. */
 const RELAY = [0.35, -0.35, 0.9, -0.9];
 
-function handFor(grid, amount, seed0, L){
+/* Reading a drawing back costs far more than drawing it, and the cost climbs much
+   faster than the length: about 0.4s at 220 turns and about 14s at 520. Eight seeds
+   of that is two minutes with the page nailed shut, which is what somebody pasting a
+   paragraph got. So the search is given a clock, and above the size where even one
+   attempt is too slow to make anybody wait, it is not started at all -- an unchecked
+   drawing that appears is worth more than a checked one that never does.
+
+   `handRanOut` says which of the two happened, because "no hand read back" and "there
+   was no time to ask" are different things to tell somebody. */
+const CHECK_TURNS = 300, CHECK_MS = 2200;
+let handRanOut = false;
+function handFor(grid, amount, seed0, L, budget){
+  handRanOut = false;
   if (!(amount > 0)) return readsBack(grid, amount, seed0, L) ? seed0 : null;
+  if (budget !== undefined && grid.ncols > CHECK_TURNS){ handRanOut = true; return null; }
+  const until = budget === undefined ? Infinity : performance.now() + budget;
   for (let k = 0; k < SEEDS; k++){
     const s2 = seed0 + k * SEED_STEP;
     if (readsBack(grid, amount, s2, L)) return s2;
+    if (performance.now() > until){ handRanOut = k < SEEDS - 1; return null; }
   }
   return null;
 }
@@ -2923,7 +2938,7 @@ function build(grow, growIdx){
        it while the next is fine. A scroll already searches this for every spiral;
        a lone one was left out, and warned about failures it need not have had. */
     if (state.dialect === "strict"){
-      const got = handFor(sc[0].grid, state.hw, state.seed, L);
+      const got = handFor(sc[0].grid, state.hw, state.seed, L, CHECK_MS);
       if (got !== null) hand = got;
     }
     state.svg = renderSVG(sc[0].grid, state.hw, hand, state.tilt, state.flip,
@@ -2945,7 +2960,10 @@ function build(grow, growIdx){
   /* A reply can be moved until it reads back; the first spiral cannot, because its
      winding and coil are the writer's own choice. So check it and say so, rather
      than handing over a drawing that quietly will not come back. */
-  const shaky = state.dialect === "strict"
+  /* Only ask again when the search had time to be sure. Above the size where it
+     stops, one more attempt is the same fourteen seconds. */
+  const unchecked = state.dialect === "strict" && sc.length === 1 && handRanOut;
+  const shaky = state.dialect === "strict" && !unchecked
     && !readsBack(sc[0].grid, state.hw, hand, L);
   state.track = trackFromLayout(L);
   state.socket = socketFor(state.track);
@@ -2954,7 +2972,7 @@ function build(grow, growIdx){
   applyInk(sigsOf());
   paintThread();
   syncTilt();
-  paint(sc, widened, shaky);
+  paint(sc, widened, shaky, unchecked);
 }
 function empty(text){
   text = t(text);
@@ -3301,7 +3319,7 @@ $("answering-off").onclick = () => {
   setAim("edit", state.aim.index);
 };
 
-function paint(sc, widened, shaky){
+function paint(sc, widened, shaky, unchecked){
   const glyphs = sc.reduce((a, sp) => a + sp.grid.glyphs.size, 0);
   const turns = sc.reduce((a, sp) => a + sp.grid.ncols, 0);
   const chars = sc.reduce((a, sp) => a + Array.from(sp.text).length, 0);
@@ -3320,6 +3338,12 @@ function paint(sc, widened, shaky){
      writing. Try the other curl, or nudge the wind; the drawing says the same thing
      either way.`,
     `<b>\u8fd9\u4e00\u5f20\u53ef\u80fd\u8bfb\u4e0d\u56de\u6765\u3002</b>\u7b2c\u4e00\u6761\u87ba\u65cb\u5728\u8fd9\u4e2a\u5377\u5411\u548c\u8fd9\u4e2a\u677e\u7d27\u4e0b\uff0c\u6070\u597d\u662f\u8bfb\u56fe\u5668\u4f1a\u8ba4\u9519\u7684\u90a3\u79cd\u2014\u2014\u8fd9\u662f\u8bfb\u7684\u6781\u9650\uff0c\u4e0d\u662f\u5199\u7684\u3002\u6362\u53e6\u4e00\u4e2a\u5377\u5411\uff0c\u6216\u8005\u52a8\u4e00\u4e0b\u677e\u7d27\uff1b\u56fe\u8bf4\u7684\u8bdd\u662f\u4e00\u6837\u7684\u3002`) : "";
+  const slow = unchecked ? note(
+    `<b>Too long to check.</b> Reading a drawing back costs far more than drawing it,
+     and this one is large enough that the check would take longer than it is worth
+     making you wait for &mdash; so it has been drawn but not verified. It may well
+     read back; long spirals are simply the ones that most often do not.`,
+    `<b>\u592a\u957f\uff0c\u6ca1\u505a\u6821\u9a8c\u3002</b>\u628a\u4e00\u5f20\u56fe\u8bfb\u56de\u6765\u6bd4\u753b\u51fa\u6765\u8d35\u5f97\u591a\uff0c\u800c\u8fd9\u5f20\u5927\u5230\u6821\u9a8c\u7684\u65f6\u95f4\u5df2\u7ecf\u8d85\u51fa\u4e86\u8ba9\u4f60\u5e72\u7b49\u7684\u5408\u7406\u8303\u56f4\u2014\u2014\u6240\u4ee5\u5b83\u753b\u51fa\u6765\u4e86\uff0c\u4f46\u6ca1\u6709\u9a8c\u8fc7\u3002\u5b83\u5f88\u53ef\u80fd\u8bfb\u5f97\u56de\u6765\uff1b\u53ea\u662f\u8d8a\u957f\u7684\u87ba\u65cb\u8d8a\u5bb9\u6613\u8bfb\u4e0d\u56de\u6765\u3002`) : "";
   const wide = widened ? note(
     `Switched to the larger alphabet — Latin covers only the first 256 characters.
      Every language works here; the spiral just runs longer, because each character now
@@ -3340,7 +3364,7 @@ function paint(sc, widened, shaky){
          those numberings draws this same picture, so the drawing does not say which one
          was meant.`,
         `\u539f\u7248\u7f16\u53f7\u5728\u4e09\u5904\u6254\u6389\u4e86\u4fe1\u606f\uff1a\u4e24\u884c\u4e2d\u54ea\u4e00\u884c\u5148\u88ab\u95ee\u3001\u5e76\u5217\u7684\u8fde\u63a5\u5bf9\u3001\u4ee5\u53ca\u6d88\u606f\u5728\u54ea\u91cc\u7ed3\u675f\u3002\u8fd9\u4e9b\u7f16\u53f7\u753b\u51fa\u6765\u90fd\u662f\u540c\u4e00\u5f20\u56fe\uff0c\u6240\u4ee5\u56fe\u672c\u8eab\u8bf4\u4e0d\u51fa\u5230\u5e95\u662f\u54ea\u4e00\u4e2a\u3002`)
-      + wide + shake;
+      + wide + slow + shake;
     return;
   }
   if (sc.length === 1){
@@ -3353,13 +3377,13 @@ function paint(sc, widened, shaky){
          the table, was three sentences for a fact nobody was doubting. What stays is
          what warns: the alphabet changing under you, and a drawing that will not read
          back. */
-      + wide + shake;
+      + wide + slow + shake;
   } else {
     r.innerHTML = `<div class="reading only"><span class="tag">${t("scroll")}</span>`
       + `<span class="t">${LANG === "zh"
           ? `${sc.length} \u6761\u87ba\u65cb\uff0c\u5176\u4e2d ${sc.length - 1} \u6761\u662f\u56de\u590d`
           : `${sc.length} spirals, ${sc.length - 1} of them replies`}</span></div>`
-      + wide + shake;
+      + wide + slow + shake;
   }
 }
 
