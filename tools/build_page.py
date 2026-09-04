@@ -27,7 +27,13 @@ for texture_name in ("writing-tablet.svg", "writing-tablet-pressed.svg", "vessel
     built = built.replace(texture_ref, 'data:image/svg+xml,' + quote(texture, safe=''))
 # Which build this is, so a page can say so. A copy saved to disk has no server to
 # ask, which is the whole reason the recorder is worth having.
-rev = subprocess.run(["git", "log", "-1", "--format=%h"], cwd=ROOT,
+# `git describe` rather than a bare hash: a hash cannot be compared by eye, and a
+# hand-kept version number is forgotten and then confidently wrong. A tag is decided
+# once, by hand, when a stage is finished; everything between two of them reads as
+# "v1.0, seven commits on, at 6fc2153", which is the one thing a plain version number
+# cannot say about itself.
+# (no --dirty: building is itself what dirties the tree, so it would always say so)
+rev = subprocess.run(["git", "describe", "--tags", "--always"], cwd=ROOT,
                      capture_output=True, text=True)
 day = subprocess.run(["git", "log", "-1", "--format=%cs"], cwd=ROOT,
                      capture_output=True, text=True)

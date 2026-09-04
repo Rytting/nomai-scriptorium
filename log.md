@@ -1589,3 +1589,26 @@ inside it at the edges as well as in the middle can carry writing the whole way
 across. The first attempt put the band above that strip and the ends were shaved off,
 which read as clumps rather than as a sentence. A flatter ellipse and a band placed in
 the common strip fixed it.
+
+### v1.0
+
+"The date still feels like a running account -- you cannot tell how long it has been
+going. A version number is easier to understand for whoever is using it, and we can use
+it to mark stages ourselves. The hash after it does no harm."
+
+All true, and the third clause is the one that settles it: these are not alternatives.
+A version number says which stage this is; a hash says exactly which code. Showing both
+costs nothing.
+
+`git describe --tags --always` gets both without anybody having to remember. On a tag
+it reads `v1.0`. Between tags it reads `v1.0-7-g6fc2153` -- v1.0, seven commits on, at
+that commit -- which is the one thing a hand-kept version number can never say about
+itself, because a hand-kept number does not know it is out of date. That is its whole
+failure mode: it is not wrong loudly, it is wrong confidently.
+
+No `--dirty`: building is what dirties the tree, so the page would have called every
+build dirty.
+
+So the first tag, at sixty-nine commits and three days: the writer and the reader,
+branching scrolls, six canonical walls in two languages, day and night, and a disc that
+says which version it is in the writing the page is about.
