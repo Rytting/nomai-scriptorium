@@ -1473,3 +1473,25 @@ the wind slider, clearing, mode switching, both languages including every new la
 and `check_canon.py` still finds its list. No console errors anywhere in it.
 
 The page is 281 KB now, from 175 before the masks. About 105 KB of that is pictures.
+
+### A sun, an orb, a moon
+
+Day and night existed and there was no way to ask for either: the page followed the
+system and that was that. It now runs on the same rail the shape controls do, because
+it is the same kind of thing -- a setting you slide -- and the orb that lights up under
+your thumb was already sitting there being the best control on the page.
+
+The sun and the moon are outside the rail, not under the orb. Under it, one of them is
+always hidden, and the one you can see is ambiguous in a way that has no fix: is that
+the state you are in or the one being offered? Outside, both stay visible, whichever
+one is lit is where you are, and the orb's position says the same thing a second time.
+
+Three states, two positions. Untouched, the page follows the system and keeps
+following it -- the media query stays live, so a machine that switches at sunset still
+switches the page. Touched, it is a choice, and choices are remembered rather than
+re-guessed. Which is the honest shape of it: the system setting is a fair guess and a
+poor answer for somebody reading in a dark room with the lights on.
+
+`role="switch"` with `aria-checked`, the label naming the thing rather than the state
+so it does not have to be rewritten on every press, and `forced-colors` and
+`prefers-reduced-motion` fallbacks alongside the ones the sliders already had.
