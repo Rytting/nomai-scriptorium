@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 200" fill="none">
+  <!-- Peripheral silver inlays inspired by the supplied Vessel references. -->
+  <g stroke="#d7e7e9" stroke-width="1.1" opacity=".16">
+    <path d="M156 -40 A122 122 0 0 0 302 127 M195 -33 A162 162 0 0 0 315 162"/>
+    <path d="M108 0 L161 54 L184 54 M197 59 L253 95 L280 95 M190 48 L211 0"/>
+    <path d="M186 62 L150 118 L150 144 L109 181 M0 18 H74 L104 48 H148"/>
+    <path d="M221 24 H253 V0 M261 124 V173 H280"/>
+    <circle cx="190" cy="55" r="7"/>
+  </g>
+</svg>

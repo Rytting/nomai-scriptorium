@@ -7,6 +7,12 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap">
 <style>
 :root{
+  --vessel-etching:url("../assets/textures/vessel-etching.svg");
+  color-scheme:dark;
+  --ui-accent:#17558f; --ui-accent-hover:#3d7ab8; --ui-on-accent:#fff;
+  --ui-focus:#d08b3c;
+  --mode-idle:#b96829; --mode-active:#ed8b32; --mode-glow:rgba(237,139,50,.35);
+  --tablet-wash:rgba(17,25,30,.86);
   --rock:#0e1319; --rock-2:#161d26; --rock-3:#1f2833;
   --stone:#f2e4ce; --ink:#17558f; --ink-soft:#3d7ab8;
   --amber:#d08b3c; --amber-soft:#e8b271;
@@ -23,23 +29,82 @@
   --mono:'IBM Plex Mono',ui-monospace,monospace;
 }
 :root:not([data-theme="dark"]){
+  color-scheme:light;
+  --ui-accent:#876326; --ui-accent-hover:#75531d; --ui-on-accent:#fff5dd;
+  --ui-focus:#a67b34;
+  --mode-idle:#b96829; --mode-active:#ed8b32; --mode-glow:rgba(237,139,50,.35);
+  --tablet-wash:rgba(247,241,221,.60);
   --rock:#e9e3d7; --rock-2:#f4efe6; --rock-3:#fbf8f2;
   --text:#1c2530; --text-dim:#546374; --text-faint:#8695a6;
   --edge:#d3cabb; --edge-soft:#e0d8cb;
 }
+/* The Vessel palette is shared by system night mode and an explicit override. */
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --rock:#0e1319; --rock-2:#161d26; --rock-3:#1f2833;
-    --text:#dfe6ee; --text-dim:#93a3b5; --text-faint:#65758a;
-    --edge:#2a3542; --edge-soft:#212a35;
+    color-scheme:dark;
+    --ui-accent:#bad1d9; --ui-accent-hover:#d7e5e8; --ui-on-accent:#182426;
+    --ui-focus:#b7d9e7;
+    --title-ink:#ded9ff;
+    --title-glow:0 0 3px rgba(219,213,255,.65),0 0 12px rgba(153,133,255,.55),0 0 25px rgba(125,105,239,.28);
+    --rock:#171e20; --rock-2:#232c2e; --rock-3:#2d383a;
+    --stone:#c0c7c5; --amber:#c4dadf; --amber-soft:#dce9ed;
+    --text:#dde5e5; --text-dim:#abbabc; --text-faint:#8fa2a5;
+    --edge:#536365; --edge-soft:#394749;
+    --ink-none:#b1c9da; --ink-mine:#b8a8e1; --ink-theirs:#e9ad78;
+    --wall-ink-none:#235374; --wall-ink-mine:#594182; --wall-ink-theirs:#875020;
+    --wall-ink-none-lit:#326f98; --wall-ink-mine-lit:#7854ad; --wall-ink-theirs-lit:#a45a23;
+    --beam:#b9e4f6; --beam-deep:#528da8; --beam-core:#f0faff;
+    --screen-1:#203137; --screen-2:#111c21; --screen-ink:#c5e3ee;
+    --screen-glow:rgba(177,220,241,.25); --screen-garble:#93b4c3;
+    --page-glow:radial-gradient(ellipse at 50% 0%,rgba(140,170,176,.09),transparent 65%);
+    --panel-pattern:var(--vessel-etching);
+    --wall-sheen:linear-gradient(125deg,rgba(245,251,249,.20),transparent 40%,rgba(57,77,81,.07));
+    --wall-shadow:inset 0 1px 2px rgba(244,255,255,.45),inset 0 -3px 12px rgba(44,61,65,.15);
+    --wall-empty:#46585c;
+    --tablet-surface:#9ca5a6; --tablet-ink:#172126; --tablet-edge:#7d9097;
+    --tablet-image:linear-gradient(110deg,rgba(239,247,250,.20),transparent 36%,rgba(34,48,55,.08) 70%,rgba(239,247,250,.08)),
+      repeating-linear-gradient(0deg,rgba(245,251,255,.025) 0 1px,transparent 1px 3px),
+      linear-gradient(180deg,rgba(235,244,248,.12),transparent 28%,rgba(235,244,248,.09) 52%,rgba(31,46,54,.09));
+    --tablet-size:100% 100%;
+    --tablet-shadow:inset 0 1px 0 rgba(228,240,245,.48),inset 0 -2px 4px rgba(28,43,51,.28);
+    --tablet-focus-shadow:inset 0 1px 0 rgba(228,240,245,.48),inset 0 -2px 4px rgba(28,43,51,.28),0 0 0 1px #b7d9e7,0 0 12px rgba(167,214,235,.20);
+    --rail-fill:linear-gradient(#647779,#abbcbd 55%,#829697);
+    --rail-shadow:inset 0 3px 6px rgba(15,29,34,.48),inset 0 -1px 1px rgba(220,240,245,.45);
   }
 }
 :root[data-theme="dark"]{
-  --rock:#0e1319; --rock-2:#161d26; --rock-3:#1f2833;
-  --text:#dfe6ee; --text-dim:#93a3b5; --text-faint:#65758a;
-  --edge:#2a3542; --edge-soft:#212a35;
+  color-scheme:dark;
+  --ui-accent:#bad1d9; --ui-accent-hover:#d7e5e8; --ui-on-accent:#182426;
+  --ui-focus:#b7d9e7;
+  --title-ink:#ded9ff;
+  --title-glow:0 0 3px rgba(219,213,255,.65),0 0 12px rgba(153,133,255,.55),0 0 25px rgba(125,105,239,.28);
+  --rock:#171e20; --rock-2:#232c2e; --rock-3:#2d383a;
+  --stone:#c0c7c5; --amber:#c4dadf; --amber-soft:#dce9ed;
+  --text:#dde5e5; --text-dim:#abbabc; --text-faint:#8fa2a5;
+  --edge:#536365; --edge-soft:#394749;
+  --ink-none:#b1c9da; --ink-mine:#b8a8e1; --ink-theirs:#e9ad78;
+  --wall-ink-none:#235374; --wall-ink-mine:#594182; --wall-ink-theirs:#875020;
+  --wall-ink-none-lit:#326f98; --wall-ink-mine-lit:#7854ad; --wall-ink-theirs-lit:#a45a23;
+  --beam:#b9e4f6; --beam-deep:#528da8; --beam-core:#f0faff;
+  --screen-1:#203137; --screen-2:#111c21; --screen-ink:#c5e3ee;
+  --screen-glow:rgba(177,220,241,.25); --screen-garble:#93b4c3;
+  --page-glow:radial-gradient(ellipse at 50% 0%,rgba(140,170,176,.09),transparent 65%);
+  --panel-pattern:var(--vessel-etching);
+  --wall-sheen:linear-gradient(125deg,rgba(245,251,249,.20),transparent 40%,rgba(57,77,81,.07));
+  --wall-shadow:inset 0 1px 2px rgba(244,255,255,.45),inset 0 -3px 12px rgba(44,61,65,.15);
+  --wall-empty:#46585c;
+  --tablet-surface:#9ca5a6; --tablet-ink:#172126; --tablet-edge:#7d9097;
+  --tablet-image:linear-gradient(110deg,rgba(239,247,250,.20),transparent 36%,rgba(34,48,55,.08) 70%,rgba(239,247,250,.08)),
+    repeating-linear-gradient(0deg,rgba(245,251,255,.025) 0 1px,transparent 1px 3px),
+    linear-gradient(180deg,rgba(235,244,248,.12),transparent 28%,rgba(235,244,248,.09) 52%,rgba(31,46,54,.09));
+  --tablet-size:100% 100%;
+  --tablet-shadow:inset 0 1px 0 rgba(228,240,245,.48),inset 0 -2px 4px rgba(28,43,51,.28);
+  --tablet-focus-shadow:inset 0 1px 0 rgba(228,240,245,.48),inset 0 -2px 4px rgba(28,43,51,.28),0 0 0 1px #b7d9e7,0 0 12px rgba(167,214,235,.20);
+  --rail-fill:linear-gradient(#647779,#abbcbd 55%,#829697);
+  --rail-shadow:inset 0 3px 6px rgba(15,29,34,.48),inset 0 -1px 1px rgba(220,240,245,.45);
 }
 *{box-sizing:border-box}
+::selection{background:var(--ui-accent);color:var(--ui-on-accent)}
 /* Chinese needs a touch more room between lines than the Latin does */
 :root[lang="zh"] body{line-height:1.8}
 /* CJK has no true italic, so a browser slants it by hand and it reads as a mistake */
@@ -49,13 +114,15 @@
 .seg.lang{align-self:flex-start}
 [hidden]{display:none!important}
 body{margin:0;background:var(--rock);color:var(--text);font-family:var(--sans);
+  background-image:var(--page-glow,none);background-repeat:no-repeat;
   font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
 .wrap{max-width:940px;margin:0 auto;padding:40px 24px 72px;
   display:flex;flex-direction:column;gap:28px}
 header{display:flex;flex-direction:column;gap:6px}
 h1{font-family:var(--serif);font-weight:400;font-size:44px;line-height:1.05;margin:0;
   letter-spacing:-.01em;text-wrap:balance}
-h1 em{font-style:italic;color:var(--amber)}
+h1 em{font-style:italic;color:var(--title-ink,var(--amber));text-shadow:var(--title-glow,none)}
+@media (forced-colors:active){h1 em{text-shadow:none}}
 .sub{color:var(--text-dim);max-width:62ch;margin:0}
 .label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;
   color:var(--text-faint);font-weight:500}
@@ -64,22 +131,50 @@ h1 em{font-style:italic;color:var(--amber)}
 .whoami{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .whoami input{background:var(--rock-2);color:var(--text);border:1px solid var(--edge);
   border-radius:3px;padding:6px 11px;font-family:var(--sans);font-size:13.5px;width:180px}
-.whoami input:focus{outline:2px solid var(--ink-soft);outline-offset:1px;
+.whoami input:focus{outline:2px solid var(--ui-focus);outline-offset:1px;
   border-color:transparent}
 .swatch{width:11px;height:11px;border-radius:2px;background:var(--ink-none);flex:none}
 .sigrow{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
 .sigrow input{background:var(--rock-2);color:var(--text);border:1px solid var(--edge);
   border-radius:3px;padding:7px 12px;font-family:var(--sans);font-size:14px;width:200px}
-.sigrow input:focus{outline:2px solid var(--ink-soft);outline-offset:1px;
+.sigrow input:focus{outline:2px solid var(--ui-focus);outline-offset:1px;
   border-color:transparent}
 .hint{color:var(--text-faint);font-size:12.5px;flex:1 1 260px;min-width:0}
 .who{font-style:italic;font-family:var(--mono)}
 textarea{width:100%;min-height:76px;resize:vertical;background:var(--rock-2);
   color:var(--text);border:1px solid var(--edge);border-radius:3px;padding:14px 16px;
   font-family:var(--sans);font-size:17px;line-height:1.5}
-textarea:focus{outline:2px solid var(--ink-soft);outline-offset:1px;border-color:transparent}
+textarea:focus{outline:2px solid var(--ui-focus);outline-offset:1px;border-color:transparent}
+/* A quiet tiled relief on the writing surface only; keep native text editing. */
+#msg{
+  --tablet-relief:url("../assets/textures/writing-tablet.svg");
+  --tablet-shade:transparent;
+  color:var(--tablet-ink,var(--text));caret-color:var(--tablet-ink,var(--text));
+  border-color:var(--tablet-edge,var(--edge));
+  background-color:var(--tablet-surface,var(--rock-2));
+  background-image:var(--tablet-image,linear-gradient(var(--tablet-shade),var(--tablet-shade)),
+    linear-gradient(var(--tablet-wash),var(--tablet-wash)),var(--tablet-relief));
+  background-size:var(--tablet-size,auto,auto,288px 144px);
+  background-position:0 0,0 0,0 0;
+  background-repeat:repeat;
+  box-shadow:var(--tablet-shadow,inset 0 2px 5px rgba(32,29,20,.12));
+  transition:box-shadow .18s ease,background-position .18s ease;
+}
+#msg:focus{
+  --tablet-relief:url("../assets/textures/writing-tablet-pressed.svg");
+  --tablet-shade:rgba(0,0,0,.055);
+  outline:none;border-color:var(--tablet-edge,var(--edge));
+  background-position:0 0,0 0,0 1px;
+  box-shadow:var(--tablet-focus-shadow,inset 0 3px 9px rgba(0,0,0,.36),
+    inset 2px 0 5px rgba(0,0,0,.12),
+    inset 0 -1px 0 rgba(255,244,210,.15),0 1px 0 rgba(255,244,210,.12));
+}
+@media (prefers-reduced-motion: reduce){#msg{transition:none}}
+/* System high-contrast mode may suppress textures and shadows. */
+@media (forced-colors: active){#msg:focus{outline:2px solid Highlight;outline-offset:2px}}
 
 .plate{background:var(--stone);border-radius:3px;padding:8px;position:relative;
+  background-image:var(--wall-sheen,none);box-shadow:var(--wall-shadow,none);
   display:flex;align-items:center;justify-content:center;min-height:340px;
   border:1px solid var(--edge);overflow:hidden}
 /* Whose spiral it is is not in the drawing. The signature is; who is looking is a
@@ -90,9 +185,23 @@ textarea:focus{outline:2px solid var(--ink-soft);outline-offset:1px;border-color
    Colour is applied here rather than baked in, so a file someone else wrote recolours
    the moment it is opened. CSS beats a presentation attribute, so this overrides the
    stroke the file carries without touching it. */
-#art{--ink:var(--ink-none)}
+#art{
+  --ink-none:var(--wall-ink-none,#104e8b);
+  --ink-mine:var(--wall-ink-mine,#5c47b8);
+  --ink-theirs:var(--wall-ink-theirs,#c26610);
+  --ink-none-lit:var(--wall-ink-none-lit,#2f8ce0);
+  --ink-mine-lit:var(--wall-ink-mine-lit,#9a83ff);
+  --ink-theirs-lit:var(--wall-ink-theirs-lit,#ff9a33);
+  --ink:var(--ink-none);
+}
 #art svg path[stroke-width]{stroke:var(--ink)}
 #art svg path:not([stroke-width]){fill:var(--ink)}
+/* Reveal the ceramic wall through the drawing's paper rectangle at night.
+   The source SVG keeps its original paper colour for downloads. */
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) #art > svg:first-child > rect:first-child{fill:transparent}
+}
+:root[data-theme="dark"] #art > svg:first-child > rect:first-child{fill:transparent}
 .plate svg g[data-turn]{opacity:1}
 .plate.growing svg g[data-turn]{opacity:0}
 .plate svg g[data-turn].lit{opacity:1;transition:opacity .22s ease-out}
@@ -138,7 +247,7 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
   .socket.inserting .key,.socket.inserting .slot{animation:none}
 }
 .plate svg{max-width:100%;height:auto;display:block}
-.plate.empty{color:#8a7f6d;font-family:var(--serif);font-size:20px;font-style:italic}
+.plate.empty{color:var(--wall-empty,#8a7f6d);font-family:var(--serif);font-size:20px;font-style:italic}
 /* the conversation the drawing holds, one row per spiral */
 /* The wall the scrolls are kept in. Slots are triangles because the socket is: it
    is the same fitting, seen from the front, and a scroll is what goes in one. The
@@ -181,7 +290,7 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
 .trow .said{flex:1;min-width:0;word-break:break-word}
 .trow .said b{font-weight:500;font-family:var(--mono);font-size:13px;font-style:italic}
 .trow .mine b{color:var(--ink-mine)} .trow .theirs b{color:var(--ink-theirs)}
-.linky{background:none;border:0;padding:0;color:var(--ink-soft);cursor:pointer;
+.linky{background:none;border:0;padding:0;color:var(--ui-accent-hover);cursor:pointer;
   font:inherit;font-size:13px;text-decoration:underline;text-underline-offset:2px}
 .linky:hover{color:var(--amber)}
 .trow .linky{flex:none}
@@ -197,28 +306,46 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
 .answering .q{flex:1;min-width:0;color:var(--text-dim);font-style:italic}
 
 .panel{background:var(--rock-2);border:1px solid var(--edge);border-radius:3px;
+  background-image:var(--panel-pattern,none);background-size:280px 200px;
+  background-repeat:no-repeat;background-position:top right;
   padding:18px 20px;display:flex;flex-direction:column;gap:16px}
 .row{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-end}
+.panel > .row{align-items:flex-start}
 .field{display:flex;flex-direction:column;gap:7px;min-width:0}
 .seg{display:inline-flex;border:1px solid var(--edge);border-radius:3px;overflow:hidden}
 .seg button{appearance:none;background:transparent;border:0;color:var(--text-dim);
   font-family:var(--sans);font-size:13px;padding:7px 13px;cursor:pointer;
   border-right:1px solid var(--edge)}
 .seg button:last-child{border-right:0}
-.seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
-.seg button:focus-visible{outline:2px solid var(--amber);outline-offset:-2px}
+.seg button[aria-pressed="true"]{background:var(--ui-accent);color:var(--ui-on-accent)}
+.seg button:focus-visible{outline:2px solid var(--ui-focus);outline-offset:-2px}
+
+/* One connected carving, with two native, independently selectable hit areas. */
+.seg.curl-toggle{border:0;overflow:visible;align-self:flex-start;gap:0}
+.seg.curl-toggle button{display:flex;flex-direction:column;align-items:center;
+  width:88px;min-height:44px;padding:0 0 5px;border:0;border-radius:3px;
+  background:transparent;color:var(--ui-accent)}
+.curl-toggle svg{display:block;width:88px;height:auto;aspect-ratio:83 / 97;flex-shrink:0;
+  overflow:hidden;pointer-events:none;opacity:.4;transition:opacity .15s ease}
+.curl-label{font-size:11.5px;line-height:1.4;margin-top:5px;
+  color:var(--text-dim);border-bottom:2px solid transparent}
+.seg.curl-toggle button[aria-pressed="true"]{background:transparent;color:var(--ui-accent)}
+.curl-toggle button[aria-pressed="true"] svg{opacity:1}
+.curl-toggle button[aria-pressed="true"] .curl-label{color:var(--ui-accent);border-bottom-color:currentColor}
+.curl-toggle button:hover svg,.curl-toggle button:focus-visible svg{opacity:1}
+@media (prefers-reduced-motion:reduce){.curl-toggle svg{transition:none}}
 
 /* User-traced game icons: sound waves write; eye rays read. */
 .seg.modes{border:0;overflow:visible;gap:12px;align-self:flex-start}
 .seg.modes button{position:relative;display:grid;place-items:center;
   width:92px;height:86px;padding:10px;border:1px solid transparent;border-radius:8px;
-  color:#b96829;background:transparent}
+  color:var(--mode-idle);background:transparent}
 .modes svg{display:block;width:70px;height:64px;pointer-events:none;opacity:.62}
-.seg.modes button[aria-pressed="true"]{color:#ed8b32;background:var(--rock-2);
+.seg.modes button[aria-pressed="true"]{color:var(--mode-active);background:var(--rock-2);
   border-color:currentColor}
 .modes button[aria-pressed="true"] svg{opacity:1;
-  filter:drop-shadow(0 0 4px rgba(237,139,50,.35))}
-.seg.modes button:hover{color:#ed8b32;background:var(--rock-2)}
+  filter:drop-shadow(0 0 4px var(--mode-glow))}
+.seg.modes button:hover{color:var(--mode-active);background:var(--rock-2)}
 .modes button:hover svg,.modes button:focus-visible svg{opacity:1}
 .mode-tip{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);
   z-index:5;white-space:nowrap;padding:3px 9px;border-radius:3px;
@@ -235,8 +362,60 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
     font-size:11.5px;line-height:1.25}
 }
 
-input[type=range]{width:190px;accent-color:var(--ink-soft);background:transparent}
-.hw{display:flex;align-items:center;gap:12px}
+/* Native sliders keep touch/keyboard semantics; the thumb is a Nomai control orb. */
+input[type=range]{
+  --orb-size:36px;
+  --orb-fill:radial-gradient(ellipse at 30% 20%,rgba(245,232,255,.68) 0%,rgba(217,187,255,.24) 10%,transparent 24%),
+    radial-gradient(circle at 40% 35%,rgba(100,62,144,.42) 0%,rgba(65,35,103,.58) 48%,rgba(26,15,45,.90) 100%);
+  --orb-edge:rgba(130,103,164,.8);
+  --orb-shadow:inset 0 1px 2px rgba(235,214,255,.65),inset 0 -3px 5px rgba(21,11,38,.45),
+    inset -2px 0 3px rgba(169,123,221,.25),0 2px 4px rgba(20,10,30,.3);
+  appearance:none;-webkit-appearance:none;
+  width:190px;max-width:100%;height:48px;margin:0;padding:0;
+  background:transparent;cursor:grab;touch-action:pan-y;
+}
+input[type=range]:active,input[type=range].key-adjusting,
+input[type=range].pointer-adjusting,input[type=range].touch-adjusting{
+  --orb-fill:radial-gradient(circle at 44% 42%,#ffffff 0%,#fdfcff 50%,#f0ebff 72%,#d7cbff 89%,#b7a1ff 100%);
+  --orb-edge:#eee7ff;
+  --orb-shadow:inset 0 0 8px rgba(255,255,255,.85),0 0 5px rgba(248,244,255,.9),
+    0 0 15px rgba(170,144,255,.95),0 0 30px rgba(141,112,255,.52);
+  cursor:grabbing;
+}
+input[type=range]:focus-visible{outline:2px solid var(--ui-focus);outline-offset:3px;border-radius:6px}
+input[type=range]::-webkit-slider-runnable-track{
+  height:var(--orb-size);box-sizing:border-box;border:1px solid var(--ui-focus);border-radius:18px;
+  background:var(--rail-fill,linear-gradient(#b99760,#dfca98 55%,#c5a46b));
+  box-shadow:var(--rail-shadow,inset 0 3px 6px rgba(72,47,18,.28),inset 0 -1px 1px rgba(255,240,199,.55));
+}
+input[type=range]::-moz-range-track{
+  height:var(--orb-size);box-sizing:border-box;border:1px solid var(--ui-focus);border-radius:18px;
+  background:var(--rail-fill,linear-gradient(#b99760,#dfca98 55%,#c5a46b));
+  box-shadow:var(--rail-shadow,inset 0 3px 6px rgba(72,47,18,.28),inset 0 -1px 1px rgba(255,240,199,.55));
+}
+input[type=range]::-webkit-slider-thumb{
+  appearance:none;-webkit-appearance:none;width:var(--orb-size);height:var(--orb-size);margin-top:-1px;
+  box-sizing:border-box;border:1px solid var(--orb-edge);border-radius:50%;
+  background:var(--orb-fill);box-shadow:var(--orb-shadow);
+  transition:box-shadow .12s ease,border-color .12s ease;
+}
+input[type=range]::-moz-range-thumb{
+  width:var(--orb-size);height:var(--orb-size);box-sizing:border-box;border:1px solid var(--orb-edge);border-radius:50%;
+  background:var(--orb-fill);box-shadow:var(--orb-shadow);
+  transition:box-shadow .12s ease,border-color .12s ease;
+}
+@media (prefers-reduced-motion: reduce){
+  input[type=range]::-webkit-slider-thumb{transition:none}
+  input[type=range]::-moz-range-thumb{transition:none}
+}
+@media (forced-colors: active){
+  input[type=range]{--orb-fill:ButtonText;--orb-edge:ButtonText;--orb-shadow:none}
+  input[type=range]:active,input[type=range].key-adjusting,
+  input[type=range].pointer-adjusting,input[type=range].touch-adjusting{--orb-fill:Highlight;--orb-edge:Highlight}
+  input[type=range]::-webkit-slider-runnable-track{background:Canvas;border-color:ButtonText}
+  input[type=range]::-moz-range-track{background:Canvas;border-color:ButtonText}
+}
+.hw{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;max-width:100%}
 .hw-read{font-family:var(--mono);font-size:13px;min-width:104px;
   font-variant-numeric:tabular-nums}
 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;
@@ -265,9 +444,11 @@ input[type=range]{width:190px;accent-color:var(--ink-soft);background:transparen
   border-radius:3px;border:1px solid var(--edge);background:transparent;color:var(--text);
   cursor:pointer}
 .btn:hover{background:var(--rock-3)}
-.btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
-.btn.primary:hover{background:var(--ink-soft)}
-.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.btn.primary{background:var(--ui-accent);border-color:var(--ui-accent);color:var(--ui-on-accent)}
+.btn.primary:hover{background:var(--ui-accent-hover)}
+.btn:focus-visible{outline:2px solid var(--ui-focus);outline-offset:2px}
+#clear-wall{margin-inline-start:auto}
+#clear-wall:disabled{opacity:.45;cursor:default}
 
 footer{color:var(--text-faint);font-size:12.5px;border-top:1px solid var(--edge-soft);
   padding-top:18px;display:flex;flex-direction:column;gap:5px}
@@ -275,33 +456,39 @@ footer a{color:var(--text-dim)}
 .drop{display:flex;align-items:center;justify-content:center;min-height:96px;
   border:1px dashed var(--edge);border-radius:3px;background:var(--rock-2);
   color:var(--text-dim);cursor:pointer;padding:16px;text-align:center}
-.drop:hover,.drop.over{border-color:var(--ink-soft);color:var(--text)}
-.drop:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.drop:hover,.drop.over{border-color:var(--ui-accent-hover);color:var(--text)}
+.drop:focus-visible{outline:2px solid var(--ui-focus);outline-offset:2px}
 .reading.bad{border-left-color:var(--warn)}
 /* tight under the plate: the 28px the page puts between its blocks would read as
    two separate things, and this is one -- a device held up to a wall */
+.tcell:empty{display:none}
 .tcell:not(:empty){margin-top:-19px;display:flex;flex-direction:column}
+#write-main{display:flex;justify-content:center;margin-top:-12px}
 .translator{display:flex;flex-direction:column;gap:12px}
 .screen{border:2px solid #cfd6dc;border-radius:6px;padding:20px 22px;min-height:104px;
   display:flex;align-items:center;justify-content:center;text-align:center;
   background:radial-gradient(ellipse at 50% 55%,var(--screen-1) 0%,var(--screen-2) 78%);
   font-family:var(--mono);font-size:14px;line-height:1.75;color:var(--screen-ink);
-  text-shadow:0 0 9px rgba(110,242,192,.45);word-break:break-word}
+  text-shadow:0 0 9px var(--screen-glow,rgba(110,242,192,.45));word-break:break-word}
 .screen.many{text-align:left;line-height:1.9}
 .screen .idle{opacity:.85}
-.screen .garble{color:#5fbfa4;opacity:.9}
+.screen .garble{color:var(--screen-garble,#5fbfa4);opacity:.9}
 .tbar{height:3px;background:var(--edge-soft);border-radius:2px;overflow:hidden}
 .tbar i{display:block;height:100%;width:0;background:var(--beam);
   transition:width .06s linear}
 /* holding is the interaction, so nothing the browser does on a long press may
    interrupt it: no scrolling, no selection, and no iOS callout menu */
-.hold{align-self:center;min-width:260px;max-width:100%;min-height:48px;
+.wall-action,.hold{align-self:center;min-width:260px;max-width:100%;min-height:48px;
   padding:12px 24px;font-size:15px;font-weight:500;
   background:var(--text);border-color:var(--text);color:var(--rock);
-  box-shadow:0 4px 14px rgba(0,0,0,.18);
+  box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.hold{
   user-select:none;-webkit-user-select:none;touch-action:none;-webkit-touch-callout:none}
-.hold:hover,.hold[aria-pressed="true"]{
+.wall-action:hover,.hold:hover,.hold[aria-pressed="true"]{
   background:var(--text-dim);border-color:var(--text-dim);color:var(--rock)}
+.wall-action:disabled{background:var(--text-dim);border-color:var(--text-dim);
+  color:var(--rock);box-shadow:none;cursor:default}
+.wall-action:active:not(:disabled){transform:translateY(1px)}
 .hold[aria-pressed="true"]{transform:translateY(1px)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media (prefers-reduced-motion: no-preference){
@@ -382,6 +569,10 @@ footer a{color:var(--text-dim)}
   <div id="art"></div>
 </div>
 
+<div id="write-main">
+  <button class="btn wall-action" id="write">Write it</button>
+</div>
+
 <!-- The translator lives here rather than down in the panel: it is a thing you
      point at the wall, so it belongs against the wall, and everything it produces --
      the lines it recovers, then the numbers -- reads downwards from under it. -->
@@ -414,9 +605,15 @@ footer a{color:var(--text-dim)}
     </div>
     <div class="field">
       <span class="label" id="cl">Curl</span>
-      <div class="seg" role="group" aria-labelledby="cl">
-        <button id="c-cw" aria-pressed="true">Clockwise</button>
-        <button id="c-ccw" aria-pressed="false">The other way</button>
+      <div class="seg curl-toggle" role="group" aria-labelledby="cl">
+        <button id="c-cw" type="button" aria-pressed="true">
+          <svg viewBox="22 57 83 97" aria-hidden="true" focusable="false"><use href="../assets/icons/curl-icons.svg#icon"/></svg>
+          <span class="curl-label">Clockwise</span>
+        </button>
+        <button id="c-ccw" type="button" aria-pressed="false">
+          <svg viewBox="105 57 83 97" aria-hidden="true" focusable="false"><use href="../assets/icons/curl-icons.svg#icon"/></svg>
+          <span class="curl-label">The other way</span>
+        </button>
       </div>
     </div>
     <div class="field">
@@ -440,9 +637,9 @@ footer a{color:var(--text-dim)}
   <div class="stats" id="stats"></div>
 
   <div class="actions" id="write-actions">
-    <button class="btn primary" id="write">Write it</button>
     <button class="btn" id="dl-svg" title="Saves the drawing as an SVG file">Etch the scroll</button>
     <button class="btn" id="surprise">Surprise me</button>
+    <button class="btn" id="clear-wall" disabled>Clear wall</button>
   </div>
 </div>
 
@@ -1374,6 +1571,9 @@ const ZH = {
   "someone else wrote this": "\u8fd9\u662f\u522b\u4eba\u5199\u7684",
   "none of these are yours": "\u8fd9\u4e9b\u90fd\u4e0d\u662f\u4f60\u7684",
   "Write it": "\u5199\u4e0b\u6765",
+  "Clear wall": "清空墙面",
+  "Clear all spirals and replies from this wall? This cannot be undone. Your input text and signature will be kept.":
+    "清空墙面上的所有螺旋和回复？此操作无法撤销，输入框里的文字和署名会保留。如需保存整卷，请先刻录卷轴。",
   "Written": "\u5df2\u5199\u4e0b",
   "Needs a name": "\u8fd8\u5dee\u4e00\u4e2a\u540d\u5b57",
   "Add this reply": "\u628a\u8fd9\u6761\u56de\u590d\u63a5\u4e0a",
@@ -1497,13 +1697,21 @@ function paintLang(){
   }
 }
 function setLang(v){
+  if (v === LANG) return;
   const was = LANG;
   LANG = v;
   try { localStorage.setItem("nomai.lang", v); } catch (e) { /* private window */ }
   paintLang();
+  if (state.mode === "read"){
+    if (state.scrollSource === "preset" || state.loadingSource === "preset") clearReader();
+    else stopTranslation();
+    if (state.pending) { paintThread(); paintTranslator(); }
+    else idleTranslator();
+    return;
+  }
   const swapped = state.mode === "write" && swapOpening(was);
   /* the panels the page writes itself have to be written again in the new words */
-  if (swapped) { hwRead(); syncTilt(); commit(); }
+  if (swapped) { hwRead(); syncTilt(); commit(true); }
   else if (state.mode === "write") { hwRead(); syncTilt(); syncWrite(); reshape(); }
   else if (state.pending) { paintThread(); paintTranslator(); }
   else idleTranslator();
@@ -1564,7 +1772,7 @@ function showAim(){
 function setAim(kind, index){
   /* the composer lives in the writing pane, so aiming it is asking to write --
      doing that silently while the pane is hidden looks like a dead button */
-  if (state.mode !== "write") setMode("write");
+  if (state.mode !== "write") setMode("write", true);
   state.aim = { kind, index };
   if (kind === "reply"){
     $("msg").value = "";
@@ -1583,6 +1791,7 @@ function contentNow(){
     state.dialect, state.base, state.aim.kind, state.aim.index]);
 }
 function syncWrite(){
+  $("clear-wall").disabled = !state.scroll.length;
   const ready = !!$("msg").value.trim()
     && (!state.signed || !!$("sig").value.trim());
   const changed = contentNow() !== state.committed;
@@ -1595,7 +1804,8 @@ function syncWrite(){
     : a.kind === "new" ? "Write it"
     : state.scroll.length > 1 ? "Rewrite this spiral" : "Rewrite it");
 }
-function commit(){
+function commit(opening = false){
+  state.scrollSource = opening === true ? "opening" : "written";
   const text = $("msg").value, sig = state.signed ? $("sig").value.trim() : "";
   state.signedAs = sig;
   const a = state.aim;
@@ -2135,6 +2345,49 @@ seg("d-strict", "d-upstream", "dialect", "strict", "upstream");
 $("b-256").onclick = () => { setBaseUI(256); syncWrite(); };
 $("b-200000").onclick = () => { setBaseUI(200000); syncWrite(); };
 $("hw").oninput = e => { state.hw = +e.target.value; hwRead(); reshape(); };
+/* Arrow/Home/End adjustments light the orb only while the key is held. */
+const sliderKeys = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"]);
+document.querySelectorAll('input[type="range"]').forEach(slider => {
+  let pointerId = null, touchId = null;
+  const reset = () => {
+    pointerId = touchId = null;
+    slider.classList.remove("pointer-adjusting", "touch-adjusting", "key-adjusting");
+  };
+  slider.addEventListener("pointerdown", e => {
+    if (e.pointerType === "touch" || e.button !== 0) return;
+    pointerId = e.pointerId;
+    slider.classList.add("pointer-adjusting");
+  });
+  const releasePointer = e => {
+    if (e.pointerId !== pointerId) return;
+    pointerId = null;
+    slider.classList.remove("pointer-adjusting");
+  };
+  window.addEventListener("pointerup", releasePointer, true);
+  window.addEventListener("pointercancel", releasePointer, true);
+  /* Native touch range dragging can cancel pointer events while the finger is
+     still down. Passive touch events track that gesture without replacing it. */
+  slider.addEventListener("touchstart", e => {
+    if (touchId !== null || !e.changedTouches.length) return;
+    touchId = e.changedTouches[0].identifier;
+    slider.classList.add("touch-adjusting");
+  }, { passive: true });
+  const releaseTouch = e => {
+    if (![...e.changedTouches].some(touch => touch.identifier === touchId)) return;
+    touchId = null;
+    slider.classList.remove("touch-adjusting");
+  };
+  window.addEventListener("touchend", releaseTouch, { passive: true, capture: true });
+  window.addEventListener("touchcancel", releaseTouch, { passive: true, capture: true });
+  slider.addEventListener("keydown", e => {
+    if (sliderKeys.has(e.key)) slider.classList.add("key-adjusting");
+  });
+  slider.addEventListener("keyup", e => {
+    if (sliderKeys.has(e.key)) slider.classList.remove("key-adjusting");
+  });
+  slider.addEventListener("blur", reset);
+  window.addEventListener("blur", reset);
+});
 function rememberMe(){
   try { localStorage.setItem("nomai.me", state.me); } catch (e) { /* private window */ }
 }
@@ -2177,6 +2430,10 @@ function openOn(lang){
    somebody has written their own, the box is theirs and nothing may touch it. */
 function swapOpening(was){
   const old = FIRST[was];
+  const sp = state.scroll[0];
+  if (state.scrollSource !== "opening" || state.scroll.length !== 1
+      || state.aim.kind !== "edit" || state.aim.index !== 0 || !state.signed
+      || !old || sp.text !== old[0] || sp.sig !== old[1]) return false;
   if (!old || $("msg").value !== old[0] || $("sig").value !== old[1]) return false;
   openOn(LANG);
   return true;
@@ -2272,31 +2529,101 @@ dlBtn.onclick = async () => {
   setTimeout(() => { dlBtn.textContent = was; dlBtn.disabled = false; }, 1600);
 };
 /* ---- reading a drawing ---- */
-function setMode(m){
+let readGeneration = 0;
+/* Reading borrows the display, not the writer's draft or its edit target. */
+function saveWriter(){
+  state.writerDraft = {
+    lang: LANG, text: $("msg").value, sig: $("sig").value, signed: state.signed,
+    scroll: state.scroll, aim: { ...state.aim }, base: state.base,
+    committed: state.committed, written: state.written, signedAs: state.signedAs,
+    source: state.scrollSource
+  };
+}
+function restoreWriter(){
+  const d = state.writerDraft;
+  if (!d) return false;
+  state.writerDraft = null;
+  state.scroll = d.scroll; state.aim = d.aim; state.scrollSource = d.source;
+  state.committed = d.committed; state.written = d.written; state.signedAs = d.signedAs;
+  $("msg").value = d.text; $("sig").value = d.sig;
+  setBaseUI(d.base); setSigned(d.signed, false);
+  return d.lang !== LANG && swapOpening(d.lang);
+}
+function stopTranslation(){
+  if (traf) cancelAnimationFrame(traf);
+  traf = null; tprog = 0; thold = false; tlast = 0;
+  if (scrambleTimer) clearInterval(scrambleTimer);
+  scrambleTimer = null;
+  const btn = $("translate");
+  if (btn) btn.setAttribute("aria-pressed", "false");
+  beams(false); walkers = [];
+}
+function cancelReadLoad(){
+  readGeneration++;
+  state.loadingSource = null;
+  $("rack").querySelectorAll(".busy").forEach(el => el.remove());
+  $("rack").querySelectorAll(".slot").forEach(btn => {
+    btn.disabled = false; btn.classList.remove("taken");
+  });
+}
+function clearWallState(){
+  cancelReadLoad(); stopTranslation();
+  state.scroll = []; state.pending = null; state.scrollSource = null;
+  state.aim = { kind: "new", index: 0 };
+  state.seen = new Set(); state.sel = 0; state.parents = []; state.edges = [];
+  state.track = null; state.socket = null;
+  $("thread").innerHTML = ""; $("thread").hidden = true;
+  $("answering").hidden = true;
+}
+function clearReader(){
+  clearWallState();
+  empty("waiting for a drawing");
+  idleTranslator();
+}
+function clearWrittenWall(){
+  if (state.mode !== "write" || !state.scroll.length) return;
+  if (!confirm(t("Clear all spirals and replies from this wall? This cannot be undone. Your input text and signature will be kept."))) return;
+  clearWallState();
+  state.writerDraft = null; state.committed = null;
+  state.written = ""; state.signedAs = "";
+  empty("waiting for words");
+  $("tcell").innerHTML = "";
+  showAim(); syncWrite();
+}
+$("clear-wall").onclick = clearWrittenWall;
+function setMode(m, useReadScroll = false){
+  if (m === state.mode) return;
+  if (m === "read") saveWriter();
+  cancelReadLoad(); stopTranslation();
   state.mode = m;
   $("m-write").setAttribute("aria-pressed", String(m === "write"));
   $("m-read").setAttribute("aria-pressed", String(m === "read"));
   $("write-pane").hidden = m !== "write";
   $("read-pane").hidden = m !== "read";
+  $("write-main").hidden = m !== "write";
   $("write-actions").hidden = m !== "write";
   $("write-controls").hidden = m !== "write";
   if (m === "write"){
+    const swapped = !useReadScroll && restoreWriter();
+    state.pending = null;
     /* nothing to point at a drawing you are writing */
     $("tcell").innerHTML = "";
     state.seen = new Set(state.scroll.map((_, i) => i));
-    build(false);
+    if (swapped) commit(true); else build(false);
+    showAim(); syncWrite(); hwRead(); syncTilt();
   }
   else {
-    empty("waiting for a drawing");
-    $("thread").hidden = true;
+    clearReader();
     paintRack();
-    idleTranslator();
   }
 }
 $("m-write").onclick = () => setMode("write");
 $("m-read").onclick = () => setMode("read");
 
-function readDrawing(text, name){
+function readDrawing(text, name, source = "file"){
+  stopTranslation();
+  state.loadingSource = null;
+  state.scrollSource = source;
   state.track = null;
   state.socket = null;
   walkers = [];
@@ -2435,6 +2762,9 @@ function etchCanon(c){
 
 function takeDown(i, btn){
   const c = CANON[i];
+  clearReader();
+  state.loadingSource = "preset";
+  const generation = readGeneration;
   const rack = $("rack");
   rack.querySelectorAll(".slot").forEach(b => { b.disabled = true; });
   btn.classList.add("taken");
@@ -2444,13 +2774,15 @@ function takeDown(i, btn){
   rack.appendChild(note);
   /* let the slot finish emptying before the writer takes the thread */
   setTimeout(() => {
+    if (generation !== readGeneration || state.mode !== "read") return;
     let svg = null;
     try { svg = etchCanon(c); } catch (err){ svg = null; }
     note.remove();
     rack.querySelectorAll(".slot").forEach(b => { b.disabled = false; });
     btn.classList.remove("taken");
+    state.loadingSource = null;
     if (!svg){ fail(t("that scroll could not be etched")); return; }
-    readDrawing(svg, c.where);
+    readDrawing(svg, c.where, "preset");
   }, 380);
 }
 
@@ -2623,14 +2955,25 @@ $("rack-open").onclick = openWall;
 const drop = $("drop");
 const takeFile = f => {
   if (!f) return;
+  clearReader();
+  state.loadingSource = "file";
+  const generation = readGeneration;
   $("drop-text").textContent = f.name;
   const rd = new FileReader();
   rd.onload = () => {
+    if (generation !== readGeneration || state.mode !== "read") return;
     const text = String(rd.result);
     /* A scroll runs to a couple of megabytes and reading one is not quick on a
        phone. Reading it blocks the page, so say so first and let that paint. */
     empty("reading it");
-    setTimeout(() => readDrawing(text, f.name), 30);
+    setTimeout(() => {
+      if (generation === readGeneration && state.mode === "read") readDrawing(text, f.name);
+    }, 30);
+  };
+  rd.onerror = () => {
+    if (generation !== readGeneration || state.mode !== "read") return;
+    state.loadingSource = null;
+    fail(rd.error ? rd.error.message : "Could not read file");
   };
   rd.readAsText(f);
 };
@@ -2677,5 +3020,5 @@ try {
 openOn(LANG);
 paintLang();
 hwRead();
-commit();
+commit(true);
 </script>

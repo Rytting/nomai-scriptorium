@@ -1433,3 +1433,43 @@ Every paragraph that warns stayed, and they are the ones worth having: the drawi
 will not read back, the alphabet changing under you, a tree that disagrees with itself,
 more than one sentence fitting, no sentence fitting, handwriting too heavy to survive
 the trip. Those say something the screen cannot show you.
+
+### Stone
+
+Not our work again, and the largest single change the page has had: the user rebuilt
+its whole surface. Four hundred lines, and the short version is that it stopped looking
+like a form and started looking like the thing it is about.
+
+The accent went from a web blue to the ink's own brown, behind four variables --
+`--ui-accent`, `--ui-accent-hover`, `--ui-on-accent`, `--ui-focus` -- so it is one
+decision rather than forty. Three textures came in and are inlined as data URIs at
+build time, so the single-file page still needs nothing beside it: a carved relief on
+the writing surface, a second **pressed** relief that swaps in on focus so the tablet
+sinks under your hand, and the Vessel's schematic, very faint, behind the settings.
+In the dark it reads as pale stone on a near-black ground, which is where the game
+keeps its walls.
+
+Curl stopped being two words in a segmented control and became two spirals, which is
+the one control on the page whose meaning is a shape.
+
+Three changes underneath, which matter more than the surface:
+
+**The Write button moved out of the row of three and under the plate**, the size and
+place of `Hold to translate`. Both modes now put the thing you press directly beneath
+the wall it acts on, and neither is hunting in a row of buttons for it.
+
+**Switching modes stops throwing your work away.** `saveWriter` / `restoreWriter` keep
+the scroll you were writing while you go and read somebody else's, and hand it back
+when you return. Verified: two spirals and a reply, off to the Sun Station's eight,
+back to two spirals and a reply. Before this the wall was simply gone.
+
+**`clearWrittenWall`** gives you a way to empty the wall on purpose, behind a confirm,
+keeping the text and the name -- which is the thing you actually want kept.
+
+Checked over the whole page rather than the diff: writing, replying, the curl icons,
+the wind slider, clearing, mode switching, both languages including every new label
+(手写感, 卷向, 松紧, 倾斜, 顺时针, 反过来), a Chinese canon scroll read back six of six,
+375-wide with no horizontal overflow, no external asset reference left in the build,
+and `check_canon.py` still finds its list. No console errors anywhere in it.
+
+The page is 281 KB now, from 175 before the masks. About 105 KB of that is pictures.
