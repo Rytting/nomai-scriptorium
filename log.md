@@ -1681,3 +1681,24 @@ Worth keeping: the reported symptom was "the smaller alphabet fails where the bi
 one works", which sounds like it must be about the characters, and the characters were
 identical in both. The size of the alphabet was doing a second job nobody had written
 down.
+
+### Small and Large
+
+"So it has nothing to do with Latin or other languages, does it? Why not just call them
+the small alphabet and the large one?"
+
+No, it does not, and the labels were saying it did. **Latin** and **Any language** name
+a distinction about characters, and the thing the control actually sets is a size --
+which decides how long a message may be quite as much as which characters are in it. A
+three-hundred-character English sentence needs the large one, and the old label said
+English was exactly what the small one was for.
+
+They are **Small** and **Large** now. In the statistics, where every other cell is a
+number, the alphabet is its number too: 256 or 200,000. That is the fact underneath
+both jobs, and it needs no translating.
+
+Which let a small old bug go with it. `stats` was skipped by the language walker
+because its values were words that had been translated once already and translating
+them twice would have been guesswork -- so switching language in read mode left the
+table in the language before. The values are numbers now, so the walker can have the
+whole thing, and it changes with everything else.

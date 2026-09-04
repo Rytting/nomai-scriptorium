@@ -691,8 +691,11 @@ footer a{color:var(--text-dim)}
     <div class="field">
       <span class="label" id="bl">Alphabet size</span>
       <div class="seg" role="group" aria-labelledby="bl">
-        <button id="b-256" aria-pressed="true">Latin</button>
-        <button id="b-200000" aria-pressed="false">Any language</button>
+        <!-- Not "Latin" and "any language": the size of the alphabet decides how
+             long a message may be as well as which characters are in it, and a
+             three-hundred-character English sentence needs the large one too. -->
+        <button id="b-256" aria-pressed="true">Small</button>
+        <button id="b-200000" aria-pressed="false">Large</button>
       </div>
     </div>
     <div class="field">
@@ -1679,8 +1682,7 @@ const ZH = {
   "Unambiguous": "\u65e0\u6b67\u4e49",
   "Original": "\u539f\u7248",
   "Alphabet size": "\u5b57\u6bcd\u8868",
-  "Latin": "\u62c9\u4e01",
-  "Any language": "\u4efb\u4f55\u8bed\u8a00",
+  "Small": "\u5c0f\u5b57\u6bcd\u8868", "Large": "\u5927\u5b57\u6bcd\u8868",
   "Handwriting": "\u624b\u5199\u611f",
   "Curl": "\u5377\u5411",
   "Clockwise": "\u987a\u65f6\u9488",
@@ -1782,7 +1784,11 @@ function paintLang(){
   $("h1").innerHTML = LANG === "zh"
     ? "试试像<em>挪麦</em>一样书写吧！"
     : "Write something in <em>Nomai</em>";
-  const skip = ["thread", "art", "readings", "stats", "msg", "sig", "me", "h1"]
+  /* `stats` used to be skipped because its values were words that had already been
+     translated once, and translating them again would have been guesswork. They are
+     numbers now, and the labels beside them are ordinary text -- so the walker can
+     have them, and a language switch in read mode stops leaving them behind. */
+  const skip = ["thread", "art", "readings", "msg", "sig", "me", "h1"]
     .map(id => $(id)).filter(Boolean);
   const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   const jobs = [], done = [];
@@ -2439,11 +2445,11 @@ function paint(sc, widened, shaky, unchecked){
      read back; long spirals are simply the ones that most often do not.`,
     `<b>\u592a\u957f\uff0c\u6ca1\u505a\u6821\u9a8c\u3002</b>\u628a\u4e00\u5f20\u56fe\u8bfb\u56de\u6765\u6bd4\u753b\u51fa\u6765\u8d35\u5f97\u591a\uff0c\u800c\u8fd9\u5f20\u5927\u5230\u6821\u9a8c\u7684\u65f6\u95f4\u5df2\u7ecf\u8d85\u51fa\u4e86\u8ba9\u4f60\u5e72\u7b49\u7684\u5408\u7406\u8303\u56f4\u2014\u2014\u6240\u4ee5\u5b83\u753b\u51fa\u6765\u4e86\uff0c\u4f46\u6ca1\u6709\u9a8c\u8fc7\u3002\u5b83\u5f88\u53ef\u80fd\u8bfb\u5f97\u56de\u6765\uff1b\u53ea\u662f\u8d8a\u957f\u7684\u87ba\u65cb\u8d8a\u5bb9\u6613\u8bfb\u4e0d\u56de\u6765\u3002`) : "";
   const wide = widened ? note(
-    `Switched to the larger alphabet — Latin covers only the first 256 characters, and
+    `Switched to the larger alphabet — the small one covers only the first 256 characters, and
      cannot count past 256 either, so a message of 256 characters or more needs it too.
      Every language works here; the spiral just runs longer, because each character now
      takes more of the drawing to pin down.`,
-    `\u5df2\u6362\u6210\u66f4\u5927\u7684\u5b57\u6bcd\u8868\u2014\u2014\u62c9\u4e01\u53ea\u76d6\u5f97\u4f4f\u524d 256 \u4e2a\u5b57\u7b26\uff0c\u4e5f\u6570\u4e0d\u5230 256 \u4ee5\u4e0a\uff0c\u6240\u4ee5 256 \u5b57\u53ca\u66f4\u957f\u7684\u6d88\u606f\u540c\u6837\u5f97\u7528\u5b83\u3002\u4efb\u4f55\u8bed\u8a00\u90fd\u80fd\u5199\uff0c\u53ea\u662f\u87ba\u65cb\u4f1a\u957f\u4e00\u4e9b\uff0c\u56e0\u4e3a\u6bcf\u4e2a\u5b57\u7b26\u73b0\u5728\u8981\u5360\u7528\u66f4\u591a\u7684\u56fe\u624d\u80fd\u5b9a\u4e0b\u6765\u3002`) : "";
+    `\u5df2\u6362\u6210\u66f4\u5927\u7684\u5b57\u6bcd\u8868\u2014\u2014\u5c0f\u7684\u90a3\u4e2a\u53ea\u76d6\u5f97\u4f4f\u524d 256 \u4e2a\u5b57\u7b26\uff0c\u4e5f\u6570\u4e0d\u5230 256 \u4ee5\u4e0a\uff0c\u6240\u4ee5 256 \u5b57\u53ca\u66f4\u957f\u7684\u6d88\u606f\u540c\u6837\u5f97\u7528\u5b83\u3002\u4efb\u4f55\u8bed\u8a00\u90fd\u80fd\u5199\uff0c\u53ea\u662f\u87ba\u65cb\u4f1a\u957f\u4e00\u4e9b\uff0c\u56e0\u4e3a\u6bcf\u4e2a\u5b57\u7b26\u73b0\u5728\u8981\u5360\u7528\u66f4\u591a\u7684\u56fe\u624d\u80fd\u5b9a\u4e0b\u6765\u3002`) : "";
   if (state.dialect !== "strict"){
     const n2 = upstreamCandidates(sc[0].grid);
     r.innerHTML = `<div class="reading rival"><span class="tag">${t("intended")}</span>`
@@ -2826,7 +2832,7 @@ function readDrawing(text, name, source = "file"){
     ["turns", scroll.spirals.reduce((a, o) => a + o[0].ncols, 0)],
     scroll.spirals.length > 1 ? ["replies", scroll.joins.length]
                               : ["joins", obs.conns.length],
-    ["alphabet", base === null ? "-" : t(base === 256 ? "Latin" : "Any language")]
+    ["alphabet", base === null ? "-" : base.toLocaleString("en-US")]
   ].filter(Boolean)
    .map(([n2, v]) => `<div class="stat"><span class="v">${v}</span><span class="n">${t(n2)}</span></div>`).join("");
   /* the colour goes on before the text does: on a wall you can see whose a spiral
