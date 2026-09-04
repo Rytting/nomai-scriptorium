@@ -1671,6 +1671,9 @@ const ZH = {
     "\u628a\u632a\u9ea6\u6587 SVG \u62d6\u5230\u8fd9\u91cc\uff0c\u6216\u8005\u70b9\u4e00\u4e0b\u9009\u4e00\u4e2a",
   "who is writing": "\u8c01\u5199\u7684",
   "waiting for words": "\u7b49\u4f60\u5199\u5b57",
+  "too long for this alphabet": "\u8fd9\u6bb5\u5bf9\u8fd9\u4e2a\u5b57\u6bcd\u8868\u6765\u8bf4\u592a\u957f\u4e86",
+  "could not find a unique numbering for this text": "\u627e\u4e0d\u5230\u53ea\u6709\u4e00\u79cd\u8bfb\u6cd5\u7684\u7f16\u53f7",
+  "that character needs the larger alphabet": "\u8fd9\u4e2a\u5b57\u7b26\u9700\u8981\u66f4\u5927\u7684\u5b57\u6bcd\u8868",
   "waiting for a drawing": "\u7b49\u4f60\u7ed9\u4e00\u5f20\u56fe",
   "Dialect": "\u65b9\u8a00",
   "Unambiguous": "\u65e0\u6b67\u4e49",
@@ -1983,6 +1986,12 @@ function gridFor(msg, sig, parent){
     g.readings = null;
     return g;
   }
+  /* The record is [frame, length, ...characters, nonce] and every one of those is a
+     single digit in this base, the length included -- so an alphabet of 256 cannot
+     write down the number 256. At exactly that many characters the format runs out,
+     no nonce can rescue it, and the search would spend forty-eight attempts proving
+     so before saying something that was not the reason. */
+  if (Array.from(msg).length >= state.base) return "too long for this alphabet";
   for (let nonce = 1; nonce <= 48; nonce++){
     const cand = encode(msg, state.base, "strict", nonce, sig, parent);
     if (cand === "big") return "that character needs the larger alphabet";
@@ -2003,8 +2012,10 @@ function build(grow, growIdx){
   const sc = state.scroll;
   if (!sc.length){ empty("waiting for words"); return; }
   let widened = false;
+  /* Two ways to outgrow the Latin alphabet: a character it does not contain, or more
+     characters than it can count. Both are answered the same way. */
   if (state.base === 256 && sc.some(sp => Array.from(sp.text + (sp.sig || ""))
-        .some(c => c.codePointAt(0) >= 256))){
+        .some(c => c.codePointAt(0) >= 256) || Array.from(sp.text).length >= 256)){
     setBaseUI(200000);
     widened = true;
   }
@@ -2428,10 +2439,11 @@ function paint(sc, widened, shaky, unchecked){
      read back; long spirals are simply the ones that most often do not.`,
     `<b>\u592a\u957f\uff0c\u6ca1\u505a\u6821\u9a8c\u3002</b>\u628a\u4e00\u5f20\u56fe\u8bfb\u56de\u6765\u6bd4\u753b\u51fa\u6765\u8d35\u5f97\u591a\uff0c\u800c\u8fd9\u5f20\u5927\u5230\u6821\u9a8c\u7684\u65f6\u95f4\u5df2\u7ecf\u8d85\u51fa\u4e86\u8ba9\u4f60\u5e72\u7b49\u7684\u5408\u7406\u8303\u56f4\u2014\u2014\u6240\u4ee5\u5b83\u753b\u51fa\u6765\u4e86\uff0c\u4f46\u6ca1\u6709\u9a8c\u8fc7\u3002\u5b83\u5f88\u53ef\u80fd\u8bfb\u5f97\u56de\u6765\uff1b\u53ea\u662f\u8d8a\u957f\u7684\u87ba\u65cb\u8d8a\u5bb9\u6613\u8bfb\u4e0d\u56de\u6765\u3002`) : "";
   const wide = widened ? note(
-    `Switched to the larger alphabet — Latin covers only the first 256 characters.
+    `Switched to the larger alphabet — Latin covers only the first 256 characters, and
+     cannot count past 256 either, so a message of 256 characters or more needs it too.
      Every language works here; the spiral just runs longer, because each character now
      takes more of the drawing to pin down.`,
-    `\u5df2\u6362\u6210\u66f4\u5927\u7684\u5b57\u6bcd\u8868\u2014\u2014\u62c9\u4e01\u53ea\u76d6\u5f97\u4f4f\u524d 256 \u4e2a\u5b57\u7b26\u3002\u4efb\u4f55\u8bed\u8a00\u90fd\u80fd\u5199\uff0c\u53ea\u662f\u87ba\u65cb\u4f1a\u957f\u4e00\u4e9b\uff0c\u56e0\u4e3a\u6bcf\u4e2a\u5b57\u7b26\u73b0\u5728\u8981\u5360\u7528\u66f4\u591a\u7684\u56fe\u624d\u80fd\u5b9a\u4e0b\u6765\u3002`) : "";
+    `\u5df2\u6362\u6210\u66f4\u5927\u7684\u5b57\u6bcd\u8868\u2014\u2014\u62c9\u4e01\u53ea\u76d6\u5f97\u4f4f\u524d 256 \u4e2a\u5b57\u7b26\uff0c\u4e5f\u6570\u4e0d\u5230 256 \u4ee5\u4e0a\uff0c\u6240\u4ee5 256 \u5b57\u53ca\u66f4\u957f\u7684\u6d88\u606f\u540c\u6837\u5f97\u7528\u5b83\u3002\u4efb\u4f55\u8bed\u8a00\u90fd\u80fd\u5199\uff0c\u53ea\u662f\u87ba\u65cb\u4f1a\u957f\u4e00\u4e9b\uff0c\u56e0\u4e3a\u6bcf\u4e2a\u5b57\u7b26\u73b0\u5728\u8981\u5360\u7528\u66f4\u591a\u7684\u56fe\u624d\u80fd\u5b9a\u4e0b\u6765\u3002`) : "";
   if (state.dialect !== "strict"){
     const n2 = upstreamCandidates(sc[0].grid);
     r.innerHTML = `<div class="reading rival"><span class="tag">${t("intended")}</span>`

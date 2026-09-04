@@ -1649,3 +1649,35 @@ that this one does.
 What this does not fix is the reason any of it is slow. `observe` is superlinear in the
 number of turns and that is the real ceiling; the clock only stops it being paid for
 nothing.
+
+### The alphabet also counts
+
+"There are no other characters in this one, so why can it not be written in Latin, when
+'any language' writes it and reads it fine?"
+
+Because the alphabet is not only the characters it holds. It is also how high it can
+count.
+
+A record is `[frame, length, ...characters, nonce]`, and every one of those is a single
+digit in the base. Including the length. So an alphabet of 256 cannot write down the
+number 256, and a message of 256 characters has no length field. Measured at the
+boundary and it is exactly the boundary: 255 characters writes, 256 does not.
+
+The failure was silent about all of this. `gridFor` would try forty-eight nonces,
+every one doomed for the same reason, and then say **could not find a unique numbering
+for this text** -- which describes a search that came up empty, and there had never
+been a search. The message named the last thing that happened rather than the reason.
+
+Both halves are fixed. Outgrowing the Latin alphabet by length is the same problem as
+outgrowing it by character and gets the same answer: the page widens on its own and
+says so, and the note now gives both reasons. And when even the larger alphabet
+genuinely cannot take it -- two hundred thousand characters -- it says *too long for
+this alphabet* before spending anything, rather than after.
+
+Three of these plate messages had never been translated, which is why a Chinese page
+was answering in English. They are in the table now.
+
+Worth keeping: the reported symptom was "the smaller alphabet fails where the bigger
+one works", which sounds like it must be about the characters, and the characters were
+identical in both. The size of the alphabet was doing a second job nobody had written
+down.
