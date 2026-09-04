@@ -1,6 +1,7 @@
 """Inline the glyph table into the page so it ships as one self-contained file."""
 import json
 import pathlib
+import subprocess
 from urllib.parse import quote
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -24,5 +25,15 @@ for texture_name in ("writing-tablet.svg", "writing-tablet-pressed.svg", "vessel
     texture = (ROOT / "assets" / "textures" / texture_name).read_text(encoding="utf-8")
     assert built.count(texture_ref) == 1, f"{texture_name} reference missing"
     built = built.replace(texture_ref, 'data:image/svg+xml,' + quote(texture, safe=''))
+# Which build this is, so a page can say so. A copy saved to disk has no server to
+# ask, which is the whole reason the recorder is worth having.
+rev = subprocess.run(["git", "log", "-1", "--format=%h"], cwd=ROOT,
+                     capture_output=True, text=True)
+day = subprocess.run(["git", "log", "-1", "--format=%cs"], cwd=ROOT,
+                     capture_output=True, text=True)
+stamp = '{ rev: "%s", date: "%s" }' % (rev.stdout.strip() or "dev", day.stdout.strip())
+assert built.count("/*__BUILD__*/") == 1, "build placeholder missing"
+built = built.replace('/*__BUILD__*/{ rev: "dev", date: "" }', "/*__BUILD__*/" + stamp)
+
 out.write_text(built, encoding="utf-8")
 print(f"wrote {out.relative_to(ROOT)}  {len(out.read_text(encoding='utf-8')):,} bytes")

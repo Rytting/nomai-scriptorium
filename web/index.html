@@ -483,6 +483,57 @@ input[type=range]::-moz-range-thumb{
 footer{color:var(--text-faint);font-size:12.5px;border-top:1px solid var(--edge-soft);
   padding-top:18px;display:flex;flex-direction:column;gap:5px}
 footer a{color:var(--text-dim)}
+/* The recorder.
+
+   Nomai machines report to a squat ceramic-looking disc that, when it has something
+   to say, floats rings above itself with the words on them. The writing on a ring is
+   the same writing as everywhere else here -- it is just not coiled: the ring turns
+   instead, so the line runs straight past you. Machine-written, which is why it does
+   not curl the way a hand does.
+
+   What this page has to report about itself is what version it is and where it comes
+   from, and that is exactly the kind of thing those discs are for. */
+.recorder{position:relative;align-self:flex-start;display:flex;flex-direction:column;
+  align-items:flex-start;gap:2px}
+.pot{appearance:none;background:none;border:0;padding:4px 2px;cursor:pointer;
+  display:block;line-height:0;color:var(--text-faint)}
+.pot svg{width:62px;height:30px;display:block;overflow:visible}
+.pot .shell{fill:var(--rock-3);stroke:var(--edge);stroke-width:1.5}
+.pot .lip{fill:none;stroke:var(--edge);stroke-width:1.2;opacity:.85}
+.pot .eye{fill:var(--edge);opacity:.9;transition:fill .25s ease,opacity .25s ease}
+.pot:hover .eye,.pot[aria-expanded="true"] .eye{fill:#8fb6ff;opacity:1}
+.pot:focus-visible{outline:2px solid var(--ui-focus);outline-offset:2px;border-radius:4px}
+
+.rings{position:absolute;bottom:calc(100% - 2px);left:0;z-index:6;
+  display:flex;flex-direction:column;gap:9px;padding-bottom:10px;
+  pointer-events:none}
+.ring{position:relative;height:34px;overflow:hidden;border-radius:17px;
+  background:linear-gradient(#080e26,#1a2450 46%,#060a1c);
+  box-shadow:0 6px 18px rgba(4,8,22,.55),inset 0 1px 0 rgba(160,190,255,.32),
+    inset 0 -2px 6px rgba(2,4,14,.7);
+  opacity:0;transform:translateY(14px) scaleY(.55);
+  transition:opacity .34s ease,transform .38s cubic-bezier(.2,.86,.3,1)}
+.ring:nth-child(2){transition-delay:.09s}
+.recorder.open .ring{opacity:1;transform:none}
+/* the band is laid down twice end to end, so sliding it exactly one width along
+   returns it to where it started and the turn has no seam in it */
+.band{position:absolute;top:0;left:0;height:100%;display:flex;align-items:center;
+  gap:0;animation:ring-turn var(--turn,22s) linear infinite}
+.band svg{height:60%;width:auto;flex:none;overflow:visible;
+  filter:drop-shadow(0 0 3px #86a6ff) drop-shadow(0 0 9px rgba(120,160,255,.8))}
+.band svg [stroke]{stroke:#dbe8ff}
+.band svg [fill]:not([fill="none"]){fill:#dbe8ff}
+@keyframes ring-turn{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ring-plain{margin:0;padding-top:2px;font-family:var(--mono);font-size:11.5px;
+  color:var(--text-faint);opacity:0;transition:opacity .3s ease .12s}
+.recorder.open .ring-plain{opacity:1}
+.ring-plain a{color:var(--text-dim)}
+@media (prefers-reduced-motion: reduce){
+  .band{animation:none}
+  .ring{transition:opacity .2s ease}
+  .recorder.open .ring{transform:none}
+}
+
 .drop{display:flex;align-items:center;justify-content:center;min-height:96px;
   border:1px dashed var(--edge);border-radius:3px;background:var(--rock-2);
   color:var(--text-dim);cursor:pointer;padding:16px;text-align:center}
@@ -694,6 +745,22 @@ footer a{color:var(--text-dim)}
   traced by hand from <em>Outer Wilds</em>. The unambiguous dialect is a change of ours:
   the same drawings, numbered so that each one has exactly one reading.</p>
   <p>Nothing here is sent anywhere. Everything runs in this page.</p>
+  <div class="recorder" id="recorder">
+    <div class="rings" id="rings" aria-hidden="true">
+      <div class="ring" id="ring-0"></div>
+      <div class="ring" id="ring-1"></div>
+    </div>
+    <button class="pot" id="pot" aria-expanded="false" aria-controls="pot-said"
+      aria-label="What this page is">
+      <svg viewBox="-32 -15 64 30" aria-hidden="true" focusable="false">
+        <ellipse class="shell" cx="0" cy="2" rx="29" ry="11"/>
+        <ellipse class="lip" cx="0" cy="0" rx="21" ry="7.5"/>
+        <ellipse class="lip" cx="0" cy="-1" rx="13" ry="4.6"/>
+        <ellipse class="eye" cx="0" cy="-1.6" rx="4.4" ry="1.9"/>
+      </svg>
+    </button>
+    <p class="ring-plain" id="pot-said"></p>
+  </div>
 </footer>
 </div>
 
@@ -1647,6 +1714,7 @@ const ZH = {
      所莱内姆, 派伊, 伊代亚, 眼祭坛, 垫脚石区, 太阳站, 量子卫星 -- and 挪麦 without
      the 人, which is how that localisation writes it. */
   "Night": "夜间模式",
+  "What this page is": "这个页面是什么",
   "From the wall": "从墙上取",
   "Spoilers.": "剧透提醒。",
   "A few scrolls already etched, straight out of the game. If you have not finished it, they are better met there first.":
@@ -1735,7 +1803,8 @@ function paintLang(){
     }
   }
   for (const [id, attr] of [["me", "placeholder"], ["sig", "placeholder"],
-                            ["dl-svg", "title"], ["theme", "aria-label"]]){
+                            ["dl-svg", "title"], ["theme", "aria-label"],
+                            ["pot", "aria-label"]]){
     const el = $(id);
     if (!el) continue;
     const k = id + "/" + attr;
@@ -2841,6 +2910,91 @@ function takeDown(i, btn){
     readDrawing(svg, c.where, "preset");
   }, 380);
 }
+
+/* Which build this is. Filled in from git when the page is built; `dev` when the
+   source file is opened straight from disk. */
+const BUILD = /*__BUILD__*/{ rev: "dev", date: "" };
+const REPO = "github.com/Rytting/nomai-scriptorium";
+
+/* The same writer, on a straight track instead of a coiled one. Everything that
+   places a glyph goes through `place`, so a layout that walks in a line is the whole
+   change: no growth either, because a machine's hand does not get bigger as it
+   writes. */
+function bandLayout(ncols){
+  const step = 3.6 * K;
+  return { ncols, place(i, j){
+    const px = (i - 1) * step, py = (j - ROWS) * 3 * K;
+    return p => [p[0] + px, p[1] + py];
+  } };
+}
+function bandSVG(text, seed){
+  let grid = null;
+  for (let nonce = 1; nonce <= 48 && !grid; nonce++){
+    const x = encode(text, 256, "strict", nonce, "", null);
+    if (x === "big" || x === null) return null;
+    const g = buildGrid(x, "strict");
+    const r = strictReadings(g, 256);
+    if (r.length === 1 && r[0].text === text) grid = g;
+  }
+  if (!grid) return null;
+  const parts = spiralParts(grid, 0.05, seed, bandLayout(grid.ncols), null);
+  const pts = [...parts.drawnAt.values()].flat();
+  if (!pts.length) return null;
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const m = 2.6 * K;
+  const x0 = Math.min(...xs) - m, y0 = Math.min(...ys) - m;
+  const w = Math.max(...xs) - Math.min(...xs) + 2 * m;
+  const h = Math.max(...ys) - Math.min(...ys) + 2 * m;
+  return '<svg viewBox="' + [x0, y0, w, h].map(f).join(" ") + '" preserveAspectRatio='
+    + '"xMidYMid meet" aria-hidden="true">' + [...parts.byCol.values()].flat().join("")
+    + "</svg>";
+}
+/* Written once, the first time somebody asks: it is a second of work and most
+   readers will never open it. */
+let potSaid = false;
+function fillPot(){
+  if (potSaid) return;
+  potSaid = true;
+  const lines = [BUILD.date ? BUILD.rev + " " + BUILD.date : BUILD.rev, REPO];
+  lines.forEach((line, i) => {
+    const ring = $("ring-" + i);
+    const art = bandSVG(line, 21 + i * 9);
+    if (!art){ ring.remove(); return; }
+    ring.innerHTML = '<div class="band">' + art + art + "</div>";
+    /* the ring is as long as what is written on it */
+    const svg = ring.querySelector("svg");
+    const vb = svg.getAttribute("viewBox").split(" ").map(Number);
+    ring.style.width = Math.round(34 * 0.6 * (vb[2] / vb[3])) + 28 + "px";
+    ring.querySelector(".band").style.setProperty("--turn",
+      Math.round(7 + vb[2] / vb[3] * 2.4) + "s");
+  });
+  $("pot-said").innerHTML = esc(lines[0]) + ' &middot; <a href="https://' + REPO
+    + '" rel="noopener">' + esc(REPO) + "</a>";
+}
+function setPot(on){
+  fillPot();
+  $("recorder").classList.toggle("open", on);
+  $("pot").setAttribute("aria-expanded", String(on));
+}
+/* Written while nothing else is happening. It is about a second of encoding, and a
+   second of it under the pointer -- at the moment somebody hovers the disc -- would
+   be a second of frozen page for the one gesture that should feel weightless. */
+if (window.requestIdleCallback) requestIdleCallback(fillPot, { timeout: 4000 });
+else setTimeout(fillPot, 2500);
+$("pot").onclick = () => setPot($("pot").getAttribute("aria-expanded") !== "true");
+/* it also lifts for a pointer that is merely near it, and settles again after */
+if (matchMedia("(hover: hover)").matches){
+  $("recorder").addEventListener("pointerenter", () => setPot(true));
+  $("recorder").addEventListener("pointerleave", () => {
+    if (document.activeElement !== $("pot")) setPot(false);
+  });
+}
+$("pot").addEventListener("focus", () => setPot(true));
+$("pot").addEventListener("blur", () => setPot(false));
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && $("pot").getAttribute("aria-expanded") === "true")
+    setPot(false);
+});
 
 function idleTranslator(){
   $("tcell").innerHTML = `<div class="translator">

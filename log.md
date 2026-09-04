@@ -1531,3 +1531,40 @@ A note on my own testing: the first canon run after this came back MISREAD on
 everything, and it was the test, not the page. `LANG` was still `zh` from an earlier
 check, so `etchCanon` correctly etched the Chinese scrolls and I compared them against
 the English list. Twelve of twelve once asked the right question.
+
+### The recorder
+
+The user's idea, and a much better answer than a line of small print: in the game, a
+Nomai machine with something to report has a squat ceramic-looking disc beside it, and
+when there is something to say it floats rings above itself with the words on them.
+The writing on a ring is the same writing as everywhere else -- it is simply not
+coiled. The ring turns instead, so the line runs straight past you. Machine-written,
+which is why it does not curl the way a hand does.
+
+What this page has to report about itself is which build it is and where it came from.
+That is exactly what those discs are for.
+
+The straightening cost almost nothing, which is the part worth recording. Everything
+that puts a glyph on a page goes through one method, `place(i, j)`, which returns a
+function from glyph-local coordinates to page coordinates. A layout that walks in a
+straight line is eleven lines: x advances by a fixed step per column, y is the row
+offset, scale stays at one -- a machine's hand does not get bigger as it writes. The
+existing writer draws along it without being told anything. The interface had been
+right all along and nobody had asked it for a second shape.
+
+The text on the rings is really encoded -- strict dialect, nonce searched until the
+grid has exactly one reading, the same as any spiral on the wall. What it is not is
+readable by our own reader, which fits a log spiral to what it is given and would make
+nothing of a straight track. So it is honest writing in a geometry the translator does
+not take, and the same words are printed in Latin under the disc, which is the point:
+the disc is how the page says its version, not a place to hide it.
+
+Two details that turned out to matter. The band is laid down twice end to end and slid
+exactly one width, so the turn has no seam in it. And the whole thing is encoded on
+`requestIdleCallback` rather than on hover -- it is about a second of work, and a
+second of it under the pointer would land on the one gesture that has to feel
+weightless.
+
+`build_page.py` stamps the build from git, so the disc says `ac68e8f 2026-09-04` and
+not whatever somebody last typed. A page saved to disk has no server to ask, and this
+page is meant to be saved to disk.
