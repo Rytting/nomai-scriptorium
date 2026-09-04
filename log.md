@@ -1730,3 +1730,43 @@ margin is visible the moment it lands. `opacity:0` on somebody else's element is
 visible only if you happen to look at that element afterwards, and I had been looking
 at the recorder. It took a person using the page for its actual purpose -- writing
 something and reading it back -- to see it at all.
+
+### Pressing reply on a big scroll
+
+Same disease, one room further along. The clock I put on the writing side never reached
+the scroll layout, and `reply` on a three-spiral scroll of 289, 107 and 245 turns shut
+the page for minutes.
+
+Four things were paying for it, and it took measuring each to see that no one of them
+was the answer:
+
+**The layout verified everything, unbounded.** Seven angles for the root, several spots
+for each reply, eight hands apiece, and the whole layout again up to four times --
+fifty-six full reads for the root alone. And a read is not cheap at that size:
+110-400 ms up to about 240 turns, **5.6 s at 289**. The cliff is real, it is close, and
+`CHECK_TURNS` sat at 300, on the wrong side of it. It is 240 now, and the layout shares
+one three-second clock instead of having none.
+
+**`chooseSpot` was quadratic and unclocked.** It scores about three hundred and eighty
+placements, each comparing every glyph origin of the new spiral against every origin
+already placed: four hundred by four hundred, three hundred and eighty times. 2.5 s.
+Above two hundred origins -- a size nothing tested comes near -- both sets are now
+sampled on a stride. A spiral is smooth, so every third origin says the same thing
+about where there is room, and everything smaller is untouched, so every drawing that
+has ever been checked still comes out exactly as it did.
+
+**The retry could never help.** With the root too big to check, `done()` was false
+forever, so the four relay attempts always fired -- each one re-laying the whole scroll
+and skipping the same spirals again. A layout cannot be improved by trying harder when
+what is missing is a check nobody performed.
+
+**And the sliders redrew on every tick.** Which is right, and is what makes the shape
+controls feel like shape controls -- at a few milliseconds a redraw. At three seconds
+each tick queues another behind the last and the slider stops answering the hand. It
+times itself now: under a fifth of a second it stays live, over it, it waits for the
+hand to pause. Not a size threshold, not a spiral count -- how long this machine
+actually took.
+
+Pressing reply on that scroll: minutes, then 13 s, then **2.9 s**. Adding the reply,
+**3.8 s**. Dragging the coil: 4.4 s every tick, now one redraw and then nothing until
+you let go. A short drawing is exactly as it was, 65-121 ms a tick, live.

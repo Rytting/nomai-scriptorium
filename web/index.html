@@ -1243,6 +1243,16 @@ function nesting(pts, boxes){
   }
   return worst;
 }
+/* Every origin against every origin is fine at the sizes this was built for and
+   quadratic at the sizes it was not: a 289-turn spiral carries four hundred glyphs
+   and the search scores a few hundred placements, which is 2.5 seconds of the page
+   sitting still. Above a count nothing tested comes near, both sets are sampled on a
+   stride. A spiral's geometry is smooth, so every third origin says the same thing
+   about where there is room -- and anything smaller is untouched, so every drawing
+   that has been checked still comes out exactly as it did. */
+const THIN_AT = 200;
+const thin = a => a.length <= THIN_AT ? a
+  : a.filter((_, i) => i % Math.ceil(a.length / THIN_AT) === 0);
 function clearance(pts, taken){
   let best = Infinity;
   for (const p of pts) for (const q of taken){
@@ -1297,6 +1307,7 @@ function chooseSpot(laid, parentIdx, ncols, flip, tight){
     taken.push(...c);
     boxes.push(box(c));
   }
+  const thinTaken = thin(taken);
   const want = WANT_ROOM * K * MAX_SCALE;
   const ranked = [];
   for (const reach of REACH) for (const tw of tights(tight)) for (const fl of [flip, -flip])
@@ -1317,7 +1328,7 @@ function chooseSpot(laid, parentIdx, ncols, flip, tight){
        at the inner end, so a plain distance charge is half as expensive there and the
        search was being pulled quietly into the middle of the parent's coil. Prefer
        the outer end outright too, since that is where the room is. */
-    const room = clearance(pts, taken);
+    const room = clearance(thin(pts), thinTaken);
     let score = Math.min(room, want) - NEST_PULL * want * nesting(pts, boxes)
               - 0.55 * pl.gap / pl.reachScale
               - SPOT_PULL * want * Math.abs(t - BEST_SPOT) - 3 * below - pay * want;
@@ -1412,7 +1423,9 @@ const RELAY = [0.35, -0.35, 0.9, -0.9];
 
    `handRanOut` says which of the two happened, because "no hand read back" and "there
    was no time to ask" are different things to tell somebody. */
-const CHECK_TURNS = 300, CHECK_MS = 2200;
+/* Measured on this machine: one read is 110-400ms up to about 240 turns and 5.6s
+   at 289. The cliff is real and it is close, so the line is drawn below it. */
+const CHECK_TURNS = 240, CHECK_MS = 2200;
 let handRanOut = false;
 function handFor(grid, amount, seed0, L, budget){
   handRanOut = false;
@@ -1427,6 +1440,31 @@ function handFor(grid, amount, seed0, L, budget){
   return null;
 }
 
+/* A scroll's layout verifies every spiral it places, and it places each one several
+   ways: seven angles for the root and several spots for each reply, eight hands
+   apiece, and the whole thing again up to four times if something did not read. That
+   is fifty-six full reads for the root alone, and a read of a three-hundred-turn
+   spiral is seconds. On a scroll of that size it is minutes with the page shut, which
+   is what pressing `reply` on one did.
+
+   So the search gets one clock for the whole layout rather than one per spiral, and
+   the same rule as everywhere else: past the size where a single read is already too
+   slow, do not start. An unverified placement is what the code has always fallen back
+   to when nothing read -- this only means it falls back sooner. */
+const SCROLL_MS = 3000;
+let scrollUntil = Infinity, scrollRanOut = false;
+function tryHand(grid, amount, seed0, L){
+  if (scrollUntil !== Infinity
+      && (grid.ncols > CHECK_TURNS || performance.now() > scrollUntil)){
+    scrollRanOut = true;
+    return null;
+  }
+  const left = scrollUntil === Infinity ? undefined
+    : Math.max(1, scrollUntil - performance.now());
+  const got = handFor(grid, amount, seed0, L, left);
+  if (got === null && handRanOut) scrollRanOut = true;
+  return got;
+}
 function layScroll(spirals, tilt0, flip, tight, amount, seed){
   const laid = [];
   spirals.forEach((sp, idx) => {
@@ -1441,11 +1479,12 @@ function layScroll(spirals, tilt0, flip, tight, amount, seed){
       if (amount !== undefined){
         for (const dt of NUDGES){
           const L = layoutFor(sp.grid.ncols, tilt0 + dt, flip, tight);
-          const got = handFor(sp.grid, amount, seed0, L);
+          const got = tryHand(sp.grid, amount, seed0, L);
           if (got !== null){
             place = { shift: [0, 0], L, seed: got, verified: true };
             break;
           }
+          if (performance.now() > scrollUntil) break;
         }
       }
     } else {
@@ -1453,8 +1492,9 @@ function layScroll(spirals, tilt0, flip, tight, amount, seed){
       place = { ...cands[0], seed: seed0, verified: false };
       if (amount !== undefined){
         for (const c of cands){
-          const got = handFor(sp.grid, amount, seed0, c.L);
+          const got = tryHand(sp.grid, amount, seed0, c.L);
           if (got !== null){ place = { ...c, seed: got, verified: true }; break; }
+          if (performance.now() > scrollUntil) break;
         }
       }
     }
@@ -1465,6 +1505,8 @@ function layScroll(spirals, tilt0, flip, tight, amount, seed){
 }
 function renderScroll(spirals, amount, seed, flip, tight){
   const tilt0 = balanceTilt(spirals, flip, tight);
+  scrollUntil = amount === undefined ? Infinity : performance.now() + SCROLL_MS;
+  scrollRanOut = false;
   let placed = layScroll(spirals, tilt0, flip, tight, amount, seed);
   /* The root is settled first, on whether it reads, and the replies then fit around
      whatever it did. If one of them could not find a placement that reads back it has
@@ -1476,6 +1518,12 @@ function renderScroll(spirals, amount, seed, flip, tight){
   const kept = a => a.filter(p => p.verified).length;
   if (amount !== undefined && !done(placed)){
     for (let k = 0; k < RELAY.length && !done(placed); k++){
+      /* Leaning the whole scroll again is another layout's worth of reading, and
+         there is no point starting one with no time left to finish it -- nor any
+         point at all when the spirals that are not verified are the ones nobody
+         looked at. `done` cannot become true by trying harder if the reason it is
+         false is that the check was skipped, and the retry would skip them again. */
+      if (scrollRanOut || performance.now() > scrollUntil) break;
       const alt = layScroll(spirals, tilt0 + RELAY[k], flip, tight, amount,
                             seed + (k + 1) * SEED_STEP);
       if (kept(alt) > kept(placed)) placed = alt;
@@ -1512,7 +1560,7 @@ function renderScroll(spirals, amount, seed, flip, tight){
   /* the hand the root was actually written in, which is not the one asked for:
      layScroll searches for a seed that reads back, per spiral */
   return { svg: document_(groups, -W / 2, Y, W, H), root: laid[0].L, tilt0,
-           hand: placed[0].seed };
+           hand: placed[0].seed, unchecked: scrollRanOut };
 }
 
 /*__READ__*/
@@ -1981,8 +2029,27 @@ function commit(opening = false){
 }
 /* Redraw what is already written, in whatever shape the controls now say. Does
    nothing before anything has been written -- that is the Write button's job. */
+/* Dragging a slider asks for a redraw on every tick, and a redraw of a small drawing
+   is a few milliseconds -- so it was wired straight through, and that is right for
+   almost everything anybody writes. A scroll of three megabytes takes seconds, and
+   then every tick queues another one behind the last and the slider stops answering
+   the hand holding it.
+
+   So the page times itself. Under a fifth of a second it keeps redrawing live, which
+   is what makes the shape controls feel like shape controls; over it, it waits for
+   the hand to pause. Nothing else decides this -- not a size, not a spiral count --
+   because the thing that matters is how long this machine actually took. */
+let lastBuildMs = 0, reshapeTimer = null;
 function reshape(){
-  if (state.scroll.length) build(false);
+  if (!state.scroll.length) return;
+  if (reshapeTimer){ clearTimeout(reshapeTimer); reshapeTimer = null; }
+  if (lastBuildMs <= 200){ timedBuild(); return; }
+  reshapeTimer = setTimeout(() => { reshapeTimer = null; timedBuild(); }, 180);
+}
+function timedBuild(){
+  const t0 = performance.now();
+  build(false);
+  lastBuildMs = performance.now() - t0;
 }
 /* One spiral's grid, or a string saying why not. The nonce search lives here because
    both the root and every reply need it. */
@@ -2017,6 +2084,7 @@ function gridFor(msg, sig, parent){
 }
 /* Draw whatever the scroll currently holds. `growIdx` is the spiral that just
    arrived: it unwinds, and everything already on the sheet is simply there. */
+let scrollUnchecked = false;
 function build(grow, growIdx){
   const sc = state.scroll;
   if (!sc.length){ empty("waiting for words"); return; }
@@ -2052,6 +2120,7 @@ function build(grow, growIdx){
     const out = renderScroll(sc, state.hw, state.seed, state.flip, state.tight);
     state.svg = out.svg;
     L = out.root;
+    scrollUnchecked = out.unchecked;
     /* And check the root against the hand it was drawn in. A scroll searches the
        seed per spiral, so the root is very often not written in the one that was
        asked for -- checking it against `state.seed` was checking a drawing that
@@ -2065,7 +2134,8 @@ function build(grow, growIdx){
      than handing over a drawing that quietly will not come back. */
   /* Only ask again when the search had time to be sure. Above the size where it
      stops, one more attempt is the same fourteen seconds. */
-  const unchecked = state.dialect === "strict" && sc.length === 1 && handRanOut;
+  const unchecked = state.dialect === "strict"
+    && (sc.length === 1 ? handRanOut : scrollUnchecked);
   const shaky = state.dialect === "strict" && !unchecked
     && !readsBack(sc[0].grid, state.hw, hand, L);
   state.track = trackFromLayout(L);
