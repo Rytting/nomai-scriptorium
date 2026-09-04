@@ -1,8 +1,36 @@
-# Nomai text: a decoder
+# Nomai Scriptorium
 
-Reads the procedural Nomai writing produced by
-[evanfields/NomaiText.jl](https://github.com/evanfields/NomaiText.jl) back into text,
-and writes an unambiguous variant of it.
+**[Write something in Nomai &rarr;](https://rytting.github.io/nomai-scriptorium/)**
+&nbsp;&nbsp;No install, no server, nothing leaves the page.
+
+![Four Nomai spirals joined into one scroll: a child's questions about the Eye of the
+Universe, drawn in the procedural script from Outer Wilds](assets/readme/scroll.png)
+
+That drawing is a conversation. Four spirals, three of them replies, plugged into one
+socket &mdash; and it can be read back into the sentences it was made from, exactly,
+by anyone with the page and nothing else.
+
+The writing is the one from *Outer Wilds*. What is ours is a change to how it is
+numbered: in the original, one drawing has many possible readings and none of them is
+*the* reading. Here every question the drawing answers has a single possible answer,
+so a sentence goes in and the same sentence comes out. Any language, either direction,
+in one HTML file.
+
+- **Write** a sentence, sign it, and watch the spiral unwind.
+- **Reply** to a spiral and the scroll grows a branch, the way a Nomai wall does.
+- **Read** a scroll somebody else drew &mdash; hold the translator against it and the
+  lines come back one at a time. Replies stay hidden until you have read what they
+  answer.
+- **Take one off the wall**: six walls from the game, verbatim, in English and Chinese.
+
+## How this was made
+
+Written by a person and an AI together, in the open. The direction, the art and most
+of the defects found are the author's; most of the code is the model's. Every decision
+and every mistake is written down as it happened in [`log.md`](log.md) &mdash; including
+the ones that were shipped and caught later, which are the interesting ones.
+
+## Where it comes from
 
 Upstream is MIT licensed and is not vendored into this repository's history; it is
 cloned into `vendor/` and pinned to commit `b8ca259`:
@@ -12,8 +40,13 @@ git clone https://github.com/evanfields/NomaiText.jl.git vendor/NomaiText.jl
 git -C vendor/NomaiText.jl checkout b8ca259
 ```
 
-The 33 glyph shapes in `data/glyphs.json` are exported from that package, so they are
-derived from its author's work — hand-traced, in turn, from *Outer Wilds*.
+The 33 glyph shapes in `data/glyphs.json` are exported from
+[evanfields/NomaiText.jl](https://github.com/evanfields/NomaiText.jl), so they are
+derived from its author's work &mdash; hand-traced, in turn, from *Outer Wilds*. The
+mode and coil icons on the page were traced from the game by hand for this project.
+
+*Outer Wilds* is Mobius Digital's. This is a fan project and is not affiliated with
+them.
 
 ## What is here
 
