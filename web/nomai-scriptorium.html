@@ -1426,7 +1426,10 @@ function renderScroll(spirals, amount, seed, flip, tight){
   const m = 8 * K * MAX_SCALE, R = SOCKET_R * K * MAX_SCALE;
   const W = 2 * Math.max(x1 + m, m - x0);
   const Y = y0 - m, H = (Math.max(y1, 0) + 2.2 * R + 0.4 * m) - Y;
-  return { svg: document_(groups, -W / 2, Y, W, H), root: laid[0].L, tilt0 };
+  /* the hand the root was actually written in, which is not the one asked for:
+     layScroll searches for a seed that reads back, per spiral */
+  return { svg: document_(groups, -W / 2, Y, W, H), root: laid[0].L, tilt0,
+           hand: placed[0].seed };
 }
 
 /* Reading a drawing back.
@@ -2859,6 +2862,13 @@ function build(grow, growIdx){
     const out = renderScroll(sc, state.hw, state.seed, state.flip, state.tight);
     state.svg = out.svg;
     L = out.root;
+    /* And check the root against the hand it was drawn in. A scroll searches the
+       seed per spiral, so the root is very often not written in the one that was
+       asked for -- checking it against `state.seed` was checking a drawing that
+       does not exist. It warned about scrolls that read back perfectly well, and
+       no amount of nudging the wind or the curl would clear it, because nudging
+       them only made the search pick another seed the check still ignored. */
+    hand = out.hand;
   }
   /* A reply can be moved until it reads back; the first spiral cannot, because its
      winding and coil are the writer's own choice. So check it and say so, rather

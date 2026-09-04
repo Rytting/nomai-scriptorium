@@ -1495,3 +1495,39 @@ poor answer for somebody reading in a dark room with the lights on.
 `role="switch"` with `aria-checked`, the label naming the thing rather than the state
 so it does not have to be rewritten on every press, and `forced-colors` and
 `prefers-reduced-motion` fallbacks alongside the ones the sliders already had.
+
+### Checking a drawing that was never drawn
+
+A scroll written on a phone came out fine, read back fine, and the page said **this
+one may not read back** over the top of it -- and no amount of moving the wind or the
+curl would clear it. Which is the worst shape a warning can have: it is about the one
+thing you cannot verify yourself, and it does not respond to the controls it tells you
+to try.
+
+The drawing was fine. `build` was checking the wrong one.
+
+A lone spiral is drawn in the hand you asked for, and `handFor` searches for another
+if that one does not read back -- so the check uses what the search returned. A scroll
+searches too, per spiral, inside `layScroll`, and `renderScroll` did not report what it
+found. So the root was checked against `state.seed`, the hand it was **asked** for,
+while the drawing on screen was in whatever hand the search settled on. On the reported
+scroll that was seed 47 asked, hand 7966 drawn. Checked against 47: fails. Checked
+against 7966: passes. The drawing that failed the check does not exist.
+
+That also explains the part that would have been baffling otherwise. Nudging the wind
+or the curl re-runs the layout, the search picks a different seed again, and the check
+goes on ignoring it -- so the warning was not merely wrong, it was immovable by
+construction.
+
+`renderScroll` now returns `hand: placed[0].seed` and `build` checks against that. The
+reported scroll: eight combinations of coil and winding, no warning on any, all eight
+parse. The mechanism is untouched -- `readsBack` still returns false for a hand the
+drawing was not written in, which is exactly what produced the false warning -- only
+the drawing it is asked about is now the one on screen. I could not manufacture a
+genuine failure to test the other direction: 180 combinations of text, hand, coil and
+winding all read back.
+
+A note on my own testing: the first canon run after this came back MISREAD on
+everything, and it was the test, not the page. `LANG` was still `zh` from an earlier
+check, so `etchCanon` correctly etched the Chinese scrolls and I compared them against
+the English list. Twelve of twelve once asked the right question.
