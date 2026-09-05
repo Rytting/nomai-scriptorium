@@ -1634,7 +1634,18 @@ function renderScroll(spirals, amount, seed, flip, tight){
       + "</g>");
     if (idx === 0) return;
     const par = laid[it.sp.parent];
-    const mine = [...it.parts.drawnAt.values()].flat();
+    /* A reply is plugged in by its own base, the way a scroll is plugged into the
+       wall: the outermost turn, where its socket would be. The join used to be the
+       nearest pair of points anywhere on either spiral, which is right about the
+       parent -- a branch leaves its line wherever it leaves it -- but wrong about the
+       reply. Geometry hid it, because the outer turn is usually the nearest part
+       anyway; measured over eighteen joins it landed correctly seventeen times and
+       once reached into the second turn of a nineteen-turn spiral, which reads as a
+       line run into the middle of somebody's sentence. */
+    const outer = [...it.parts.drawnAt.entries()]
+      .filter(([k]) => +k.split(",")[0] === it.sp.grid.ncols)
+      .map(([, v]) => v).flat();
+    const mine = outer.length ? outer : [...it.parts.drawnAt.values()].flat();
     const theirs = [...par.parts.drawnAt.values()].flat();
     const np = nearestPair(theirs, mine);
     joins.push(joinLine(np.p, np.q));
@@ -4470,7 +4481,7 @@ function takeDown(i, btn){
 
 /* Which build this is. Filled in from git when the page is built; `dev` when the
    source file is opened straight from disk. */
-const BUILD = /*__BUILD__*/{ rev: "v1.0-7-g1e09843", date: "2026-09-05" };
+const BUILD = /*__BUILD__*/{ rev: "v1.0-8-g028fbe6", date: "2026-09-05" };
 const REPO = "github.com/Rytting/nomai-scriptorium";
 
 /* The same writer, on a straight track instead of a coiled one. Everything that
