@@ -2276,6 +2276,264 @@ const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 function analyze(svgText){
   return observe(parseSVG(svgText).strokes);
 }
+/* ---------- reading the original numbering ---------- */
+
+/* How much a reading looks like something somebody wrote. Tiers rather than an
+   in-range test: "printable ASCII" scores `hi` and `&i` the same, and then the order
+   is whichever the search happened to reach first. Letters and spaces have to
+   outrank stray symbols. Ranges, not frequencies -- so it cannot tell 真 from 盝,
+   and the page must never present the first candidate as the answer. */
+const COMMON_RANGES = [[32, 126], [160, 591], [12352, 12543], [19968, 40959],
+                       [65281, 65374]];
+const PUNCT = new Set(["'", "{", ")", "-", ":", "!", ",", "/", "?", "}", "]", "[",
+                       ".", '"', ";", "("]);
+function charWeight(ch){
+  const cp = ch.codePointAt(0);
+  if (ch === " " || (cp > 0x20 && cp < 0x7f && /[0-9A-Za-z]/.test(ch))) return 1;
+  if (PUNCT.has(ch)) return 0.8;
+  if (cp >= 0x20 && cp <= 0x7e) return 0.4;   /* the rest of printable ASCII */
+  for (const [lo, hi] of COMMON_RANGES) if (cp >= lo && cp <= hi) return 0.5;
+  return 0;
+}
+function textScore(t){
+  if (!t) return -1;
+  let sum = 0, n = 0;
+  for (const ch of t){ sum += charWeight(ch); n++; }
+  return sum / n;
+}
+/* Python's str.isprintable, near enough: everything except control, format,
+   surrogate, private-use, unassigned and the separators, with plain space allowed
+   back in. `Cn` is the version-dependent half -- engines disagree with each other
+   and with Python by a few thousand codepoints -- so this is checked at load and
+   dropped if the engine will not take it. It only prunes; the ranking above is fixed
+   numbers, so the disagreement cannot move anything to the top of the list. */
+const NONPRINT = (() => {
+  for (const src of ["[\\p{Cc}\\p{Cf}\\p{Cs}\\p{Co}\\p{Cn}\\p{Zl}\\p{Zp}\\p{Zs}]",
+                     "[\\p{Cc}\\p{Cf}\\p{Cs}\\p{Co}\\p{Zl}\\p{Zp}\\p{Zs}]"]){
+    try { return new RegExp(src, "u"); } catch (e){ /* older engine, try the next */ }
+  }
+  return null;
+})();
+const plausibleCp = cp => cp > 0 && cp <= 0x10ffff && !(cp >= 0xd800 && cp <= 0xdfff)
+  && (cp === 0x20 || NONPRINT === null || !NONPRINT.test(String.fromCodePoint(cp)));
+
+const digitsDesc = (x, B) => {
+  const out = [];
+  while (x > 0n){ out.push(Number(x % B)); x = x / B; }
+  return out.reverse();
+};
+/* The characters the interval [suffix, suffix + width) already settles, in message
+   order. Always the trailing ones: the digits are little-endian in message order, so
+   an interval pins the most significant first. Which ones, and how many, is forced by
+   how fast the width shrinks -- not a choice. */
+function pinnedTail(suffix, width, B){
+  const lo = digitsDesc(suffix, B), hi = digitsDesc(suffix + width - 1n, B);
+  if (lo.length !== hi.length) return [];   /* not even the length is settled */
+  const out = [];
+  for (let i = 0; i < lo.length; i++){
+    if (lo[i] !== hi[i]) break;
+    out.push(lo[i]);
+  }
+  return out.reverse();
+}
+const BEAM = 400;
+/* Searching a lossy numbering costs about the 2.3rd power of the turns -- 2ms at 17,
+   0.4s at 70, and several seconds by the size where a scroll stops being unusual.
+   `readDrawing` then tries it at two alphabet sizes, and for every candidate reading
+   of the rows, so the honest worst case is minutes with the page shut. That is the
+   same shape as the two freezes already fixed here, so it gets the same answer: one
+   clock over the whole attempt, checked between columns, and no readings rather than
+   a page that stops answering. A device that is slower simply gives up sooner, which
+   is what the clock is for and what a turn count could never be. */
+let upstreamUntil = Infinity, upstreamRanOut = false;
+function upstreamBudget(ms){
+  upstreamUntil = ms === undefined ? Infinity : performance.now() + ms;
+  upstreamRanOut = false;
+}
+function pruneBeam(states, width, B, beam){
+  const scored = [];
+  for (const suffix of states){
+    const tail = pinnedTail(suffix, width, B);
+    if (!tail.length){ scored.push([1, suffix]); continue; }  /* nothing legible yet */
+    if (tail.some(cp => !plausibleCp(cp))) continue;
+    scored.push([textScore(tail.map(c => String.fromCodePoint(c)).join("")), suffix]);
+  }
+  scored.sort((a, b) => b[0] - a[0]);
+  return scored.slice(0, beam).map(p => p[1]);
+}
+
+const uniqBy = (arr, key) => {
+  const seen = new Set(), out = [];
+  for (const v of arr){
+    const k = key(v);
+    if (!seen.has(k)){ seen.add(k); out.push(v); }
+  }
+  return out;
+};
+/* Candidate (k, answer) for one join. More than one when the chosen vertex pair
+   appears twice in the pairs list, which happens where a glyph's core and its
+   annotation share a vertex -- one of the three places the original numbering loses
+   information, and the strict dialect's `dedupe` is exactly what closes it. */
+function connAnswers(obs, a, b){
+  const pairs = dedupe(connectionPairs(
+    G.glyphs[obs.glyphs.get(a.join(",")) - 1],
+    G.glyphs[obs.glyphs.get(b.join(",")) - 1],
+    SPACING * (b[0] - a[0]), SPACING * (b[1] - a[1])), "upstream");
+  const conn = obs.conns.find(c => c.a[0] === a[0] && c.a[1] === a[1]
+                                && c.b[0] === b[0] && c.b[1] === b[1]);
+  if (!conn) throw new Error("a join between columns is missing");
+  const hits = [];
+  pairs.forEach((p, i) => {
+    if (samePt(p[0], conn.pa) && samePt(p[1], conn.pb)) hits.push([pairs.length, i + 1]);
+  });
+  if (!hits.length) throw new Error("a join does not land where any glyph allows");
+  return hits;
+}
+function product(slots){
+  let out = [[]];
+  for (const slot of slots){
+    const nxt = [];
+    for (const combo of out) for (const v of slot) nxt.push(combo.concat([v]));
+    out = nxt;
+  }
+  return out;
+}
+/* Every candidate (k, answer) sequence for one column, in the order the Oracle was
+   asked. Strict returns exactly one of these; the original numbering returns one per
+   way the same picture could have been asked for. */
+function columnOptionsUpstream(obs, col){
+  if (col === 1) return [[[NG, obs.glyphs.get("1," + MIDLINE)]]];
+  const heads = [obs.paths[0][col - 2], obs.paths[1][col - 2]];
+  const nx = [obs.paths[0][col - 1], obs.paths[1][col - 1]];
+  /* The generator sorted the two answers by row afterwards, so which path was asked
+     first is not in the drawing. Both pairings are candidates. */
+  const rows = [nx[0][1], nx[1][1]];
+  const choices = [jChoices(heads[0][1]), jChoices(heads[1][1])];
+  const perms = rows[0] === rows[1] ? [rows] : [rows, [rows[1], rows[0]]];
+  const rowOptions = [];
+  for (const p of perms){
+    const i0 = choices[0].indexOf(p[0]), i1 = choices[1].indexOf(p[1]);
+    if (i0 >= 0 && i1 >= 0)
+      rowOptions.push([[choices[0].length, i0 + 1], [choices[1].length, i1 + 1]]);
+  }
+  if (!rowOptions.length)
+    throw new Error("column " + col + " has an impossible pair of rows");
+  const glyphAsks = uniqBy(nx, c => c.join(","))
+    .map(loc => [NG, obs.glyphs.get(loc.join(","))]);
+  const connSlots = uniqBy([[heads[0], nx[0]], [heads[1], nx[1]]],
+                           p => p[0].join(",") + "|" + p[1].join(","))
+    .map(([a, b]) => connAnswers(obs, a, b));
+  const out = [];
+  for (const rs of rowOptions)
+    for (const conns of product(connSlots)) out.push(rs.concat(glyphAsks, conns));
+  return out;
+}
+/* Per column: where its answers start, and every answer vector it could have had.
+   Every option within a column carries the same k vector -- the two ambiguous row
+   questions only arise when both heads share a row, and then their choices are
+   identical -- so the whole M sequence is fixed before any branching, which is what
+   lets the backward walk know its interval widths in advance. */
+function planUpstream(obs){
+  const cols = [], ks = [];
+  let pos = 0;
+  for (let col = 1; col <= obs.ncols; col++){
+    const opts = columnOptionsUpstream(obs, col);
+    const kvec = opts[0].map(o => o[0]);
+    for (const o of opts)
+      if (o.length !== kvec.length || o.some((p, i) => p[0] !== kvec[i]))
+        throw new Error("column " + col + ": k vector varies across branches");
+    cols.push([pos, opts.map(o => o.map(p => p[1]))]);
+    for (const k of kvec) ks.push(k);
+    pos += kvec.length;
+  }
+  const M = [1n];
+  for (const k of ks) M.push(M[M.length - 1] * BigInt(k));
+  return { cols, M };
+}
+/* Regenerate from the integer and require the same drawing back, endpoints included.
+   The search only ever proposes integers consistent with the answers it read, but it
+   is a beam over a lossy numbering; this is the step that makes a returned reading a
+   fact about the drawing rather than a hypothesis about it. */
+function redraws(x, obs){
+  const g = buildGrid(x, "upstream");
+  if (!sameGrid(g, obs)) return false;
+  const mine = new Map();
+  for (const c of g.conns) mine.set(c.a.join(",") + "|" + c.b.join(","), c);
+  if (mine.size !== obs.conns.length) return false;
+  for (const c of obs.conns){
+    const m = mine.get(c.a.join(",") + "|" + c.b.join(","));
+    if (!m || !samePt(m.pa, c.pa) || !samePt(m.pb, c.pb)) return false;
+  }
+  return true;
+}
+/* The reading as text, with the same plausibility bar the search pruned on. */
+function upstreamText(x, base){
+  const r = decodeInt(x, base, "upstream");
+  if (!r || !r.body.length) return null;
+  for (const cp of r.body) if (!plausibleCp(cp)) return null;
+  return str(r.body);
+}
+/* Every reading of a drawing written in the original numbering, best-looking first.
+   Same branch tree as the strict replay, walked from the last question to the first:
+   forwards a partial sum is a congruence and pins no digit, so nothing is legible
+   until the walk ends; backwards it is a suffix with the prefix bounded by the
+   interval width, and that does pin digits -- the message's trailing characters --
+   early enough to prune all the way down. Being a beam search it can miss, so the
+   beam is kept generous. */
+function decodeUpstream(obs, base, beam){
+  beam = beam === undefined ? BEAM : beam;
+  const { cols, M } = planUpstream(obs);
+  const B = BigInt(base);
+  /* Seed from the last column, where the Oracle always runs dry. Every prefix of its
+     answers is a separate hypothesis -- one for each point it could have run dry at --
+     so the partial sums go in as well as the whole one. Seeding only with the
+     complete vector assumes it ran dry exactly at the end of the column, which is the
+     one case it usually does not. */
+  let [start, answers] = cols[cols.length - 1];
+  const frontier = new Set();
+  for (const avec of answers){
+    let suffix = 0n;
+    avec.forEach((a, off) => {
+      suffix += BigInt(a - 1) * M[start + off];
+      frontier.add(suffix);
+    });
+  }
+  let states = pruneBeam(frontier, M[start], B, beam);
+  for (let ci = cols.length - 2; ci >= 0; ci--){
+    if (performance.now() > upstreamUntil){ upstreamRanOut = true; return []; }
+    const [st, ans] = cols[ci];
+    const nxt = new Set();
+    for (const suffix of states)
+      for (const avec of ans){
+        let s2 = suffix;
+        avec.forEach((a, off) => { s2 += BigInt(a - 1) * M[st + off]; });
+        nxt.add(s2);
+      }
+    states = pruneBeam(nxt, M[st], B, beam);
+  }
+  const out = [];
+  for (const x of states){          /* the width is 1 here, so x is the integer */
+    if (x <= 0n) continue;
+    const text = upstreamText(x, base);
+    if (text !== null && redraws(x, obs)) out.push(text);
+  }
+  const seen = new Set(), uniq = [];
+  for (const t of out) if (!seen.has(t)){ seen.add(t); uniq.push(t); }
+  uniq.sort((a, b) => textScore(b) - textScore(a));
+  return uniq;
+}
+/* What the original numbering can say about one spiral: several readings, or none.
+   Whichever candidate reading of the rows works, as with the strict path. */
+function readAnyUpstream(cands, base, keep){
+  for (const o of (Array.isArray(cands) ? cands : [cands])){
+    if (performance.now() > upstreamUntil){ upstreamRanOut = true; return []; }
+    try {
+      const got = decodeUpstream(o, base);
+      if (got.length) return keep === undefined ? got : got.slice(0, keep);
+    } catch (e){ /* try the next reading of the rows */ }
+  }
+  return [];
+}
 /* Exactly one reading, from whichever candidate reading of the rows works. A wrong
    row placement fails loudly -- a join landing on no vertex, say -- and that is the
    signal wanted rather than an error to pass on. */
@@ -2287,6 +2545,59 @@ function readAny(cands, base){
     } catch (e){ /* try the next reading of the rows */ }
   }
   return [];
+}
+/* Dialect and alphabet belong to a spiral, never to its neighbours. A failed
+   strict read is not proof of original numbering: keep unknown/timeouts distinct.
+   Preserve the verified grid, so answering cannot re-encode the imported text. */
+function readSpiral(cands, budget = 2500){
+  for (const base of [256, 200000]){
+    const got = readAny(cands, base);
+    if (got.length){
+      const r = got[0], grid = buildGrid(r.x, "strict");
+      grid.readings = got;
+      return { dialect: "strict", base, readings: got, grid, slow: false };
+    }
+  }
+  upstreamBudget(budget);
+  for (const base of [256, 200000]){
+    const got = readAnyUpstream(cands, base, 3);
+    if (got.length){
+      const grid = buildGrid(encode(got[0], base, "upstream", 1), "upstream");
+      grid.readings = null;
+      return { dialect: "upstream", base, grid, slow: false,
+        readings: got.map(text => ({ text, sig: null, parent: null })) };
+    }
+  }
+  return { dialect: "unknown", base: null, grid: null, readings: [], slow: upstreamRanOut };
+}
+/* The SVG's spiral order is also the frame's index order. Our root is index 0;
+   joins orient the remaining tree, and every strict frame must agree with it.
+   Reject cycles, missing joins and forward parents rather than rewrite indices. */
+function mixedTree(edges, decoded){
+  const count = decoded.length, parents = Array(count).fill(null);
+  const bad = why => ({ ok: false, why, parents });
+  if (edges.length !== count - 1 || edges.some(e => !e))
+    return bad("the joins do not form a complete reply tree");
+  const adj = Array.from({ length: count }, () => []);
+  for (const [a, b] of edges){
+    if (!adj[a] || !adj[b] || a === b) return bad("an invalid reply join");
+    adj[a].push(b); adj[b].push(a);
+  }
+  const seen = new Set([0]), queue = [0];
+  for (let k = 0; k < queue.length; k++){
+    const u = queue[k];
+    for (const v of adj[u]) if (!seen.has(v)){
+      seen.add(v); parents[v] = u; queue.push(v);
+    }
+  }
+  if (seen.size !== count) return bad("the joins do not reach every spiral");
+  for (let i = 0; i < count; i++){
+    if (parents[i] !== null && parents[i] >= i)
+      return bad("the spiral order does not follow its reply tree");
+    if (decoded[i].dialect === "strict" && decoded[i].readings[0].parent !== parents[i])
+      return bad("spiral " + i + " has a reply frame that disagrees with its join");
+  }
+  return { ok: true, parents };
 }
 /* Every spiral in a scroll, innermost-rooted first, with the joins that held them
    together. One spiral in, one observation out -- so a plain drawing takes the same
@@ -2476,7 +2787,7 @@ function readStrict(obs, base){
     if (i < last || seen.has(acc)) continue;
     seen.add(acc);
     const r = toRecord(acc, base, "strict");
-    if (r !== null && sameGrid(buildGrid(acc, "strict"), obs)) out.push(r);
+    if (r !== null && sameGrid(buildGrid(acc, "strict"), obs)) out.push({ ...r, x: acc });
   }
   return out;
 }
@@ -3948,7 +4259,7 @@ function takeDown(i, btn){
 
 /* Which build this is. Filled in from git when the page is built; `dev` when the
    source file is opened straight from disk. */
-const BUILD = /*__BUILD__*/{ rev: "v1.0-4-gd5ca5cb", date: "2026-09-04" };
+const BUILD = /*__BUILD__*/{ rev: "v1.0-6-gc08b0b9", date: "2026-09-04" };
 const REPO = "github.com/Rytting/nomai-scriptorium";
 
 /* The same writer, on a straight track instead of a coiled one. Everything that
