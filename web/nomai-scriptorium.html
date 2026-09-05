@@ -3021,7 +3021,42 @@ const CANON = [
       ["This universe will keep getting colder and larger, until one day, the stars "
        + "and the life they support will all die.", "Solanum", 3],
       ["That's scary to think about, even though Conoy tells me it won't happen in "
-       + "our lifetimes. But it'll happen in someone else's, someday!", "Solanum", 4]] }
+       + "our lifetimes. But it'll happen in someone else's, someday!", "Solanum", 4]] },
+  /* The six above are wall texts and a recording: writing that was linear where it
+     stood. This one is a conversation, and in the game that is a tree the player
+     walks, so the order and the branching are an arrangement. The words are not --
+     Solanum's are the game's own, and so are the two questions, which is why the
+     reply somebody wanted to send her is still not here. The page can already write
+     that, and it was never hers to say. */
+  { where: "Sixth Location", who: "the first meeting",
+    zh: [
+      ["我从没见过你这样的生灵。能与你交谈是我的荣幸！我尤其喜欢你的四只眼睛。", "所莱内姆", null],
+      ["要是我能够理解你们的语言就好了。我有许多问题想要问。感谢你能理解我的语言！", "所莱内姆", 0],
+      ["你是谁？", "", 1],
+      ["我是所莱内姆，一名挪麦。我的氏族在我出生前就来到了这个星系，如今我们称它为家。", "所莱内姆", 2],
+      ["我们在哪里？", "", 1],
+      ["这里是量子卫星，我们两个都站在它上面。", "所莱内姆", 4],
+      ["这是你第一次来量子卫星吗？我是第一次来。", "所莱内姆", 5],
+      ["我想你来这里的目的和我一样：了解并找到宇宙之眼。", "所莱内姆", 1],
+      ["你我之间并没有多少交集。", "所莱内姆", 1],
+      ["可是，这次相遇依然让我觉得非比寻常。我想把你当成朋友，希望你不要介意。", "所莱内姆", 8]],
+    turns: [
+      ["I've never met one of your kind before. It's an honor to speak with you! "
+       + "I particularly admire your four eyes.", "Solanum", null],
+      ["There are many questions I would ask, if I could comprehend your language. "
+       + "You have my gratitude for understanding mine.", "Solanum", 0],
+      ["Who are you?", "", 1],
+      ["I am Solanum, a Nomai. My clan arrived in this star system before my birth, "
+       + "and we now call it home.", "Solanum", 2],
+      ["Where are we?", "", 1],
+      ["This is the Quantum Moon, where we both are standing.", "Solanum", 4],
+      ["Is this your first time on the Quantum Moon? It's my first time here.",
+       "Solanum", 5],
+      ["I imagine your purpose here is the same as mine: to learn about and to find "
+       + "the Eye of the universe.", "Solanum", 1],
+      ["We do not have much connection, you and I.", "Solanum", 1],
+      ["Still, this encounter feels special. I hope you won't mind if I think of you "
+       + "as a friend.", "Solanum", 8]] }
 ];
 
 /* Chinese, keyed by the English rather than by invented names.
@@ -3157,6 +3192,8 @@ const ZH = {
   "that scroll could not be etched": "这一卷刻不出来",
   "Eye Shrine District": "眼祭坛区",
   "The Sun Station": "太阳站",
+  "Sixth Location": "第六个位置",
+  "the first meeting": "初次见面",
   "Stepping Stone District": "垫脚石区",
   "Solanum, as a child": "所莱内姆，还是孩子的时候",
   "a notice, unsigned": "一则告示，未署名",
@@ -4489,7 +4526,7 @@ function takeDown(i, btn){
 
 /* Which build this is. Filled in from git when the page is built; `dev` when the
    source file is opened straight from disk. */
-const BUILD = /*__BUILD__*/{ rev: "v1.0-9-ge03776e", date: "2026-09-05" };
+const BUILD = /*__BUILD__*/{ rev: "v1.0-10-g2612ebd", date: "2026-09-05" };
 const REPO = "github.com/Rytting/nomai-scriptorium";
 
 /* The same writer, on a straight track instead of a coiled one. Everything that
