@@ -13,6 +13,7 @@
   --ui-focus:#d08b3c;
   --mode-idle:#b96829; --mode-active:#ed8b32; --mode-glow:rgba(237,139,50,.35);
   --ring-ink:#6d7f96;
+  --hud-veil:rgba(4,11,15,.82); --hud-blur:3px;
   --tablet-wash:rgba(17,25,30,.86);
   --rock:#0e1319; --rock-2:#161d26; --rock-3:#1f2833;
   --stone:#f2e4ce; --ink:#17558f; --ink-soft:#3d7ab8;
@@ -35,6 +36,7 @@
   --ui-focus:#a67b34;
   --mode-idle:#b96829; --mode-active:#ed8b32; --mode-glow:rgba(237,139,50,.35);
   --ring-ink:#6d7f96;
+  --hud-veil:rgba(4,11,15,.82); --hud-blur:3px;
   --tablet-wash:rgba(247,241,221,.60);
   --rock:#e9e3d7; --rock-2:#f4efe6; --rock-3:#fbf8f2;
   --text:#1c2530; --text-dim:#546374; --text-faint:#8695a6;
@@ -73,6 +75,7 @@
     --rail-fill:linear-gradient(#647779,#abbcbd 55%,#829697);
     --rail-shadow:inset 0 3px 6px rgba(15,29,34,.48),inset 0 -1px 1px rgba(220,240,245,.45);
     --ring-ink:#bcd6ff;
+    --hud-veil:rgba(4,11,15,.1); --hud-blur:0px;
   }
 }
 :root[data-theme="dark"]{
@@ -106,6 +109,7 @@
   --rail-fill:linear-gradient(#647779,#abbcbd 55%,#829697);
   --rail-shadow:inset 0 3px 6px rgba(15,29,34,.48),inset 0 -1px 1px rgba(220,240,245,.45);
   --ring-ink:#bcd6ff;
+  --hud-veil:rgba(4,11,15,.1); --hud-blur:0px;
 }
 *{box-sizing:border-box}
 ::selection{background:var(--ui-accent);color:var(--ui-on-accent)}
@@ -257,7 +261,10 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
    is the same fitting, seen from the front, and a scroll is what goes in one. The
    rules are scoped to the rack because the socket drawn on the plate has a `slot`
    of its own, and a polygon does not want a button's box. */
-.racknote{color:var(--text-faint);font-size:12.5px;max-width:62ch;margin:0}
+/* No reading measure on these: every one sits in a column of controls that is
+   already the measure, directly above or below something running the full width, and
+   a short ragged block in the middle of that reads as a mistake, not as typography. */
+.racknote{color:var(--text-faint);font-size:12.5px;margin:0}
 #rack-open{align-self:flex-start}
 /* A grid rather than a wrapped row, so the slots divide whatever width there is
    instead of leaving a ragged gap: six across on a desktop, three on a phone. */
@@ -316,7 +323,13 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
 .row{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-end}
 .panel > .row{align-items:flex-start}
 .field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.field > .hint{flex:none}
 .seg{display:inline-flex;border:1px solid var(--edge);border-radius:3px;overflow:hidden}
+/* A segmented control is as wide as its segments. As a flex item in a column it
+   stretches to the widest thing in that column instead, which stayed invisible until
+   a field grew a line of explanation longer than its buttons -- and then the box ran
+   on past the last one with nothing in it. */
+.field > .seg{align-self:flex-start}
 .seg button{appearance:none;background:transparent;border:0;color:var(--text-dim);
   font-family:var(--sans);font-size:13px;padding:7px 13px;cursor:pointer;
   border-right:1px solid var(--edge)}
@@ -460,6 +473,7 @@ input[type=range]::-moz-range-thumb{
 .stat{background:var(--rock-2);padding:12px 14px;display:flex;flex-direction:column;gap:3px}
 .stat .v{font-family:var(--mono);font-size:20px;font-variant-numeric:tabular-nums;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat .v.alphabets{white-space:normal;overflow:visible;text-overflow:clip;font-size:15px;overflow-wrap:anywhere}
 .stat .n{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)}
 
 .readings{display:flex;flex-direction:column;gap:9px}
@@ -474,6 +488,8 @@ input[type=range]::-moz-range-thumb{
 .note b{font-weight:500;color:var(--text)}
 
 .actions{display:flex;gap:10px;flex-wrap:wrap}
+#write-actions{display:flex;flex-direction:column;gap:11px}
+#etch-done{color:var(--text-dim)}
 .btn{appearance:none;font-family:var(--sans);font-size:13.5px;padding:9px 16px;
   border-radius:3px;border:1px solid var(--edge);background:transparent;color:var(--text);
   cursor:pointer}
@@ -560,11 +576,21 @@ footer a{color:var(--text-dim)}
 .screen.many{text-align:left;line-height:1.9}
 .screen .idle{opacity:.85}
 .screen .garble{color:var(--screen-garble,#5fbfa4);opacity:.9}
+.trow .said.original-message,.reading .t.original-message{color:var(--warn)}
+.dialect-tag{font-size:.8em;opacity:.9;margin-right:.6em;white-space:nowrap}
 .tbar{height:3px;background:var(--edge-soft);border-radius:2px;overflow:hidden}
 .tbar i{display:block;height:100%;width:0;background:var(--beam);
   transition:width .06s linear}
 /* holding is the interaction, so nothing the browser does on a long press may
    interrupt it: no scrolling, no selection, and no iOS callout menu */
+/* Never wraps: the two arrows belong either side of the button, and a phone narrow
+   enough to break that would put one of them on a line of its own. The button gives
+   up width instead -- it asks for 260 and settles for what is left. */
+.hold-row{display:flex;gap:10px;align-items:stretch;justify-content:center;
+  flex-wrap:nowrap;max-width:100%}
+.hold-row .hold{min-width:0;flex:0 1 260px}
+.arrow{flex:none;min-width:46px;min-height:48px;padding:0 15px;font-size:19px;
+  line-height:1;font-family:var(--mono)}
 .wall-action,.hold{align-self:center;min-width:260px;max-width:100%;min-height:48px;
   padding:12px 24px;font-size:15px;font-weight:500;
   background:var(--text);border-color:var(--text);color:var(--rock);
@@ -578,6 +604,43 @@ footer a{color:var(--text-dim)}
 .wall-action:active:not(:disabled){transform:translateY(1px)}
 .hold[aria-pressed="true"]{transform:translateY(1px)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* Its own dark plate in either theme: the readout in the game is always over space,
+   and a pale glow laid on the daylight page would be a smear rather than a signal.
+   Fixed to the view, so it arrives where the eye already is however far down the
+   page you have scrolled, and passes clicks straight through to what is beneath. */
+.hud{position:fixed;top:0;left:0;right:0;z-index:60;display:flex;justify-content:center;
+  pointer-events:none;padding:40px 16px 54px;
+  /* Barely a veil at night: the page is already dark, so the line is lit against it
+     with nothing in the way. In daylight it needs the full plate -- a glow has to have
+     something to sit on, and laid straight onto a cream page the white core and its
+     halo run together and the letters read as though they had bled. Faded out by a
+     mask rather than a gradient background so the blur goes with it: a blur stopping
+     on a hard line reads as a pane of glass laid on the page, which this is not. */
+  background:var(--hud-veil,rgba(4,11,15,.1));
+  -webkit-backdrop-filter:blur(var(--hud-blur,0px));
+          backdrop-filter:blur(var(--hud-blur,0px));
+  -webkit-mask-image:linear-gradient(#000 38%,rgba(0,0,0,.5) 70%,transparent);
+          mask-image:linear-gradient(#000 38%,rgba(0,0,0,.5) 70%,transparent);
+  opacity:0;transition:opacity .5s ease}
+.hud.on{opacity:1;transition-duration:.16s}
+.hud-line{font-family:var(--mono);font-weight:500;
+  /* sized off the viewport with a real ceiling, so the line holds about a third of
+     the width instead of shrinking into the corner of a wide window */
+  font-size:clamp(13px,1.9vw,24px);letter-spacing:.22em;
+  /* letter-spacing puts a gap after the last character too, which pulls a centred
+     line half a gap to the left; give it back so the middle really is the middle */
+  text-indent:.22em;
+  /* Lit, not merely coloured: a near-white core inside four widening halos, which is
+     what separates a readout that looks powered from one that looks printed. The
+     colour is fixed rather than taken from `--beam`, which turns green by day: this is
+     one instrument reporting one thing, and an instrument does not change colour with
+     the time of day. Pale blue-white rather than the translator's green, because this
+     is the ship's readout and not a Nomai device -- both are in the game, and they
+     are not the same fitting. */
+  color:#eaf9ff;text-align:center;white-space:pre;min-height:1.4em;
+  text-shadow:0 0 2px #ffffff,0 0 7px #cfeaf7,0 0 16px #8fd0ea,
+              0 0 34px #3f7f9c,0 0 66px #24566b}
 @media (prefers-reduced-motion: no-preference){
   .plate svg{transition:opacity .12s ease}
 }
@@ -630,7 +693,7 @@ footer a{color:var(--text-dim)}
 </div>
 
 <div class="composer" id="write-pane">
-  <div class="sigrow">
+  <div class="sigrow" id="sigrow">
     <div class="seg" role="group" aria-label="Signature">
       <button id="s-anon" aria-pressed="true">Unsigned</button>
       <button id="s-signed" aria-pressed="false">Signed</button>
@@ -639,6 +702,13 @@ footer a{color:var(--text-dim)}
     <span class="hint">Nomai spirals are nearly always signed. The unsigned ones are
     notices, and questions put to whoever passes.</span>
   </div>
+  <p class="racknote" id="upstream-why" hidden><b>The original dialect is on.</b>
+  This keeps the first author's numbering, so that scrolls from nomai-writing.com and
+  NomaiText.jl can be read and written here. It supports neither signatures nor reply
+  structure, and its encoding is not a strict one-to-one map, so a drawing has no
+  single reading: translating one lists up to three that fit it. Use
+  <b>Unambiguous</b> for signatures, reply structure, and a scroll that reads back
+  exactly as written.</p>
   <div class="answering" id="answering" hidden>
     <span class="label">Answering</span>
     <span class="q" id="answering-what"></span>
@@ -665,6 +735,9 @@ footer a{color:var(--text-dim)}
       accept=".svg,image/svg+xml,text/xml,application/xml,text/plain,application/octet-stream">
     <span id="drop-text">Drop a Nomai SVG here, or click to choose one</span>
   </label>
+  <p class="racknote">It has to be the scroll file itself, the .svg that
+  <b>Etch the scroll</b> saves. A screenshot or a photograph will not do: the
+  translator follows the drawing's own lines, and a picture has only pixels in it.</p>
 </div>
 
 <div class="plate empty" id="plate"><span id="plate-msg">waiting for words</span>
@@ -690,6 +763,7 @@ footer a{color:var(--text-dim)}
         <button id="d-strict" aria-pressed="true">Unambiguous</button>
         <button id="d-upstream" aria-pressed="false">Original</button>
       </div>
+      <span class="hint">Applies only to the spiral you write or rewrite.</span>
     </div>
     <div class="field">
       <span class="label" id="bl">Alphabet size</span>
@@ -741,10 +815,17 @@ footer a{color:var(--text-dim)}
 
   <div class="stats" id="stats"></div>
 
-  <div class="actions" id="write-actions">
-    <button class="btn" id="dl-svg" title="Saves the drawing as an SVG file">Etch the scroll</button>
-    <button class="btn" id="surprise">Surprise me</button>
-    <button class="btn" id="clear-wall" disabled>Clear wall</button>
+  <div id="write-actions">
+    <div class="actions">
+      <button class="btn" id="dl-svg" title="Saves the drawing as an SVG file">Etch the scroll</button>
+      <button class="btn" id="surprise">Surprise me</button>
+      <button class="btn" id="clear-wall" disabled>Clear wall</button>
+    </div>
+    <p class="racknote" id="etch-why"><b>To translate it, etch it.</b> What is on the
+    wall lives only in this page. Etching saves the scroll as a file, and that file is
+    what you hand to somebody else, and what the translator reads.</p>
+    <p class="racknote" id="etch-done" hidden><b>Etched.</b> Put this file into
+    <b>Read a scroll</b> and the translator will read it back.</p>
   </div>
 </div>
 
@@ -772,6 +853,9 @@ footer a{color:var(--text-dim)}
   </div>
 </footer>
 </div>
+
+<!-- outside the page's column: it belongs to the view, not to the document -->
+<div class="hud" id="hud" aria-hidden="true"><span class="hud-line" id="hud-line"></span></div>
 
 <script>
 const G = /*__GLYPHS__*/null;
@@ -1741,12 +1825,24 @@ const ZH = {
   "Wind": "\u677e\u7d27",
   "Tilt": "\u503e\u659c",
   "Etch the scroll": "\u523b\u5f55\u5377\u8f74",
+  "To translate it, etch it.": "要翻译，先刻录。",
+  "What is on the wall lives only in this page. Etching saves the scroll as a file, and that file is what you hand to somebody else, and what the translator reads.":
+    "墙上这张图只存在于这个页面里。刻录会把卷轴存成一个文件，给别人的是它，翻译器读的也是它。",
+  "Etched.": "已刻录。",
+  "Put this file into": "把这个文件放进「",
+  "and the translator will read it back.": "」里，翻译器就能把它读回来。",
+  "It has to be the scroll file itself, the .svg that": "必须是卷轴文件本身，也就是「",
+  "saves. A screenshot or a photograph will not do: the translator follows the drawing's own lines, and a picture has only pixels in it.":
+    "」存下来的那个 .svg。截图和照片都不行：翻译器跟着的是图里的线条本身，而图片里只有像素。",
+  "that is a picture, not a scroll": "这是图片，不是卷轴",
+  "that file is not a scroll": "这个文件不是卷轴",
   "Saves the drawing as an SVG file": "\u628a\u56fe\u5b58\u6210 SVG \u6587\u4ef6",
   "Surprise me": "\u968f\u4fbf\u6765\u4e00\u53e5",
   "The 33 glyphs and the spiral come from": "\u90a3 33 \u4e2a\u5b57\u5f62\u548c\u87ba\u65cb\u6765\u81ea",
   "(MIT), traced by hand from": "\uff08MIT \u6388\u6743\uff09\uff0c\u662f\u4ece",
   ". The unambiguous dialect is a change of ours: the same drawings, numbered so that each one has exactly one reading.":
     "\u91cc\u4e00\u7b14\u4e00\u7b14\u63cf\u51fa\u6765\u7684\u3002\u65e0\u6b67\u4e49\u65b9\u8a00\u662f\u6211\u4eec\u6539\u7684\uff1a\u540c\u6837\u7684\u56fe\uff0c\u6362\u4e86\u4e00\u79cd\u7f16\u53f7\u65b9\u5f0f\uff0c\u4f7f\u5f97\u6bcf\u5f20\u56fe\u53ea\u6709\u4e00\u79cd\u8bfb\u6cd5\u3002",
+  "Applies only to the spiral you write or rewrite.": "只作用于本次写入或改写的螺旋。",
   "Nothing here is sent anywhere. Everything runs in this page.":
     "\u8fd9\u91cc\u7684\u4e1c\u897f\u4e0d\u4f1a\u88ab\u53d1\u5230\u4efb\u4f55\u5730\u65b9\u3002\u5168\u90e8\u8ba1\u7b97\u90fd\u5728\u8fd9\u4e2a\u9875\u9762\u91cc\u5b8c\u6210\u3002",
 
@@ -1759,6 +1855,18 @@ const ZH = {
   "all yours": "\u5168\u90e8\u90fd\u662f\u4f60\u7684",
   "someone else wrote this": "\u8fd9\u662f\u522b\u4eba\u5199\u7684",
   "none of these are yours": "\u8fd9\u4e9b\u90fd\u4e0d\u662f\u4f60\u7684",
+  "could be": "可能是",
+  "Settle on this reading": "就用这一句",
+  "previous reading": "上一句读法",
+  "next reading": "下一句读法",
+  "The original dialect is on.": "原始方言已打开。",
+  "ORIGINAL DIALECT ON": "原始方言已打开",
+  "SCROLL ETCHED": "卷轴已刻录，可导入阅读",
+  "UNAMBIGUOUS DIALECT ON": "无歧义方言已打开",
+  "This keeps the first author's numbering, so that scrolls from nomai-writing.com and NomaiText.jl can be read and written here. It supports neither signatures nor reply structure, and its encoding is not a strict one-to-one map, so a drawing has no single reading: translating one lists up to three that fit it. Use":
+    "这里保留的是最初作者的编码方法，好让 nomai-writing.com 和 NomaiText.jl 产出的卷轴在这里也能读写。该模式不支持署名与回复层级，编码并不是严格一一映射，所以一张图没有唯一读法：翻译时会列出最多三种契合它的读法。想要署名、回复层级，以及能原样读回来的卷轴，请用「",
+  "for signatures, reply structure, and a scroll that reads back exactly as written.":
+    "」。",
   "Write it": "\u5199\u4e0b\u6765",
   "Clear wall": "清空墙面",
   "Clear all spirals and replies from this wall? This cannot be undone. Your input text and signature will be kept.":
@@ -1874,10 +1982,13 @@ function paintLang(){
   if (LANG === "zh"){
     for (let i = 0; i + 1 < done.length; i++){
       const a = done[i], b = done[i + 1];
-      if (/ $/.test(a.nodeValue) && WIDE.test(b.nodeValue[0] || ""))
-        a.nodeValue = a.nodeValue.replace(/ +$/, "");
-      if (/^ /.test(b.nodeValue) && WIDE.test(a.nodeValue.slice(-1)))
-        b.nodeValue = b.nodeValue.replace(/^ +/, "");
+      /* any whitespace, not just a space: markup wraps its long sentences, so the
+         gap either side of an inline tag is as often a newline and an indent as it
+         is a single space, and only the space was ever being taken back out */
+      if (/\s$/.test(a.nodeValue) && WIDE.test(b.nodeValue[0] || ""))
+        a.nodeValue = a.nodeValue.replace(/\s+$/, "");
+      if (/^\s/.test(b.nodeValue) && WIDE.test(a.nodeValue.slice(-1)))
+        b.nodeValue = b.nodeValue.replace(/^\s+/, "");
     }
   }
   for (const [id, attr] of [["me", "placeholder"], ["sig", "placeholder"],
@@ -1901,7 +2012,7 @@ function setLang(v){
   if (state.mode === "read"){
     if (state.scrollSource === "preset" || state.loadingSource === "preset") clearReader();
     else stopTranslation();
-    if (state.pending) { paintThread(); paintTranslator(); }
+    if (state.pending) { paintThread(); paintTranslator(); paintReadNotes(); }
     else idleTranslator();
     return;
   }
@@ -1909,7 +2020,7 @@ function setLang(v){
   /* the panels the page writes itself have to be written again in the new words */
   if (swapped) { hwRead(); syncTilt(); commit(true); }
   else if (state.mode === "write") { hwRead(); syncTilt(); syncWrite(); reshape(); }
-  else if (state.pending) { paintThread(); paintTranslator(); }
+  else if (state.pending) { paintThread(); paintTranslator(); paintReadNotes(); }
   else idleTranslator();
 }
 const state = { dialect: "strict", base: 256, hw: 0.15, svg: "", seed: 47 };
@@ -1966,6 +2077,7 @@ function showAim(){
     ? "not a reply after all" : "leave it as it is");
 }
 function setAim(kind, index){
+  if (state.mode === "read" && !canAnswerRead()) return;
   /* the composer lives in the writing pane, so aiming it is asking to write --
      doing that silently while the pane is hidden looks like a dead button */
   if (state.mode !== "write") setMode("write", true);
@@ -1975,6 +2087,8 @@ function setAim(kind, index){
   } else if (kind === "edit" && state.scroll[index]){
     const sp = state.scroll[index];
     $("msg").value = sp.text;
+    setDialectUI(sp.dialect);
+    setBaseUI(sp.base);
     setSigned(!!sp.sig);
     if (sp.sig) $("sig").value = sp.sig;
   }
@@ -2001,26 +2115,36 @@ function syncWrite(){
     : state.scroll.length > 1 ? "Rewrite this spiral" : "Rewrite it");
 }
 function commit(opening = false){
-  state.scrollSource = opening === true ? "opening" : "written";
-  const text = $("msg").value, sig = state.signed ? $("sig").value.trim() : "";
-  state.signedAs = sig;
+  if (!$("msg").value.trim() || (state.signed && !$("sig").value.trim())) return;
   const a = state.aim;
+  const text = $("msg").value, sig = state.signed ? $("sig").value.trim() : "";
+  const parent = a.kind === "reply" ? a.index
+    : a.kind === "edit" && state.scroll[a.index] ? state.scroll[a.index].parent : null;
+  let base = state.base;
+  const widened = base === 256 && (Array.from(text + sig).some(c => c.codePointAt(0) >= 256)
+    || (state.dialect === "strict" && (Array.from(text).length >= 256 || parent >= 256)));
+  if (widened) base = 200000;
+  const grid = gridFor(text, sig, parent, state.dialect, base);
+  if (typeof grid === "string"){ hud(t(grid)); return; }
+  const next = { text, sig, parent, dialect: state.dialect, base, grid };
+  setBaseUI(base);
+  state.scrollSource = opening === true ? "opening" : "written";
+  state.signedAs = sig;
   let growIdx = null;
   if (a.kind === "reply"){
-    state.scroll.push({ text, sig, parent: a.index });
+    state.scroll.push(next);
     growIdx = state.scroll.length - 1;
     /* aim at what was just written, so the next thing you do is fix it if you want */
     state.aim = { kind: "edit", index: growIdx };
   } else if (a.kind === "edit" && state.scroll[a.index]){
-    state.scroll[a.index].text = text;
-    state.scroll[a.index].sig = sig;
+    state.scroll[a.index] = next;
   } else {
-    state.scroll = [{ text, sig, parent: null }];
+    state.scroll = [next];
     state.aim = { kind: "edit", index: 0 };
   }
   state.written = state.scroll[0].text;
   state.seen = new Set(state.scroll.map((_, i) => i));
-  build(true, growIdx);
+  build(true, growIdx, widened);
   showAim();
   /* after the build, because widening the alphabet for a non-Latin message is part
      of what got committed */
@@ -2053,9 +2177,9 @@ function timedBuild(){
 }
 /* One spiral's grid, or a string saying why not. The nonce search lives here because
    both the root and every reply need it. */
-function gridFor(msg, sig, parent){
-  if (state.dialect !== "strict"){
-    const x = encode(msg, state.base, "upstream", 1);
+function gridFor(msg, sig, parent, dialect, base){
+  if (dialect !== "strict"){
+    const x = encode(msg, base, "upstream", 1);
     if (x === "big") return "that character needs the larger alphabet";
     if (x === null) return "waiting for words";
     const g = buildGrid(x, "upstream");
@@ -2067,13 +2191,14 @@ function gridFor(msg, sig, parent){
      write down the number 256. At exactly that many characters the format runs out,
      no nonce can rescue it, and the search would spend forty-eight attempts proving
      so before saying something that was not the reason. */
-  if (Array.from(msg).length >= state.base) return "too long for this alphabet";
+  if (Array.from(msg).length >= base || Array.from(sig).length >= base
+      || (parent != null && parent >= base)) return "too long for this alphabet";
   for (let nonce = 1; nonce <= 48; nonce++){
-    const cand = encode(msg, state.base, "strict", nonce, sig, parent);
+    const cand = encode(msg, base, "strict", nonce, sig, parent);
     if (cand === "big") return "that character needs the larger alphabet";
     if (cand === null) return "waiting for words";
     const g = buildGrid(cand, "strict");
-    const readings = strictReadings(g, state.base);
+    const readings = strictReadings(g, base);
     if (readings.length === 1 && readings[0].text === msg
         && (readings[0].sig || "") === sig){
       g.readings = readings;
@@ -2085,22 +2210,11 @@ function gridFor(msg, sig, parent){
 /* Draw whatever the scroll currently holds. `growIdx` is the spiral that just
    arrived: it unwinds, and everything already on the sheet is simply there. */
 let scrollUnchecked = false;
-function build(grow, growIdx){
+function build(grow, growIdx, widened = false){
   const sc = state.scroll;
   if (!sc.length){ empty("waiting for words"); return; }
-  let widened = false;
-  /* Two ways to outgrow the Latin alphabet: a character it does not contain, or more
-     characters than it can count. Both are answered the same way. */
-  if (state.base === 256 && sc.some(sp => Array.from(sp.text + (sp.sig || ""))
-        .some(c => c.codePointAt(0) >= 256) || Array.from(sp.text).length >= 256)){
-    setBaseUI(200000);
-    widened = true;
-  }
-  for (const sp of sc){
-    const g = gridFor(sp.text, sp.sig || "", sp.parent);
-    if (typeof g === "string"){ empty(g); return; }
-    sp.grid = g;
-  }
+  /* Committing owns encoding. A redraw only lays out the stored grids, including
+     the exact grid recovered from an imported drawing. */
   let L, hand = state.seed;
   if (sc.length === 1){
     L = layoutFor(sc[0].grid.ncols, state.tilt, state.flip, state.tight);
@@ -2108,7 +2222,7 @@ function build(grow, growIdx){
        some grids one jitter pattern moves a point far enough that the reader loses
        it while the next is fine. A scroll already searches this for every spiral;
        a lone one was left out, and warned about failures it need not have had. */
-    if (state.dialect === "strict"){
+    if (sc[0].dialect === "strict"){
       const got = handFor(sc[0].grid, state.hw, state.seed, L, CHECK_MS);
       if (got !== null) hand = got;
     }
@@ -2134,9 +2248,9 @@ function build(grow, growIdx){
      than handing over a drawing that quietly will not come back. */
   /* Only ask again when the search had time to be sure. Above the size where it
      stops, one more attempt is the same fourteen seconds. */
-  const unchecked = state.dialect === "strict"
+  const unchecked = sc.some(sp => sp.dialect === "strict")
     && (sc.length === 1 ? handRanOut : scrollUnchecked);
-  const shaky = state.dialect === "strict" && !unchecked
+  const shaky = sc[0].dialect === "strict" && !unchecked
     && !readsBack(sc[0].grid, state.hw, hand, L);
   state.track = trackFromLayout(L);
   state.socket = socketFor(state.track);
@@ -2150,6 +2264,7 @@ function build(grow, growIdx){
 function empty(text){
   text = t(text);
   $("plate").className = "plate empty";
+  $("etch-done").hidden = true;
   $("plate-msg").textContent = text;
   $("plate-msg").hidden = false;
   $("art").innerHTML = "";
@@ -2447,9 +2562,10 @@ function paintThread(){
     /* per row, not per scroll: in a conversation you translate one spiral at a time,
        so some rows are open while their neighbours are still churning */
     const open = state.seen.has(k);
-    const kind = inkFor(sp.sig || "");
+    const kind = inkFor(sp.sig || "") + (open && sp.dialect === "upstream" ? " original-message" : "");
     const said = open
-      ? (sp.sig ? `<b>${esc(sp.sig)}:</b> ` : "") + esc(sp.text)
+      ? (mixedDialects() ? dialectTag(sp.dialect) : "")
+        + (sp.sig ? `<b>${esc(sp.sig)}:</b> ` : "") + esc(sp.text)
       : `<span class="garble">${esc(noise(Math.min(46,
           Array.from(sp.text).length + (sp.sig ? sp.sig.length + 2 : 0))))}</span>`;
     const aimed = state.mode === "write"
@@ -2458,7 +2574,7 @@ function paintThread(){
     return `<div class="trow${aimed}${picked}" data-row="${k}">`
       + `<span class="depth">${"\u2502 ".repeat(depth[k])}</span>`
       + `<span class="said ${kind}">${said}</span>`
-      + (open ? `<button class="linky" data-edit="${k}">${t("rewrite")}</button>`
+      + (open && (state.mode !== "read" || canAnswerRead()) ? `<button class="linky" data-edit="${k}">${t("rewrite")}</button>`
               + `<button class="linky" data-reply="${k}">${t("reply")}</button>`
               : `<span class="depth">${t(state.sel === k ? "point at it"
                                                          : "click to aim")}</span>`)
@@ -2523,7 +2639,7 @@ function paint(sc, widened, shaky, unchecked){
      Every language works here; the spiral just runs longer, because each character now
      takes more of the drawing to pin down.`,
     `\u5df2\u6362\u6210\u66f4\u5927\u7684\u5b57\u6bcd\u8868\u2014\u2014\u5c0f\u7684\u90a3\u4e2a\u53ea\u76d6\u5f97\u4f4f\u524d 256 \u4e2a\u5b57\u7b26\uff0c\u4e5f\u6570\u4e0d\u5230 256 \u4ee5\u4e0a\uff0c\u6240\u4ee5 256 \u5b57\u53ca\u66f4\u957f\u7684\u6d88\u606f\u540c\u6837\u5f97\u7528\u5b83\u3002\u4efb\u4f55\u8bed\u8a00\u90fd\u80fd\u5199\uff0c\u53ea\u662f\u87ba\u65cb\u4f1a\u957f\u4e00\u4e9b\uff0c\u56e0\u4e3a\u6bcf\u4e2a\u5b57\u7b26\u73b0\u5728\u8981\u5360\u7528\u66f4\u591a\u7684\u56fe\u624d\u80fd\u5b9a\u4e0b\u6765\u3002`) : "";
-  if (state.dialect !== "strict"){
+  if (sc.length === 1 && sc[0].dialect === "upstream"){
     const n2 = upstreamCandidates(sc[0].grid);
     r.innerHTML = `<div class="reading rival"><span class="tag">${t("intended")}</span>`
       + `<span class="t">${esc(sc[0].text)}</span></div>`
@@ -2574,17 +2690,95 @@ function hwRead(){
     + state.hw.toFixed(2) + `<span class="sr"> — ${t(text)}</span>`;
   $("hw-read").title = t(text);
 }
-function seg(a, b, key, va, vb){
+function seg(a, b, key, va, vb, after){
   const set = v => {
     state[key] = v;
     $(a).setAttribute("aria-pressed", String(v === va));
     $(b).setAttribute("aria-pressed", String(v === vb));
+    if (after) after();
     syncWrite();
   };
   $(a).onclick = () => set(va);
   $(b).onclick = () => set(vb);
 }
-seg("d-strict", "d-upstream", "dialect", "strict", "upstream");
+/* Typed from the middle outwards, one character to each side at a time, which is
+   why the string is sliced symmetrically rather than truncated: at every step the
+   line is the middle `k` characters of the whole, and a centred line built that way
+   grows towards both edges on its own. Timed rather than stepped per character, so a
+   long phrase and a short one take the same moment to arrive. */
+let hudTimer = null, hudRaf = null;
+function hud(text){
+  const box = $("hud"), line = $("hud-line");
+  if (!box) return;
+  if (hudTimer){ clearTimeout(hudTimer); hudTimer = null; }
+  if (hudRaf){ cancelAnimationFrame(hudRaf); hudRaf = null; }
+  const chars = Array.from(text), n2 = chars.length;
+  const middle = k => {
+    const from = Math.floor((n2 - k) / 2);
+    return chars.slice(from, from + k).join("");
+  };
+  /* Aim the finished line at a third of the view, whatever it says. Seven Chinese
+     characters and nineteen Latin ones are the same announcement and should land at
+     the same size on screen, which no single font size can do -- so it is measured
+     once, at full length, before the first character appears. Fixing it up front also
+     keeps the type-out from resizing itself as it grows. */
+  line.style.fontSize = "";
+  line.textContent = text;
+  const want = document.documentElement.clientWidth / 3;
+  const got = line.getBoundingClientRect().width;
+  if (got > 0){
+    const at = parseFloat(getComputedStyle(line).fontSize);
+    line.style.fontSize = Math.max(13, Math.min(34, at * want / got)) + "px";
+  }
+  const HOLD = 1900, TYPE = 520;
+  const rest = () => { hudTimer = setTimeout(() => box.classList.remove("on"), HOLD); };
+  box.classList.add("on");
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches){
+    line.textContent = text;
+    rest();
+    return;
+  }
+  line.textContent = "";
+  const t0 = performance.now();
+  const step = now => {
+    const p = Math.min(1, (now - t0) / TYPE);
+    line.textContent = middle(Math.round(p * n2));
+    if (p < 1) hudRaf = requestAnimationFrame(step);
+    else { hudRaf = null; rest(); }
+  };
+  hudRaf = requestAnimationFrame(step);
+}
+/* The signature is not hidden for tidiness: it is hidden because it would be a lie.
+   Anything typed there was being encoded away silently. */
+function paintDialect(announce){
+  const up = state.dialect !== "strict";
+  $("sigrow").hidden = up;
+  $("upstream-why").hidden = !up;
+  if (up && state.signed) setSigned(false);
+  if (announce) hud(t(up ? "ORIGINAL DIALECT ON" : "UNAMBIGUOUS DIALECT ON"));
+}
+function setDialectUI(dialect){
+  state.dialect = dialect;
+  $("d-strict").setAttribute("aria-pressed", String(dialect === "strict"));
+  $("d-upstream").setAttribute("aria-pressed", String(dialect === "upstream"));
+  paintDialect(false);
+}
+/* A label earns its place by distinguishing. On a scroll written entirely in one
+   numbering it distinguishes nothing -- it is the same word down every row, and the
+   amber already says it -- so it appears only where both numberings are present.
+   Inside the chooser it never appears at all: those lines are readings of one
+   spiral, and being asked to choose is itself what says which numbering it is. */
+function mixedDialects(){
+  const of = state.mode === "read" && state.pending && state.pending.decoded
+    ? state.pending.decoded.map(d => d.dialect)
+    : state.scroll.map(sp => sp.dialect);
+  return of.some(d => d === "upstream") && of.some(d => d !== "upstream");
+}
+function dialectTag(dialect, brackets = "[]"){
+  return dialect === "upstream" ? `<span class="dialect-tag">${brackets[0]}${LANG === "zh" ? "原始方言" : "Original dialect"}${brackets[1]}</span>` : "";
+}
+seg("d-strict", "d-upstream", "dialect", "strict", "upstream",
+    () => paintDialect(true));
 $("b-256").onclick = () => { setBaseUI(256); syncWrite(); };
 $("b-200000").onclick = () => { setBaseUI(200000); syncWrite(); };
 $("hw").oninput = e => { state.hw = +e.target.value; hwRead(); reshape(); };
@@ -2738,6 +2932,15 @@ dlBtn.disabled = true;
     dlBtn.disabled = false;
   }
 })();
+/* Saving a file is the middle of something, not the end of it: the reason to have
+   the file is that it is what the wall reads. Two things are owed, and they are not
+   the same thing: that it happened, and what to do next. The banner takes the first,
+   where the eye is and gone in a moment; the line under the button takes the second
+   and stays there, because an instruction you cannot look at twice is not one. */
+function etched(){
+  $("etch-done").hidden = false;
+  hud(t("SCROLL ETCHED"));
+}
 function slug(){
   const root = state.scroll[0] ? state.scroll[0].text : $("msg").value;
   const t = root.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
@@ -2756,6 +2959,7 @@ dlBtn.onclick = async () => {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    etched();
     return;
   }
   if (!saver) return;
@@ -2764,6 +2968,7 @@ dlBtn.onclick = async () => {
   try {
     await saver.save({ filename: slug(), data: state.svg });
     dlBtn.textContent = t("Saved");
+    etched();
   } catch (err) {
     dlBtn.textContent = t(err && err.code === "declined" ? "Download SVG"
       : err && err.code === "rate_limited" ? "Try again in a moment"
@@ -2777,7 +2982,7 @@ let readGeneration = 0;
 function saveWriter(){
   state.writerDraft = {
     lang: LANG, text: $("msg").value, sig: $("sig").value, signed: state.signed,
-    scroll: state.scroll, aim: { ...state.aim }, base: state.base,
+    scroll: state.scroll, aim: { ...state.aim }, base: state.base, dialect: state.dialect,
     committed: state.committed, written: state.written, signedAs: state.signedAs,
     source: state.scrollSource
   };
@@ -2789,7 +2994,7 @@ function restoreWriter(){
   state.scroll = d.scroll; state.aim = d.aim; state.scrollSource = d.source;
   state.committed = d.committed; state.written = d.written; state.signedAs = d.signedAs;
   $("msg").value = d.text; $("sig").value = d.sig;
-  setBaseUI(d.base); setSigned(d.signed, false);
+  setDialectUI(d.dialect); setBaseUI(d.base); setSigned(d.signed, false);
   return d.lang !== LANG && swapOpening(d.lang);
 }
 function stopTranslation(){
@@ -2888,16 +3093,18 @@ function readDrawing(text, name, source = "file"){
     mountSocket();
     beams("idle");
   }
-  /* one alphabet for the whole scroll: they were written together */
-  let base = null, per = scroll.spirals.map(() => []);
-  for (const b of [256, 200000]){
-    const got = scroll.spirals.map(cands => readAny(cands, b));
-    if (got.some(r => r.length)){ per = got; base = b; break; }
-  }
+  const decoded = scroll.spirals.map(cands => readSpiral(cands));
+  const per = decoded.map(d => d.readings);
+  const bases = [...new Set(decoded.map(d => d.base).filter(Boolean))];
+  /* which reading of each spiral is being shown, and which spiral is being asked
+     about right now (-1 when the translator is simply reading) */
+  state.pick = per.map(() => 0);
+  state.choosing = -1;
+  /* searched, and the clock beat it -- which is a different thing to tell somebody
+     than "nothing fits this drawing" */
   const firsts = per.map(r => r[0] || null);
-  const parents = firsts.map(r => r && r.parent !== undefined ? r.parent : null);
-  const tree = firsts.every(Boolean) && scroll.spirals.length > 1
-    ? checkTree(scroll.edges, parents, firsts.length) : null;
+  const tree = firsts.every(Boolean) ? mixedTree(scroll.edges, decoded) : null;
+  const parents = tree && tree.ok ? tree.parents : firsts.map(() => null);
   /* drawn as one piece again once everything has been read */
   $("stats").innerHTML = [
     scroll.spirals.length > 1 ? ["spirals", scroll.spirals.length] : null,
@@ -2905,21 +3112,20 @@ function readDrawing(text, name, source = "file"){
     ["turns", scroll.spirals.reduce((a, o) => a + o[0].ncols, 0)],
     scroll.spirals.length > 1 ? ["replies", scroll.joins.length]
                               : ["joins", obs.conns.length],
-    ["alphabet", base === null ? "-" : base.toLocaleString("en-US")]
+    ["alphabet", bases.length ? bases.map(b => b.toLocaleString("en-US")).join(" / ") : "-"]
   ].filter(Boolean)
-   .map(([n2, v]) => `<div class="stat"><span class="v">${v}</span><span class="n">${t(n2)}</span></div>`).join("");
+   .map(([n2, v]) => `<div class="stat"><span class="v${n2 === "alphabet" && bases.length > 1 ? " alphabets" : ""}">${v}</span><span class="n">${t(n2)}</span></div>`).join("");
   /* the colour goes on before the text does: on a wall you can see whose a spiral
      is without translating it */
   /* the ink goes on before the words do: on a wall you can see whose a spiral is
      without translating it, and in a conversation that is most of what you want */
   applyInk(firsts.map(r => (r && r.sig) || ""));
-  /* A scroll that read completely becomes one you can answer: the grids are rebuilt
-     from the text when a reply is added, so the drawing is redrawn rather than
-     patched. It will not come out stroke for stroke the same, and it does not need
-     to -- what it says is what was read. */
-  if (firsts.every(Boolean) && (!tree || tree.ok)){
+  /* Keep the recovered grids. Ambiguous originals become answerable only after
+     the reader has settled their readings; choosing changes text, not the grid. */
+  if (tree && tree.ok){
     state.scroll = firsts.map((r, i) => ({ text: r.text, sig: r.sig || "",
-                                           parent: parents[i] }));
+      parent: parents[i], dialect: decoded[i].dialect, base: decoded[i].base,
+      grid: decoded[i].grid }));
     state.aim = { kind: "edit", index: 0 };
   } else {
     state.scroll = [];
@@ -2928,14 +3134,19 @@ function readDrawing(text, name, source = "file"){
   }
   state.seen = new Set();
   state.sel = 0;
-  state.parents = firsts.every(Boolean) ? parents : firsts.map(() => null);
+  state.parents = parents;
   state.edges = scroll.edges;
   groupDrawing(scroll.where, scroll.joinAt);
   applyInk(firsts.map(r => (r && r.sig) || ""));
+  state.pending = { per, name, tree, decoded, obs: scroll.spirals };
   paintReveal(false);
   paintThread();
-  state.pending = { per, name, tree, obs: scroll.spirals };
   translator();
+}
+function canAnswerRead(){
+  const p = state.pending;
+  return !!p && !!p.tree && p.tree.ok && state.choosing < 0
+    && p.per.every((list, i) => list.length === 1 || (list.length > 1 && state.seen.has(i)));
 }
 
 /* The translator, after the one in the game: it sits on an untranslated line until
@@ -2993,10 +3204,10 @@ function etchCanon(c){
   const turns = LANG === "zh" && c.zh ? c.zh : c.turns;
   const wide = turns.some(([msg, sig]) => Array.from(msg + (sig || ""))
     .some(ch => ch.codePointAt(0) >= 256));
-  setBaseUI(wide ? 200000 : 256);
-  const spirals = turns.map(([text, sig, parent]) => ({ text, sig, parent }));
+  const base = wide ? 200000 : 256;
+  const spirals = turns.map(([text, sig, parent]) => ({ text, sig, parent, dialect: "strict", base }));
   for (const sp of spirals){
-    const g = gridFor(sp.text, sp.sig || "", sp.parent);
+    const g = gridFor(sp.text, sp.sig || "", sp.parent, sp.dialect, sp.base);
     if (typeof g === "string") return null;
     sp.grid = g;
   }
@@ -3172,7 +3383,7 @@ const noise = k => Array.from({ length: k },
    and leaves nothing to do; pointing the thing at one spiral, holding until it
    resolves, and then choosing the next is what the tool is for. What has already been
    translated stays translated. */
-let tprog = 0, thold = false, traf = null, tlast = 0;
+let tprog = 0, thold = false, traf = null, tlast = 0, choiceKeys = null;
 
 function selectSpiral(i){
   if (!state.pending || !state.pending.per[i]) return;
@@ -3189,11 +3400,27 @@ function selectSpiral(i){
   paintTranslator();
 }
 
+/* The chooser owns the whole screen while it is up: one line per reading rather
+   than one per spiral, because what is being asked is no longer "which spiral" but
+   "which of these". */
+function chooseScreen(){
+  const i = state.choosing, list = state.pending.per[i];
+  return list.map((r, k) => {
+    const on = k === state.pick[i];
+    return (on ? `<span class="pick">\u203a </span>`
+               : `<span class="off">\u00a0\u00a0</span>`)
+      + `<span class="original-message ${on ? "" : "idle"}">${esc(r.text)}</span>`;
+  }).join("<br>");
+}
 function screenLine(i){
-  const r = state.pending.per[i], rec = r[0] || null;
+  const r = state.pending.per[i];
+  const rec = r[(state.pick && state.pick[i]) || 0] || r[0] || null;
   if (state.seen.has(i)){
     if (!rec) return `<span class="idle">${esc("<!> unreadable <!>")}</span>`;
-    return (rec.sig ? `<span class="who">${esc(rec.sig)}:</span> ` : "") + esc(rec.text);
+    const dialect = state.pending.decoded[i].dialect;
+    return `<span class="${dialect === "upstream" ? "original-message" : "strict-message"}">`
+      + (mixedDialects() ? dialectTag(dialect) : "")
+      + (rec.sig ? `<span class="who">${esc(rec.sig)}:</span> ` : "") + esc(rec.text) + "</span>";
   }
   const line = toLine(rec);
   const chars = line ? Array.from(line) : [];
@@ -3208,6 +3435,20 @@ function screenLine(i){
 function paintTranslator(){
   const per = state.pending.per, line = $("line"), btn = $("translate");
   if (!line) return;
+  const prev = $("t-prev"), next = $("t-next");
+  if (state.choosing >= 0){
+    line.parentElement.classList.add("many");
+    line.innerHTML = chooseScreen();
+    btn.disabled = false;
+    btn.textContent = t("Settle on this reading");
+    if (prev) prev.hidden = false;
+    if (next) next.hidden = false;
+    const bar = $("tfill");
+    if (bar) bar.style.width = "100%";
+    return;
+  }
+  if (prev) prev.hidden = true;
+  if (next) next.hidden = true;
   /* Only the spirals that have been found. A garbled line for one still to come
      announces that it is coming, which is the whole of what the reveal withholds. */
   const shown = per.map((_, i) => i).filter(revealable);
@@ -3228,7 +3469,13 @@ function translator(){
   $("tcell").innerHTML = `<div class="translator">
     <div class="screen"><span class="line" id="line"></span></div>
     <div class="tbar"><i id="tfill"></i></div>
-    <button class="btn hold" id="translate" aria-pressed="false">${t("Hold to translate")}</button>
+    <div class="hold-row">
+      <button class="btn arrow" id="t-prev" hidden
+        aria-label="${t("previous reading")}">\u2039</button>
+      <button class="btn hold" id="translate" aria-pressed="false">${t("Hold to translate")}</button>
+      <button class="btn arrow" id="t-next" hidden
+        aria-label="${t("next reading")}">\u203a</button>
+    </div>
   </div>`;
   const btn = $("translate");
   const frame = ts => {
@@ -3258,15 +3505,94 @@ function translator(){
     btn.setAttribute("aria-pressed", "false");
     beams("idle");
     state.seen.add(state.sel);
-    /* whatever answered it can now appear, and it grows the way it was written */
+    /* A spiral in the original numbering that fits more than one sentence is not
+       finished when the scan is: the drawing has said everything it can, and what is
+       left is a question only the reader can answer. Ask it here, on the screen,
+       rather than picking the first and moving on. */
+    if (state.pending.decoded[state.sel].dialect === "upstream"
+        && (state.pending.per[state.sel] || []).length > 1){
+      state.choosing = state.sel;
+      paintThread();
+      paintTranslator();
+      return;
+    }
+    advance();
+  }
+  /* whatever answered it can now appear, and it grows the way it was written */
+  function advance(){
+    const i = state.choosing >= 0 ? state.choosing : state.sel;
+    const rec = state.pending.per[i][state.pick[i]];
+    if (rec && state.scroll[i]) state.scroll[i].text = rec.text;
+    state.choosing = -1;
     paintReveal(true);
     /* move on to the next one that is on the wall and still unread */
     const next = state.pending.per.findIndex((_, i) => !state.seen.has(i) && revealable(i));
     paintThread();
     if (next >= 0) selectSpiral(next); else { paintTranslator(); done(); }
   }
+  function moveChoice(d){
+    const i = state.choosing;
+    if (i < 0) return;
+    const many = state.pending.per[i].length;
+    state.pick[i] = (state.pick[i] + d + many) % many;
+    paintTranslator();
+  }
+  $("t-prev").onclick = () => moveChoice(-1);
+  $("t-next").onclick = () => moveChoice(1);
+  /* Up and down read as "the line above / the line below", which is what the screen
+     is showing; left and right are what the two buttons look like. Both work. */
+  const KEYS = { ArrowUp: -1, ArrowLeft: -1, ArrowDown: 1, ArrowRight: 1 };
+  /* The translator is rebuilt for every drawing opened, so the old listener has to go
+     with the old one -- otherwise every scroll read in a session leaves another copy
+     behind and one arrow press moves the choice several times. */
+  if (choiceKeys) document.removeEventListener("keydown", choiceKeys);
+  choiceKeys = e => {
+    if (state.choosing < 0 || state.mode !== "read") return;
+    const d = KEYS[e.key];
+    if (d === undefined) return;
+    e.preventDefault();
+    moveChoice(d);
+  };
+  document.addEventListener("keydown", choiceKeys);
   function done(){
-    const { per, name, tree } = state.pending;
+    state.pending.finished = true;
+    paintReadNotes();
+  }
+  /* One button, two jobs: hold it to read a spiral, press it to settle the reading
+     the screen is offering. They never overlap -- the chooser is only up once the
+     scan it belongs to has finished. */
+  btn.addEventListener("pointerdown", e => {
+    if (state.choosing >= 0){ e.preventDefault(); advance(); return; }
+    start(e);
+  });
+  ["pointerup", "pointercancel", "lostpointercapture", "blur"].forEach(ev =>
+    btn.addEventListener(ev, stop));
+  btn.addEventListener("keydown", e => {
+    if (e.key !== " " && e.key !== "Enter") return;
+    e.preventDefault();
+    if (state.choosing >= 0) advance(); else start(null);
+  });
+  btn.addEventListener("keyup", stop);
+  selectSpiral(state.sel);
+}
+function paintReadNotes(){
+  if (!state.pending || !state.pending.finished) return;
+  $("readings").innerHTML = "";
+    const { per, tree, decoded } = state.pending;
+    if (decoded.some(d => d.dialect === "upstream")){
+      $("readings").insertAdjacentHTML("beforeend", note(
+        `<b>Original dialect messages are marked in amber.</b> Their readings may be ambiguous.
+         Reply structure is recovered from the joins and checked against any unambiguous reply frames.`,
+        `<b>原始方言消息已用琥珀色标注。</b>它们可能有多个读法。回复关系从连接线恢复，并与无歧义方言中的回复信息核对。`));
+    }
+    const unknown = decoded.map((d, i) => d.dialect === "unknown" ? i : -1).filter(i => i >= 0);
+    if (unknown.length){
+      $("readings").insertAdjacentHTML("beforeend", note(
+        `Dialect undetermined for ${unknown.map(i => "#" + (i + 1)).join(", ")}. ${decoded.some(d => d.slow)
+          ? "The original dialect search ran out of time." : "Neither decoder recovered a verified reading."}`,
+        `${unknown.map(i => "#" + (i + 1)).join("、")} 的方言尚未确定。${decoded.some(d => d.slow)
+          ? "原始方言搜索超时，不能据此判断方言。" : "两种解码都没有得到通过验证的读法。"}`));
+    }
     if (per.length > 1){
       /* A scroll that came back whole says so by being on screen whole -- the rows
          are there and the drawing is joined up. Only the failure needs words. */
@@ -3280,44 +3606,39 @@ function translator(){
            : "\u6709\u87ba\u65cb\u6ca1\u80fd\u8bfb\u51fa\u6765"}\uff0c\u6240\u4ee5\u4e0d\u80fd\u4fdd\u8bc1\u8fd9\u6bb5\u5bf9\u8bdd\u5c31\u662f\u5f53\u521d\u5199\u4e0b\u7684\u90a3\u6bb5\u3002`));
       return;
     }
-    const readings = per[0] || [];
-    const show = r2 => r2.sig
-      ? `<span class="who">${esc(r2.sig)}:</span> ${esc(r2.text)}` : esc(r2.text);
-    if (readings.length === 1){
-      /* it read; the line is on the screen above */
-    } else if (readings.length > 1){
-      $("readings").insertAdjacentHTML("beforeend",
-        readings.slice(1, 5).map(alt =>
-          `<div class="reading rival"><span class="tag">${t("or")}</span><span class="t">${show(alt)}</span></div>`).join("")
-        + note(
-          `More than one sentence fits this drawing, so it cannot be read with
-           certainty.`,
-          `\u6b62\u4e00\u53e5\u8bdd\u80fd\u5951\u5408\u8fd9\u5f20\u56fe\uff0c\u6240\u4ee5\u65e0\u6cd5\u786e\u5b9a\u5730\u8bfb\u51fa\u5b83\u3002`));
-    } else {
-      $("readings").insertAdjacentHTML("beforeend", note(
-        `The glyphs, rows and joins all came back, but no sentence fits them. Most
-         likely this was drawn in the original dialect, where a drawing has many
-         readings and none of them is the reading.`,
-        `\u5b57\u5f62\u3001\u884c\u548c\u8fde\u63a5\u90fd\u6062\u590d\u51fa\u6765\u4e86\uff0c\u4f46\u6ca1\u6709\u4e00\u53e5\u8bdd\u5951\u5408\u5b83\u4eec\u3002\u5f88\u53ef\u80fd\u8fd9\u662f\u7528\u539f\u7248\u65b9\u8a00\u753b\u7684\u2014\u2014\u90a3\u79cd\u65b9\u8a00\u4e0b\u4e00\u5f20\u56fe\u6709\u5f88\u591a\u79cd\u8bfb\u6cd5\uff0c\u800c\u6ca1\u6709\u54ea\u4e00\u79cd\u662f\u90a3\u4e2a\u8bfb\u6cd5\u3002`));
-    }
   }
-  btn.addEventListener("pointerdown", start);
-  ["pointerup", "pointercancel", "lostpointercapture", "blur"].forEach(ev =>
-    btn.addEventListener(ev, stop));
-  btn.addEventListener("keydown", e => {
-    if (e.key === " " || e.key === "Enter"){ e.preventDefault(); start(null); }
-  });
-  btn.addEventListener("keyup", stop);
-  selectSpiral(state.sel);
-}
-function fail(msg){
+
+function fail(msg, why){
   $("stats").innerHTML = "";
   $("readings").innerHTML = `<div class="reading bad"><span class="tag">${t("stuck")}</span>`
     + `<span class="t">${esc(msg)}</span></div>`
-    + note(
+    + (why !== undefined ? why : note(
       `Heavy handwriting is the usual cause — above about 0.15 the shapes move far
        enough that a join can be misread.`,
-      `\u901a\u5e38\u662f\u624b\u5199\u611f\u592a\u91cd\u2014\u2014\u8d85\u8fc7 0.15 \u5de6\u53f3\uff0c\u5f62\u72b6\u79fb\u52a8\u5f97\u591f\u8fdc\uff0c\u4e00\u6761\u8fde\u63a5\u5c31\u53ef\u80fd\u88ab\u8ba4\u9519\u3002`);
+      `\u901a\u5e38\u662f\u624b\u5199\u611f\u592a\u91cd\u2014\u2014\u8d85\u8fc7 0.15 \u5de6\u53f3\uff0c\u5f62\u72b6\u79fb\u52a8\u5f97\u591f\u8fdc\uff0c\u4e00\u6761\u8fde\u63a5\u5c31\u53ef\u80fd\u88ab\u8ba4\u9519\u3002`));
+}
+/* A picture of a scroll is not a scroll. The reader follows the drawing's own lines,
+   and it takes them out of the file's geometry; a raster has no lines in it, only
+   pixels, so it fails at the very first step -- with a message about missing Nomai
+   strokes, which sounds like a broken scroll rather than the wrong kind of file.
+   Worth catching by name: screenshotting what is on the screen is what most people
+   will try first, including on the drawings in this page. */
+const RASTER = /[.](png|jpe?g|gif|webp|bmp|avif|heics?|heif|tiff?|pdf)$/i;
+const isPicture = f => RASTER.test(f.name || "")
+  || (f.type && f.type.indexOf("image/") === 0 && f.type !== "image/svg+xml");
+function refuse(pic){
+  empty("waiting for a drawing");
+  fail(t(pic ? "that is a picture, not a scroll" : "that file is not a scroll"),
+    pic ? note(
+      `The translator reads the scroll file itself &mdash; the .svg that
+       <b>Etch the scroll</b> saves &mdash; because it follows the drawing's own
+       lines, and a screenshot has only pixels in it. Reading a wall from a
+       photograph is a fair thing to want; it is not built yet.`,
+      `翻译器读的是卷轴文件本身——<b>刻录卷轴</b>存下来的那个 .svg——因为它跟着的是图里的线条本身，而截图里只有像素。从照片读墙上的字是个合理的想法，只是还没做。`)
+    : note(
+      `The translator reads the scroll file that <b>Etch the scroll</b> saves. This
+       one is not an SVG drawing at all.`,
+      `翻译器读的是<b>刻录卷轴</b>存下来的卷轴文件。这个压根不是一张 SVG 图。`));
 }
 $("rack-open").onclick = openWall;
 const drop = $("drop");
@@ -3331,6 +3652,12 @@ const takeFile = f => {
   rd.onload = () => {
     if (generation !== readGeneration || state.mode !== "read") return;
     const text = String(rd.result);
+    /* Turned away at the door rather than painted onto the plate and then explained. */
+    if (isPicture(f) || !/<svg[\s>]/i.test(text)){
+      state.loadingSource = null;
+      refuse(isPicture(f));
+      return;
+    }
     /* A scroll runs to a couple of megabytes and reading one is not quick on a
        phone. Reading it blocks the page, so say so first and let that paint. */
     empty("reading it");
