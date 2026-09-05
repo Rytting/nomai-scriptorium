@@ -1382,9 +1382,16 @@ const TOO_CLOSE = 4;
 let WANT_ROOM = 6;
 const tights = b => [b, Math.min(0.6, b * 1.4), Math.max(0.15, b * 0.72)]
   .filter((v, i, a) => a.indexOf(v) === i);
-function chooseSpot(laid, parentIdx, ncols, flip, tight){
+function chooseSpot(laid, parentIdx, ncols, flip, tight, keys){
   const par = laid[parentIdx];
-  const keys = [...par.sp.grid.glyphs.keys()];       /* shape only; any grid this size */
+  /* The reply's own glyphs. This used to borrow the parent's on the grounds that any
+     grid of the same size has the same shape -- but they are only the same size when
+     the two spirals are, and the borrowed keys run to the parent's last column. Laid
+     out in a shorter spiral's layout, every column past the reply's own end is
+     extrapolated to somewhere the reply does not reach: a 40-turn answer to an
+     80-turn root was scored as a phantom nearly twice its size in each direction, so
+     the search found no room anywhere near, and flung it to the far end on a long
+     tether. Which is exactly what it looked like. */
   const taken = [], boxes = [];
   for (const it of laid){
     const c = centres(it.L.ncols, [...it.sp.grid.glyphs.keys()], it.L, it.shift);
@@ -1572,7 +1579,8 @@ function layScroll(spirals, tilt0, flip, tight, amount, seed){
         }
       }
     } else {
-      const cands = chooseSpot(laid, sp.parent, sp.grid.ncols, flip, tight);
+      const cands = chooseSpot(laid, sp.parent, sp.grid.ncols, flip, tight,
+                               [...sp.grid.glyphs.keys()]);
       place = { ...cands[0], seed: seed0, verified: false };
       if (amount !== undefined){
         for (const c of cands){
