@@ -1,3 +1,4 @@
+<script src="corpus-labels.js"></script>
 <meta charset="utf-8">
 <!-- Without this a phone lays the page out at 980px and then shrinks the whole
      thing to fit, which is why everything on it was about 40% of its size. -->
@@ -212,10 +213,21 @@ textarea:focus{outline:2px solid var(--ui-focus);outline-offset:1px;border-color
 :root[data-theme="dark"] #art > svg:first-child > rect:first-child{fill:transparent}
 .plate svg g[data-turn]{opacity:1}
 .plate.growing svg g[data-turn]{opacity:0}
+/* A reply unwinds the same way the root did, but the plate stopped growing when the
+   root finished -- so an unlit turn had nothing hiding it and the whole spiral was
+   already on screen before the stagger touched it. This is the same rule scoped to
+   the one spiral that is arriving.
+   The whole `g[data-spiral].growing` sits in `:where` because `[data-spiral]` is an
+   attribute selector and those count as classes: spelled plainly this is (0,3,3) and
+   it beats `.lit` at (0,3,2), which hides the turn the stagger just lit. Zeroed, it
+   is (0,2,2) -- over the plain rule above it on source order, under `.lit` below. */
+.plate svg :where(g[data-spiral].growing) g[data-turn]{opacity:0}
 .plate svg g[data-turn].lit{opacity:1;transition:opacity .22s ease-out}
 #art{position:relative;display:inline-block;max-width:100%;line-height:0}
 svg.beams{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;
-  opacity:0;transition:opacity .3s ease}
+  opacity:0;transition:opacity .3s ease;
+  filter:drop-shadow(0 0 2px rgba(255,255,255,.95))
+    drop-shadow(0 0 6px rgba(255,255,255,.7))}
 svg.beams.on{opacity:1}
 /* The socket the scroll goes into, at the spiral's outer end -- which is where a
    reply attaches too, and where the growth already begins. The dim outline is the
@@ -236,11 +248,13 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
    A class is a class on any element. */
 #art .not-yet{display:none}
 .socket polygon{transform-box:fill-box;transform-origin:center}
-.socket .housing{fill:none;stroke:var(--slot-frame);stroke-width:9;opacity:.5;
-  stroke-linejoin:round}
-.socket .slot{fill:none;stroke:var(--slot);stroke-width:3;opacity:.2;
-  stroke-linejoin:round}
-.socket .key{fill:none;stroke:var(--slot-core);stroke-width:4.5;stroke-linejoin:round;
+/* The widths are drawn on, not set here: they are in the drawing's units, so a fixed
+   number is a different line on every scroll -- 8.4% of the triangle on one spiral
+   and 2.0% on eight, the same fitting rendered as a hairline or as a slab. socketSVG
+   scales them with the triangle, holding the proportions this rule used to state. */
+.socket .housing{fill:none;stroke:var(--slot-frame);opacity:.5;stroke-linejoin:round}
+.socket .slot{fill:none;stroke:var(--slot);opacity:.2;stroke-linejoin:round}
+.socket .key{fill:none;stroke:var(--slot-core);stroke-linejoin:round;
   filter:drop-shadow(0 0 3px var(--slot-core)) drop-shadow(0 0 9px var(--slot))}
 .socket.inserting .key{animation:slot-in .62s cubic-bezier(.2,.86,.3,1) both}
 .socket.inserting .slot{animation:slot-lock .62s ease-out both}
@@ -266,6 +280,25 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
    a short ragged block in the middle of that reads as a mistake, not as typography. */
 .racknote{color:var(--text-faint);font-size:12.5px;margin:0}
 #rack-open{align-self:flex-start}
+/* The wall holds the seven scrolls worth etching in the page itself; the rest of
+   what the Nomai wrote is a corpus, and lives in the repository next door. The way
+   through only appears once the wall is open, because it is the same spoiler. */
+/* Marked the way the ship log marks an entry that still has something in it: a ringed
+   dot and a line of orange, in the same orange the read and write marks are lit in
+   (--mode-active / --mode-glow, and those are one colour in both themes, so this is
+   too). A quiet underlined link said nothing about how much stood behind it; this is
+   the game's own phrase for exactly that, and anybody who has played has already been
+   taught to read it. No arrow: the marker is the thing that means "go and look". */
+#rack-more{align-self:flex-start;display:inline-flex;align-items:center;gap:9px;
+  font-size:16px;line-height:1.35;text-decoration:none;color:var(--mode-active);
+  text-shadow:0 0 4px var(--mode-glow),0 0 12px var(--mode-glow)}
+#rack-more:hover,#rack-more:focus-visible{color:var(--mode-active);
+  text-shadow:0 0 4px var(--mode-glow),0 0 10px var(--mode-glow),
+    0 0 22px var(--mode-glow)}
+#rack-more .mark{width:14px;height:14px;flex:none;overflow:visible;
+  filter:drop-shadow(0 0 4px var(--mode-glow))}
+#rack-more .mark .ring{fill:none;stroke:currentColor;stroke-width:1.6}
+#rack-more .mark .pip{fill:currentColor}
 /* A grid rather than a wrapped row, so the slots divide whatever width there is
    instead of leaving a ragged gap: six across on a desktop, three on a phone. */
 .rack{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));
@@ -723,7 +756,11 @@ footer a{color:var(--text-dim)}
   <p class="racknote"><b>Spoilers.</b> A few scrolls already etched, straight out of
   the game. If you have not finished it, they are better met there first.</p>
   <button class="btn" id="rack-open">Open the wall</button>
+  <button class="btn" id="rack-refresh" hidden>Draw random scrolls</button>
   <div class="rack" id="rack" hidden></div>
+  <a id="rack-more" href="nomai-repository.html?boot=1" hidden><svg class="mark"
+    viewBox="-10 -10 20 20" aria-hidden="true"><circle class="ring" r="8.4"/><circle
+    class="pip" r="3.2"/></svg><span>There's more to explore here.</span></a>
   <span class="label">Or someone else's scroll</span>
   <label class="drop" id="drop" tabindex="0">
     <!-- Android's picker greys out anything whose reported type is not in this
@@ -1139,8 +1176,11 @@ function layoutFor(ncols, tilt, flip, tight){
        which sits at the bottom middle of the panel with the tail in it. */
     canvas(){
       const pad = Math.max(12 * K + (ROWS - 1) * 4 * K * 2 * MAX_SCALE, 0.05 * box[0], 0.05 * box[1]);
-      const m = pad / 2, R = SOCKET_R * K * tailScale;
+      /* width first: the socket is sized off it, and the room kept below the tail is
+         sized off the socket */
+      const m = pad / 2;
       const W = 2 * Math.max(ext[1] + m, m - ext[0]);
+      const R = SOCKET_FRAC * W;
       const Y = ext[2] - m, H = (ext[3] + 2.2 * R + 0.15 * m) - Y;
       return [-W / 2, Y, W, H];
     },
@@ -1543,6 +1583,15 @@ function handFor(grid, amount, seed0, L, budget){
    slow, do not start. An unverified placement is what the code has always fallen back
    to when nothing read -- this only means it falls back sooner. */
 const SCROLL_MS = 3000;
+/* Typing is where three seconds is the right answer: the layout runs on every
+   keystroke and a slow one is felt. A scroll pulled out of the library is not that --
+   it is one click, once, against a page that has already navigated, so the budget it
+   wants is the one that lets the checks finish rather than the one that keeps a caret
+   moving. Threads of this size routinely take five to seven seconds to lay out, and
+   under the short clock they were being shipped on hope even when the placement was
+   fine. This buys the check, not a better placement: a scroll whose spirals are past
+   CHECK_TURNS is refused for width, and no amount of clock changes that. */
+const LIBRARY_MS = 12000;
 let scrollUntil = Infinity, scrollRanOut = false;
 function tryHand(grid, amount, seed0, L){
   if (scrollUntil !== Infinity
@@ -1595,9 +1644,9 @@ function layScroll(spirals, tilt0, flip, tight, amount, seed){
   });
   return laid;
 }
-function renderScroll(spirals, amount, seed, flip, tight){
+function renderScroll(spirals, amount, seed, flip, tight, budget = SCROLL_MS){
   const tilt0 = balanceTilt(spirals, flip, tight);
-  scrollUntil = amount === undefined ? Infinity : performance.now() + SCROLL_MS;
+  scrollUntil = amount === undefined ? Infinity : performance.now() + budget;
   scrollRanOut = false;
   let placed = layScroll(spirals, tilt0, flip, tight, amount, seed);
   /* The root is settled first, on whether it reads, and the replies then fit around
@@ -1657,8 +1706,9 @@ function renderScroll(spirals, amount, seed, flip, tight){
     if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0];
     if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1];
   }
-  const m = 8 * K * MAX_SCALE, R = SOCKET_R * K * MAX_SCALE;
+  const m = 8 * K * MAX_SCALE;
   const W = 2 * Math.max(x1 + m, m - x0);
+  const R = SOCKET_FRAC * W;
   const Y = y0 - m, H = (Math.max(y1, 0) + 2.2 * R + 0.4 * m) - Y;
   /* the hand the root was actually written in, which is not the one asked for:
      layScroll searches for a seed that reads back, per spiral */
@@ -1956,6 +2006,8 @@ const ZH = {
   "A few scrolls already etched, straight out of the game. If you have not finished it, they are better met there first.":
     "\u8fd9\u91cc\u6709\u4e00\u4e9b\u5df2\u7ecf\u523b\u5f55\u597d\u7684\u5377\u8f74\uff0c\u76f4\u63a5\u53d6\u81ea\u6e38\u620f\u3002\u5982\u679c\u4f60\u8fd8\u6ca1\u901a\u5173\uff0c\u8fd9\u4e9b\u5377\u8f74\u6700\u597d\u8fd8\u662f\u5728\u6e38\u620f\u91cc\u9047\u89c1\u3002",
   "Open the wall": "\u6253\u5f00\u5377\u8f74\u5899",
+  "There's more to explore here.": "这里还有更多可探索的地方",
+  "Draw random scrolls": "随机换一批卷轴",
   "Or someone else's scroll": "或者别人的卷轴",
   "Six scrolls the Nomai left in this star system, kept here the way a wall keeps them. Take one down and read it; you can answer it afterwards, which is what the walls were for.":
     "挪麦在这个星系里留下的六卷卷轴，像墙那样存放在这里。取一卷下来读读看；读完还可以回复它，卷轴墙本来就是这么用的。",
@@ -2003,7 +2055,7 @@ function paintLang(){
      translated once, and translating them again would have been guesswork. They are
      numbers now, and the labels beside them are ordinary text -- so the walker can
      have them, and a language switch in read mode stops leaving them behind. */
-  const skip = ["thread", "art", "readings", "msg", "sig", "me", "h1"]
+  const skip = ["thread", "art", "readings", "msg", "sig", "me", "h1", "rack"]
     .map(id => $(id)).filter(Boolean);
   const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   const jobs = [], done = [];
@@ -2058,6 +2110,7 @@ function paintLang(){
     if (box[k] === undefined) box[k] = el.getAttribute(attr) || "";
     el.setAttribute(attr, t(box[k]));
   }
+  paintRackLabels();
 }
 function setLang(v){
   if (v === LANG) return;
@@ -2379,7 +2432,7 @@ function draw(svg, grow, growIdx){
    `state.track` is the spiral in the drawing's own coordinates: taken from the
    layout when we drew it ourselves, and from the fit when we read someone else's. */
 const TICKS = 5;
-const BEAM_MODES = { idle: { rate: 1, alpha: 0.78 }, scan: { rate: 1.9, alpha: 1 } };
+const BEAM_MODES = { idle: { rate: 1, alpha: 0.9 }, scan: { rate: 1.9, alpha: 1 } };
 let beamRaf = null, beamLast = 0, beamMode = null, walkers = [];
 
 /* Several ticks, each patrolling the spiral on its own: they start apart, some
@@ -2459,6 +2512,8 @@ function beams(mode){
 }
 function paintTicks(svg, alpha){
   const out = [];
+  const matrix = svg.getScreenCTM();
+  const screenScale = matrix ? Math.hypot(matrix.a, matrix.b) : 1;
   for (const w of walkers){
     const p = state.track.at(w.k);
     const half = 4.4 * K * p.scale;
@@ -2472,9 +2527,9 @@ function paintTicks(svg, alpha){
     const line = (width, colour, op) => '<line x1="' + x1 + '" y1="' + y1 + '" x2="'
       + x2 + '" y2="' + y2 + '" stroke="' + colour + '" stroke-width="' + width
       + '" stroke-linecap="round" opacity="' + op.toFixed(3) + '"/>';
-    out.push(line(13 * p.scale, "var(--beam)", alpha * 0.26),
-             line(5.2 * p.scale, "var(--beam-deep)", alpha * 0.9),
-             line(1.9 * p.scale, "var(--beam-core)", alpha));
+    out.push(line(13 * p.scale, "var(--beam)", alpha * 0.48),
+             line(5.2 * p.scale, "var(--beam-deep)", alpha),
+             line(Math.max(2.6 * p.scale, 1.35 / (screenScale || 1)), "#fff", alpha));
   }
   svg.innerHTML = out.join("");
 }
@@ -2492,11 +2547,24 @@ function trackFromLayout(L){
    through growing. So the socket does not turn with the drawing, and the drawing is
    laid out to put its tail in the socket rather than the socket wherever the tail
    happened to fall. */
-const SOCKET_R = 1.5, INSERT_MS = 620;
+/* A fixture is the same piece of hardware whatever is plugged into it, and this one
+   was not. Its radius was already constant in the drawing's own units -- 60, every
+   time, since the tail scale is always MAX_SCALE -- but the drawing is fitted to the
+   plate, so a longer spiral shrinks the whole coordinate system and the socket with
+   it: measured at 1.9% of the viewBox width for six characters and 0.35% for a
+   hundred and thirty-seven, a 5.4x range for a thing bolted to a wall.
+
+   Sizing it against the viewBox instead holds it still on screen. The fraction is the
+   one the opening line has, so the wall keeps the size it has in the drawing everyone
+   sees first. Both openings, in fact: the same sentence sat at 0.0101 in English and
+   0.0128 in Chinese, and pinning the fraction settles that disagreement too. */
+const SOCKET_FRAC = 0.0128, INSERT_MS = 620;
+/* The tail, not the socket: R is not known until the viewBox is, and the drop below
+   the tail is half of R, so both wait for `socketSVG`. */
 function socketFor(track){
   if (!track) return null;
-  const p = track.at(1), R = SOCKET_R * K * p.scale;
-  return { cx: p.x, cy: p.y + R * 0.5, R: R };
+  const p = track.at(1);
+  return { cx: p.x, tailY: p.y };
 }
 /* A drawing that came from somewhere else has no groups in it -- the Python side
    emits a flat list of paths, and so did we until recently -- so the reader's own
@@ -2541,11 +2609,20 @@ function paintReveal(grow){
     g.classList.toggle("unread", on && !state.seen.has(i));
     if (on && !was && grow){
       const turns = [...g.querySelectorAll("g[data-turn]")];
-      if (turns.length){
+      if (turns.length && matchMedia("(prefers-reduced-motion: reduce)").matches){
+        turns.forEach(x => x.classList.add("lit"));
+      } else if (turns.length){
+        /* outermost first: the reply is plugged into its parent by its own base, so
+           it grows from the join inwards, the same direction the root grows out of
+           the socket */
+        g.classList.add("growing");
         turns.forEach(x => x.classList.remove("lit"));
         turns.sort((a, b) => +b.dataset.turn - +a.dataset.turn);
         const step = Math.min(85, 900 / turns.length);
         turns.forEach((x, k) => setTimeout(() => x.classList.add("lit"), k * step));
+        /* the class is what hides an unlit turn, so it may only come off once every
+           turn is lit -- otherwise the tail of the reveal pops */
+        setTimeout(() => g.classList.remove("growing"), turns.length * step + 300);
       } else {
         g.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, easing: "ease-out" });
       }
@@ -2572,18 +2649,22 @@ function mountSocket(){
   sk.setAttribute("viewBox", base.getAttribute("viewBox"));
   sk.setAttribute("preserveAspectRatio",
     base.getAttribute("preserveAspectRatio") || "xMidYMid meet");
-  sk.innerHTML = socketSVG(state.socket);
+  sk.innerHTML = socketSVG(state.socket, Number(sk.getAttribute("viewBox").split(" ")[2]));
   art.appendChild(sk);
   return sk.querySelector(".socket");
 }
-function socketSVG(s2){
+function socketSVG(s2, vbW){
   const tri = r => [[0, 1], [-0.866, -0.5], [0.866, -0.5]]
     .map(p => f(p[0] * r) + "," + f(p[1] * r)).join(" ");
-  const inner = tri(s2.R), outer = tri(s2.R * 1.42);
-  return '<g class="socket" transform="translate(' + f(s2.cx) + ',' + f(s2.cy) + ')">'
-    + '<polygon class="housing" points="' + outer + '"/>'
-    + '<polygon class="slot" points="' + inner + '"/>'
-    + '<polygon class="key" points="' + inner + '"/></g>';
+  const R = SOCKET_FRAC * vbW, cy = s2.tailY + R * 0.5;
+  const inner = tri(R), outer = tri(R * 1.42);
+  /* the weights the stylesheet used to carry, as fractions of the radius they were
+     drawn against: housing 9, slot 3, key 4.5, all against R = 60 */
+  const w = k => ' stroke-width="' + f(k * R) + '"';
+  return '<g class="socket" transform="translate(' + f(s2.cx) + ',' + f(cy) + ')">'
+    + '<polygon class="housing" points="' + outer + '"' + w(0.15) + '/>'
+    + '<polygon class="slot" points="' + inner + '"' + w(0.05) + '/>'
+    + '<polygon class="key" points="' + inner + '"' + w(0.075) + '/></g>';
 }
 /* the spiral of a drawing we read, put back through the fit that matched it */
 function trackFromFit(ncols, fit){
@@ -3143,10 +3224,16 @@ function readDrawing(text, name, source = "file"){
     state.socket = socketFor(state.track);
     /* the scroll goes in, and the wall it is plugged into shows what is written --
        the same order as in the game, and the reason the socket is here at all */
-    /* seated, not inserting: a drawing we opened is already on the wall, and
-       playing the scroll into its socket after the writing has appeared tells the
-       story backwards. The insertion belongs to writing. */
-    mountSocket();
+    /* A scroll lives on the rack and is plugged into the wall to be read. The slot
+       it came out of already plays its half -- `.rack .slot.taken .key` lifts and
+       turns out of the wall -- and this is the other half, the same key turning back
+       into a fitting here. It was held back once, on the grounds that a drawing we
+       opened was already on the wall; that reads the socket as scenery rather than as
+       the thing a scroll is put into, and it left the rack's gesture with no landing.
+       Only the socket turns. The writing stays as it arrived: somebody who came to
+       read a scroll is not shown it being written first. */
+    const sock = mountSocket();
+    if (sock) sock.classList.add("inserting");
     beams("idle");
   }
   const decoded = scroll.spirals.map(cands => readSpiral(cands));
@@ -3223,7 +3310,59 @@ function openWall(){
   if (!rack) return;
   rack.hidden = false;
   if (btn) btn.hidden = true;
+  const more = $("rack-more");
+  if (more) more.hidden = false;
+  $("rack-refresh").hidden = false;
   paintRack();
+}
+
+const RANDOM_CORPUS = /*__RANDOM_CORPUS__*/null;
+let wallScrolls = CANON;
+let randomPool = null;
+async function refreshWall(){
+  const btn = $("rack-refresh");
+  btn.disabled = true;
+  try {
+    if (!randomPool){
+      const data = RANDOM_CORPUS || await fetch("../docs/nomai_corpus.json").then(r => {
+        if (!r.ok) throw new Error("Corpus unavailable");
+        return r.json();
+      });
+      randomPool = data.flatMap(loc => loc.conversations.map(conv => ({
+        speakers:[...new Set(conv.spirals.map(s => s.speaker).filter(Boolean))],
+        who:[...new Set(conv.spirals.map(s => s.speaker).filter(Boolean))].join(", "),
+        where:loc.location,
+        turns:conv.spirals.map(s => [s.text,s.speaker || "",s.parent]),
+        zh:conv.spirals.map(s => {
+          const match = s.zh && s.speaker && s.zh.match(/^([^:：]+)[:：]\s*/);
+          return match ? [s.zh.slice(match[0].length),match[1],s.parent]
+            : [s.zh || s.text,s.zh ? "" : s.speaker || "",s.parent];
+        })
+      })));
+    }
+    const pool = randomPool.filter(c => !wallScrolls.includes(c));
+    for (let i = pool.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i],pool[j]] = [pool[j],pool[i]];
+    }
+    wallScrolls = pool.slice(0,CANON.length);
+    $("rack").replaceChildren();
+    paintRack();
+  } catch (e) { fail(t("that scroll could not be etched")); }
+  finally { btn.disabled = false; }
+}
+
+function paintRackLabels(){
+  $("rack")?.querySelectorAll("[data-scroll]").forEach(button => {
+    const c = wallScrolls[+button.dataset.scroll];
+    const names = c.speakers;
+    button.querySelector(".who").textContent = names
+      ? (names.length ? names.map(n => LANG === "zh" ? CORPUS_LABELS.speakers[n] || n : n)
+          .join(LANG === "zh" ? "、" : ", ") : LANG === "zh" ? "无署名" : "Unsigned")
+      : t(c.who);
+    button.querySelector(".where").textContent = LANG === "zh"
+      ? CORPUS_LABELS.locations[c.where] || t(c.where) : c.where;
+  });
 }
 
 function paintRack(){
@@ -3231,7 +3370,7 @@ function paintRack(){
   if (!rack || rack.hidden || rack.childElementCount) return;
   const tri = r => [[0, 1], [-0.866, -0.5], [0.866, -0.5]]
     .map(p => (p[0] * r).toFixed(1) + "," + (p[1] * r).toFixed(1)).join(" ");
-  rack.innerHTML = CANON.map((c, i) => `
+  rack.innerHTML = wallScrolls.map((c, i) => `
     <button class="slot" data-scroll="${i}">
       <svg width="64" height="58" viewBox="-32 -29 64 58" aria-hidden="true">
         <polygon class="housing" points="${tri(25)}"/>
@@ -3251,13 +3390,30 @@ function paintRack(){
    a megabyte and the page already contains the whole writer, so the wall keeps the
    words and the scriptorium does the writing. It is deterministic -- the same hand,
    seed and coil every time -- so the scroll everyone pulls down is the same scroll. */
-function etchCanon(c){
+/* Curly punctuation costs the whole scroll the larger alphabet. One U+2019 anywhere
+   in a thread pushes every spiral in it from base 256 to 200000 -- 2.3x the width per
+   character, with none of the brevity that makes that price worth paying in Chinese,
+   where 2.8x fewer characters leave the scroll 20% narrower than the English one.
+   Measured over the library: two characters do all of it (’ x184, … x18), 46% of the
+   English threads are dragged over by punctuation alone, and 56 of 143 end up with a
+   spiral past CHECK_TURNS -- where the layout stops checking and ships a drawing the
+   reader then refuses. Flattening first takes that 56 to 4, and those 4 have a turn
+   past 256 characters, which needs the larger alphabet for real.
+
+   Lossy, and deliberately: the drawing will say "you're", not "you’re". Carved stone
+   does not hold that distinction, and the alternative is a thread nobody can open.
+   Chinese is untouched -- it is over 255 either way, so this changes nothing there. */
+const flatten = s => s.replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
+  .replace(/[—–]/g, "-").replace(/…/g, "...");
+
+function etchCanon(c, budget){
   /* A scroll comes off the wall in the language the page is in. The words are ours,
      not the game's Chinese release: the names in them are that release's -- 所莱内姆,
      派伊, 伊代亚, 眼祭坛区 -- and the sentences around the names are a translation of
      our own. Chinese needs the larger alphabet, and still draws a slightly smaller
      scroll: three times fewer characters at twice the cost each. */
-  const turns = LANG === "zh" && c.zh ? c.zh : c.turns;
+  const turns = (LANG === "zh" && c.zh ? c.zh : c.turns)
+    .map(([msg, sig, parent]) => [flatten(msg), sig && flatten(sig), parent]);
   const wide = turns.some(([msg, sig]) => Array.from(msg + (sig || ""))
     .some(ch => ch.codePointAt(0) >= 256));
   const base = wide ? 200000 : 256;
@@ -3267,11 +3423,11 @@ function etchCanon(c){
     if (typeof g === "string") return null;
     sp.grid = g;
   }
-  return renderScroll(spirals, 0.12, 47, 1, 0.29).svg;
+  return renderScroll(spirals, 0.12, 47, 1, 0.29, budget).svg;
 }
 
 function takeDown(i, btn){
-  const c = CANON[i];
+  const c = wallScrolls[i];
   clearReader();
   state.loadingSource = "preset";
   const generation = readGeneration;
@@ -3697,6 +3853,7 @@ function refuse(pic){
       `翻译器读的是<b>刻录卷轴</b>存下来的卷轴文件。这个压根不是一张 SVG 图。`));
 }
 $("rack-open").onclick = openWall;
+$("rack-refresh").onclick = refreshWall;
 const drop = $("drop");
 const takeFile = f => {
   if (!f) return;
@@ -3803,4 +3960,35 @@ openOn(LANG);
 paintLang();
 hwRead();
 commit(true);
+if (location.hash.startsWith("#library-scroll=")){
+  try {
+    const c = JSON.parse(decodeURIComponent(location.hash.slice("#library-scroll=".length)));
+    if (c.version !== 1 || !Array.isArray(c.turns) || !c.turns.length || c.turns.length > 200 ||
+        typeof c.where !== "string" || !["zh", "en"].includes(c.lang) ||
+        c.turns.some((turn, i) => !Array.isArray(turn) || turn.length !== 3 ||
+          typeof turn[0] !== "string" || typeof turn[1] !== "string" ||
+          (i === 0 ? turn[2] !== null : !Number.isInteger(turn[2]) || turn[2] < 0 || turn[2] >= i)))
+      throw new Error("Invalid library scroll");
+    setLang(c.lang);
+    setMode("read");
+    requestAnimationFrame(() => setTimeout(() => {
+      try {
+        const svg = etchCanon(c, LIBRARY_MS);
+        if (!svg) throw new Error("Cannot etch library scroll");
+        readDrawing(svg, c.where, "library");
+        /* Land on the socket, not on the top of the plate. A scroll is plugged in at
+           its lowest point, so `block:"start"` on the plate puts the one thing worth
+           arriving for below the fold -- and that thing is doing double duty: it is
+           the gesture we want seen, and it is the page answering the click that got
+           somebody here. Centred, it brings the translator up with it.
+           Nothing schedules this: the insertion class went on inside readDrawing, in
+           this same task, and there is no smooth scrolling on the page, so the first
+           frame anyone sees is already in the right place. */
+        const sock = $("art").querySelector(".socket");
+        if (sock) sock.scrollIntoView({block:"center"});
+        else $("plate").scrollIntoView({block:"start"});
+      } catch (e) { fail(t("that scroll could not be etched")); }
+    }, 0));
+  } catch (e) { fail(t("that scroll could not be etched")); }
+}
 </script>

@@ -703,7 +703,7 @@ YARROW: My gratitude for the latest shipment, Oeno! This ore should be the last 
 
 CLARY: I have good news, Yarrow! The advanced warp core is ready to be installed at the heart of the Ash Twin Project.
 
-- YARROW: I'm intrigued, love!
+- YARROW: I'm intrigued, love! Everyone here working on the Ash Twin Project is excited to see it (Pye is beside herself with joy!).
 
 - POKE: No, it isn't!
 
@@ -1164,7 +1164,7 @@ POKE: Of course you are.
 
 CLARY: I have good news, Yarrow! The advanced warp core is ready to be installed at the heart of the Ash Twin Project.
 
-- YARROW: I'm intrigued, love!
+- YARROW: I'm intrigued, love! Everyone here working on the Ash Twin Project is excited to see it (Pye is beside herself with joy!).
 - POKE: No, it isn't!
 
 YARROW: Is everything well at the forge?
@@ -1242,9 +1242,7 @@ CASSAVA: Conoy, Daz and I were lifting Orbital Probe Cannon components into orbi
 
 Conoy: My gratitude for your interesting question! This is exciting: Spire constructed a model of Giant’s Deep here at the Brittle Hollow Southern Observatory, and it reveals how an object might sink below the current.
 
-CASSAVA: Conoy, I'm unable to grasp the answer by looking through the projection pool.
-
-If I visit the observatory, would you kindly explain?
+CASSAVA: Conoy, I'm unable to grasp the answer by looking through the projection pool. If I visit the observatory, would you kindly explain?
 
 Conoy: If you don't mind the trek beneath the surface to the south pole, I'd be delighted to see you! (The trailhead starts at Brittle Hollow’s equator)
 
@@ -1543,9 +1541,7 @@ CASSAVA: Conoy, Daz and I were lifting Orbital Probe Cannon components into orbi
 
 Conoy: My gratitude for your interesting question! This is exciting: Spire constructed a model of Giant’s Deep here at the Brittle Hollow Southern Observatory, and it reveals how an object might sink below the current.
 
-CASSAVA: Conoy, I'm unable to grasp the answer by looking through the projection pool.
-
-If I visit the observatory, would you kindly explain?
+CASSAVA: Conoy, I'm unable to grasp the answer by looking through the projection pool. If I visit the observatory, would you kindly explain?
 
 Conoy: If you don't mind the trek beneath the surface to the south pole, I'd be delighted to see you! (The trailhead starts at Brittle Hollow’s equator)
 

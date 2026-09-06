@@ -163,6 +163,7 @@ def parse_corpus(path):
     i = 0
     while i < len(lines):
         raw = lines[i]
+        raw = raw.replace("\u200b", "")
         line = raw.rstrip("\n")
         stripped = line.strip().replace("\u200b", "")
         i += 1
@@ -236,7 +237,7 @@ def parse_corpus(path):
 
         # Speaker line: optional bullet/indent + optional 🎥 + SPEAKER: text
         sp_m = re.match(
-            r"^([-\s]*)(?:🎥\s*)?([A-Z][A-Z]+):\s+(.+)", stripped
+            r"^([-\s]*)(?:🎥\s*)?([A-Z][A-Z]+):\s+(.+)", line
         )
         if sp_m:
             indent_str = sp_m.group(1)
@@ -263,6 +264,7 @@ def parse_corpus(path):
                 "speaker": speaker,
                 "text": text,
                 "depth": depth,
+                "branch": has_bullet,
             })
             continue
 
@@ -280,6 +282,7 @@ def parse_corpus(path):
                 "speaker": "",
                 "text": clean_text,
                 "depth": depth,
+                "branch": has_bullet,
             })
             continue
 
@@ -298,18 +301,33 @@ def parse_corpus(path):
 # ── Build parent indices from depth ─────────────────────────────────────
 
 def assign_parents(spirals):
-    """Convert depth-based nesting to explicit parent indices."""
-    stack = []  # (depth, index) — track the current nesting
+    """Paragraphs continue a chain; sibling bullets share its branch anchor.
+
+    The source key explicitly distinguishes a continuation from a new bullet.
+    Indented continuation paragraphs retain the current branch level.
+    """
+    tails = {}
+    anchors = {}
+    current_depth = 0
     for idx, sp in enumerate(spirals):
         d = sp["depth"]
-        # Pop stack until we find a parent at a lower depth
-        while stack and stack[-1][0] >= d:
-            stack.pop()
-        if stack:
-            sp["parent"] = stack[-1][1]
-        else:
+        branch = sp.pop("branch", False)
+        if idx == 0:
             sp["parent"] = None
-        stack.append((d, idx))
+            d = 0
+        elif branch:
+            if d not in anchors:
+                if d - 1 not in tails:
+                    raise ValueError(f"Branch without an enclosing chain at spiral {idx}")
+                anchors[d] = tails[d - 1]
+            sp["parent"] = anchors[d]
+        else:
+            d = current_depth if d else 0
+            sp["parent"] = tails[d]
+        tails = {level: tail for level, tail in tails.items() if level <= d}
+        anchors = {level: anchor for level, anchor in anchors.items() if level <= d}
+        tails[d] = idx
+        current_depth = d
         del sp["depth"]
 
 

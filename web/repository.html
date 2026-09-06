@@ -1,0 +1,935 @@
+<script src="corpus-labels.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nomai Repository</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --rock:#0b1014; --rock-2:#111a1f; --rock-3:#182226;
+  --text:#d0dce0; --text-dim:#8fa8b0; --text-faint:#5a7580;
+  --edge:#1e3a44; --edge-soft:#15272f;
+  --accent:#3fbf8f; --accent-dim:#2a8060; --accent-faint:#1a5040;
+  --amber:#d08b3c; --amber-soft:#e8b271;
+  /* The slot is the one thing on the page that does not have a light variant. It is
+     a lit key in a dark recess, and a recess is dark because it is a hole -- turning
+     the lights on in the room does not light the inside of it. Every --slot-* below
+     is deliberately absent from both light palettes. */
+  --slot:#8f86ff; --slot-core:#e6e2ff; --slot-frame:#3a3550; --slot-well:#0c0f14;
+  --lume-slot:drop-shadow(0 0 3px var(--slot-core)) drop-shadow(0 0 8px var(--slot));
+  --sans:'Archivo',system-ui,sans-serif;
+  --serif:'Instrument Serif',Georgia,serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+  /* Emissive, after the ship log's own panels: the glyph is the light source, so
+     the core sits brighter than the accent around it and the halo is kept tight --
+     1px hard, 5px near, 14px far. A wide soft shadow under an unlit colour reads as
+     a lamp standing behind the text, which is the thing this is not. */
+  --accent-lit:#8af0c6; --amber-lit:#ffd9a0;
+  --lume:0 0 1px rgba(63,191,143,.95),0 0 5px rgba(63,191,143,.5),
+    0 0 14px rgba(63,191,143,.22);
+  --lume-amber:0 0 1px rgba(232,178,113,.95),0 0 5px rgba(208,139,60,.5),
+    0 0 14px rgba(208,139,60,.22);
+  --lume-white:0 0 1px rgba(255,255,255,.75),0 0 5px rgba(255,255,255,.35),
+    0 0 13px rgba(255,255,255,.15);
+  --lume-rule:0 0 4px rgba(63,191,143,.7),0 0 10px rgba(63,191,143,.38),
+    0 0 22px rgba(63,191,143,.16);
+  /* The log frames everything in the same thin blue line and then nests it: an outer
+     frame, a header inside it, a panel under that. The line is the structure, so it
+     does not change weight or colour by depth -- only the gaps between frames say
+     what contains what. */
+  --frame:#4a7fb0; --frame-soft:#2c4d6e;
+  --lume-frame:0 0 4px rgba(90,150,210,.4),0 0 14px rgba(90,150,210,.15);
+}
+@media(prefers-color-scheme:light){
+  :root:not([data-theme="dark"]){
+    color-scheme:light;
+    --rock:#e8e4da; --rock-2:#f2efe6; --rock-3:#faf8f2;
+    --text:#1c2a30; --text-dim:#4a6068; --text-faint:#7a9098;
+    --edge:#c4baa8; --edge-soft:#d8d0c0;
+    --accent:#1a7050; --accent-dim:#2a9068; --accent-faint:#c0e8d8;
+    --amber:#b07020; --amber-soft:#d09040;
+    --accent-lit:#1a7050; --amber-lit:#b07020;
+    --lume:none; --lume-amber:none; --lume-white:none; --lume-rule:none;
+  --mask-fill:url(#mask-gold); --mask-opacity:1; --mask-shadow:drop-shadow(0 1px 1px #75421355);
+  --mask-name:#805021; --mask-name-shadow:0 1px 1px #fff2ce;
+  --frame:#8ca4b8; --frame-soft:#bccad4; --lume-frame:none;
+    --frame:#8ca4b8; --frame-soft:#bccad4; --lume-frame:none;
+  }
+}
+:root[data-theme="light"]{
+  color-scheme:light;
+  --rock:#e8e4da; --rock-2:#f2efe6; --rock-3:#faf8f2;
+  --text:#1c2a30; --text-dim:#4a6068; --text-faint:#7a9098;
+  --edge:#c4baa8; --edge-soft:#d8d0c0;
+  --accent:#1a7050; --accent-dim:#2a9068; --accent-faint:#c0e8d8;
+  --amber:#b07020; --amber-soft:#d09040;
+  --accent-lit:#1a7050; --amber-lit:#b07020;
+  --lume:none; --lume-amber:none; --lume-white:none; --lume-rule:none;
+  --mask-fill:url(#mask-gold); --mask-opacity:1; --mask-shadow:drop-shadow(0 1px 1px #75421355);
+  --mask-name:#805021; --mask-name-shadow:0 1px 1px #fff2ce;
+  --frame:#8ca4b8; --frame-soft:#bccad4; --lume-frame:none;
+}
+*{box-sizing:border-box}
+::selection{background:var(--accent);color:#000}
+[hidden]{display:none!important}
+body{margin:0;padding:14px;background:var(--rock);color:var(--text);
+  font:15px/1.65 var(--sans);-webkit-font-smoothing:antialiased}
+
+/* ── Layout ─────────────────────────────────────────── */
+.shell{max-width:960px;margin:0 auto;padding:14px;
+  display:flex;flex-direction:column;gap:14px;
+  border:1px solid var(--frame);box-shadow:var(--lume-frame)}
+.topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:10px 14px;border:1px solid var(--frame-soft);box-shadow:var(--lume-frame)}
+#main{padding:14px;border:1px solid var(--frame-soft);box-shadow:var(--lume-frame);
+  min-height:140px;position:relative;isolation:isolate;
+  background-image:linear-gradient(rgba(132,166,194,.07) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(132,166,194,.07) 1px,transparent 1px);
+  background-size:48px 48px;background-position:center}
+.topbar h1{font:700 clamp(26px,3.5vw,34px)/1.25 var(--sans);letter-spacing:.08em;
+  text-transform:uppercase;color:var(--accent-lit);text-shadow:var(--lume);
+  margin:0;flex:1}
+.seg{display:inline-flex;border:1px solid var(--frame-soft);overflow:hidden}
+.seg button{background:none;border:0;color:var(--text-dim);font:13px var(--sans);
+  padding:5px 11px;cursor:pointer;transition:background .12s,color .12s}
+.seg button[aria-pressed="true"]{background:var(--accent-dim);color:#fff;text-shadow:var(--lume)}
+.seg button:hover{background:var(--edge)}
+.orb-switch{background:none;border:1px solid var(--edge);border-radius:12px;
+  width:36px;height:20px;padding:0;cursor:pointer;position:relative;display:flex;align-items:center}
+.orb-switch .orb{width:14px;height:14px;border-radius:50%;background:var(--text-dim);
+  margin-left:2px;transition:margin .2s}
+.orb-switch[aria-checked="true"] .orb{margin-left:18px;background:var(--accent)}
+.sun-ico,.moon-ico{width:16px;height:16px;color:var(--text-faint)}
+
+/* ── Breadcrumb ─────────────────────────────────────── */
+.crumb{display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  font:13px var(--mono);color:var(--text-faint);min-height:28px}
+.crumb button{background:none;border:0;color:var(--accent-lit);cursor:pointer;
+  text-shadow:var(--lume);
+  font:inherit;padding:2px 0;text-decoration:underline;text-underline-offset:3px}
+.crumb button:hover{color:var(--amber-lit);text-shadow:var(--lume-amber)}
+.crumb .sep{opacity:.4;user-select:none}
+.crumb .cur{color:var(--text);text-shadow:var(--lume-white)}
+
+/* ── Body grid ──────────────────────────────────────── */
+.body-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.body-card{background:var(--rock-2);border:2px solid var(--frame-soft);
+  padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:stretch;
+  color:var(--text);font:inherit;text-align:center;
+  transition:border-color .15s,background .15s,transform .15s,filter .15s,box-shadow .15s}
+.body-card:hover,.body-card:focus-visible,.body-card:active{border-color:var(--accent-lit);background:var(--rock-3);
+  transform:scale(1.025);filter:brightness(1.12);box-shadow:0 0 12px var(--accent-dim);z-index:1}
+.body-art{height:160px;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at center,rgba(100,145,165,.1),transparent 70%)}
+.body-orb{width:106px;height:106px;border-radius:50%;flex:none;
+  box-shadow:inset -18px -12px 22px rgba(0,0,0,.45),inset 3px 3px 8px rgba(255,255,255,.16),0 6px 28px rgba(0,0,0,.3);
+  border:1px solid rgba(255,255,255,.08)}
+.body-info{min-width:0}
+.body-name{font:600 19px var(--sans);color:#081219;line-height:1.3;
+  text-shadow:none;position:relative;isolation:isolate;
+  background:linear-gradient(rgba(255,255,255,.48),rgba(255,255,255,.48)),var(--body-tint);
+  padding:12px 8px;min-height:49px;display:flex;align-items:center;justify-content:center}
+/* The lit title strip blooms into the dark screen; its black lettering emits no light. */
+.body-name::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:inherit;filter:blur(5px);opacity:.5;transition:opacity .15s,filter .15s}
+.body-sub{font-size:12px;color:var(--text-dim);line-height:1.4;padding:0 8px 14px}
+.body-card:hover .body-name::before,.body-card:focus-visible .body-name::before,.body-card:active .body-name::before{
+  opacity:.8;filter:blur(7px)}
+@media(prefers-reduced-motion:reduce){.body-name::before{transition:none}}
+
+/* ── Location list ──────────────────────────────────── */
+.loc-list{display:flex;flex-direction:column;gap:2px;border-left:1px solid var(--frame);margin:12px 16px 18px 2px}
+.loc-row{display:flex;align-items:center;gap:10px;padding:10px 14px;
+  background:none;border:0;border-radius:0;position:relative;color:var(--text-dim);text-align:left;
+  min-height:48px;cursor:pointer;transition:color .15s}
+.loc-row::before{content:"";position:absolute;left:0;top:50%;width:9px;height:1px;background:var(--frame)}
+.loc-row:hover,.loc-row:focus-visible,.loc-row.active{color:var(--text);outline:none}
+.loc-marker{color:var(--amber-lit);text-shadow:var(--lume-amber);font-size:20px;flex:none;width:0;opacity:0;text-align:center;
+  transition:width .15s,opacity .15s}
+.loc-row:hover .loc-marker,.loc-row:focus-visible .loc-marker,.loc-row.active .loc-marker{width:20px;opacity:1}
+.loc-name{flex:1;font:500 18px/1.5 var(--sans);min-width:0;overflow-wrap:anywhere;
+  transform-origin:left center;transition:transform .15s,text-shadow .15s}
+.loc-row:hover .loc-name,.loc-row:focus-visible .loc-name,.loc-row.active .loc-name{transform:scale(1.045);text-shadow:var(--lume-white)}
+@media(prefers-reduced-motion:reduce){.loc-name,.loc-marker{transition:none}}
+.loc-count{font:12px var(--mono);color:var(--text-faint);flex:none}
+
+/* ── Section header ─────────────────────────────────── */
+.section-head{font:500 22px var(--mono);color:var(--accent-lit);margin:0;
+  text-shadow:var(--lume);letter-spacing:.04em;padding:8px 0 6px;
+  position:relative;margin-bottom:5px}
+/* the rule under a heading is drawn rather than bordered, because a border cannot
+   be made to glow on its own without lighting the whole box with it */
+.section-head::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;
+  background:var(--accent);box-shadow:var(--lume-rule)}
+.section-sub{font:12px var(--sans);color:var(--text-faint);margin:2px 0 12px}
+
+/* ── Scroll rack ────────────────────────────────────── */
+.rack{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));
+  gap:10px;padding:14px;
+  background:linear-gradient(160deg,var(--rock-3),var(--rock-2));
+  border:1px solid var(--frame-soft)}
+.scroll-slot{background:none;border:0;padding:8px 4px;cursor:pointer;
+  color:inherit;text-align:center;font:inherit;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  border-radius:3px;transition:background .12s}
+.scroll-slot:hover{background:var(--edge-soft)}
+/* Arriving from a speaker's list drops you on one scroll in a rack of near-identical
+   triangles, and a tint alone was not enough to say which -- especially when the
+   speaker who sent you is one name among eight on the label. So the whole slot is
+   lit, not merely shaded: the frame, the names and the number all come up together. */
+.scroll-slot.active{background:var(--accent-faint);
+  outline:1px solid var(--accent);outline-offset:-1px}
+.scroll-slot.active .scroll-who{color:var(--text);text-shadow:var(--lume-white)}
+.scroll-slot.active .scroll-tag{color:var(--accent-lit);text-shadow:var(--lume)}
+.scroll-slot svg{display:block;overflow:visible}
+.scroll-slot .housing{fill:var(--slot-well);stroke:var(--slot-frame);stroke-width:5;
+  stroke-linejoin:round}
+.scroll-slot .key{fill:var(--slot);fill-opacity:.14;stroke:var(--slot-core);stroke-width:3;
+  stroke-linejoin:round;transition:transform .3s cubic-bezier(.2,.86,.3,1);
+  transform-box:fill-box;transform-origin:center;
+  filter:var(--lume-slot)}
+.scroll-slot:hover .key,.scroll-slot:focus-visible .key{transform:translateY(-4px) scale(1.06);
+  fill-opacity:.35;filter:drop-shadow(0 0 4px var(--slot-core)) drop-shadow(0 0 12px var(--slot))}
+.scroll-slot.active .key{fill-opacity:.4;transform:translateY(-4px) scale(1.06)}
+.scroll-actions{display:flex;justify-content:center;gap:14px;margin:0 0 14px;animation:choices-in .18s ease-out}
+.scroll-actions .log-key{display:inline-flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;padding:12px 18px}
+.scroll-actions .study-choice{color:var(--accent-lit);border-color:var(--accent-lit)}
+@keyframes choices-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.scroll-actions{animation:none}}
+.page-ghost{position:fixed!important;pointer-events:none!important;margin:0!important;z-index:50}
+.conv-pane .said{ text-shadow:0 0 1px rgba(255,255,255,.2),0 0 6px rgba(210,235,245,.22)}
+.scroll-who{font:11px var(--mono);color:var(--text-dim);line-height:1.3;
+  max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.scroll-tag{font:10px var(--sans);color:var(--text-faint);line-height:1.2}
+@media(prefers-reduced-motion:reduce){.scroll-slot .key{transition:none}}
+
+/* ── Conversation thread ────────────────────────────── */
+.conv-pane{background:var(--rock-2);border:1px solid var(--frame-soft);
+  padding:16px;display:flex;flex-direction:column;gap:12px}
+.conv-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.conv-title{font:500 14px var(--mono);color:var(--accent-lit);
+  text-shadow:var(--lume);flex:1}
+.conv-badge{font:11px var(--mono);color:var(--amber-lit);
+  text-shadow:var(--lume-amber);
+  border:1px solid var(--amber);border-radius:3px;padding:1px 7px}
+.thread{display:flex;flex-direction:column;gap:2px}
+.trow{display:flex;gap:8px;align-items:baseline;padding:6px 10px;
+  border-radius:3px;background:var(--rock-3);border:1px solid var(--edge-soft)}
+.trow .depth{color:var(--text-faint);font:12px var(--mono);white-space:pre;flex:none}
+.trow .said{flex:1;min-width:0;word-break:break-word;line-height:1.6}
+.trow .said b{font:500 13px var(--mono);color:var(--accent-lit);
+  text-shadow:var(--lume);font-style:normal}
+.trow .said .unsigned{font:italic 13px var(--serif);color:var(--text-dim)}
+
+/* ── Search ─────────────────────────────────────────── */
+.search-bar{display:flex;gap:8px;align-items:center}
+.search-bar input{flex:1;background:var(--rock-2);color:var(--text);
+  border:1px solid var(--frame-soft);border-radius:0;padding:7px 12px;
+  font:14px var(--sans);min-width:0}
+.search-bar input:focus{outline:2px solid var(--accent);outline-offset:1px;
+  border-color:transparent}
+.search-bar input::placeholder{color:var(--text-faint)}
+.search-hits{font:12px var(--mono);color:var(--text-faint);flex:none}
+
+/* ── Speaker filter bar ─────────────────────────────── */
+.speaker-field{position:relative;margin-bottom:20px;padding:12px 4px;
+  border-bottom:1px solid var(--frame-soft);isolation:isolate}
+.speaker-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:14px 6px}
+#main::before,#main::after{content:"";position:absolute;pointer-events:none;
+  background:var(--frame);opacity:0;z-index:2}
+#main::before{left:0;right:0;top:var(--pointer-y,50%);height:1px}
+#main::after{top:0;bottom:0;left:clamp(0px,var(--pointer-x,50%),calc(100% - 1px));width:1px}
+@media(hover:hover) and (pointer:fine){
+  #main.tracking,#main.tracking *{cursor:none}
+  #main.tracking::before,#main.tracking::after{opacity:.28}
+}
+.speaker-chip{background:none;border:1px solid transparent;border-radius:2px;
+  padding:9px 4px 7px;cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;gap:9px;min-width:0;
+  transition:transform .15s,filter .15s}
+.speaker-chip:hover,.speaker-chip.active,.speaker-chip:focus-visible{
+  transform:scale(1.1);filter:brightness(1.15);outline:none}
+.speaker-chip svg{width:50px;height:48px;color:var(--text-dim);opacity:var(--mask-opacity,.72);
+  transition:color .15s,transform .15s,opacity .15s,filter .15s}
+.speaker-chip:hover svg,.speaker-chip:focus-visible svg,.speaker-chip.active svg{
+  color:var(--accent-lit);opacity:1;transform:rotate(6deg);
+  filter:var(--mask-shadow,drop-shadow(0 0 5px var(--accent-dim)))}
+.body-card:focus-visible{outline:2px solid var(--accent-lit);outline-offset:3px}
+.speaker-chip .sp-name{font:12px var(--sans);color:var(--text-dim);
+  line-height:1.3;overflow-wrap:anywhere;transition:color .12s,text-shadow .12s;
+  text-shadow:var(--lume-white)}
+.speaker-chip:hover .sp-name,.speaker-chip:focus-visible .sp-name,
+.speaker-chip.active .sp-name{color:var(--mask-name,var(--accent-lit));text-shadow:var(--mask-name-shadow,var(--lume))}
+.speaker-more{display:none;position:absolute;top:50%;transform:translateY(-50%);
+  color:var(--accent-lit);font:24px/1 var(--sans);pointer-events:none;text-shadow:var(--lume);z-index:3}
+.speaker-more.left{left:-10px}.speaker-more.right{right:-10px}
+@media(max-width:600px){
+  .speaker-bar{grid-template-columns:none;grid-template-rows:repeat(3,auto);grid-auto-flow:column;
+    grid-auto-columns:88px;gap:6px;overflow-x:auto;overflow-y:hidden;padding:10px 8px;
+    scrollbar-width:none;overscroll-behavior-x:contain}
+  .speaker-bar::-webkit-scrollbar{display:none}
+  .speaker-field{padding:0 8px 8px;margin-bottom:14px}
+  .speaker-more:not([hidden]){display:block}
+}
+@media(prefers-reduced-motion:reduce){.speaker-chip,.speaker-chip svg,.body-card{transition:none}}
+
+/* ── Misc ───────────────────────────────────────────── */
+.empty-note{color:var(--text-faint);font:italic 14px var(--serif);padding:20px;text-align:center}
+.back-link{display:inline-flex;align-items:center;gap:6px;font:13px var(--mono);
+  color:var(--accent-lit);text-shadow:var(--lume);text-decoration:none;padding:4px 0}
+.back-link:hover{color:var(--amber-lit);text-shadow:var(--lume-amber)}
+a{color:var(--accent-lit);text-shadow:var(--lume);
+  text-decoration:underline;text-underline-offset:2px}
+a:hover{color:var(--amber-lit);text-shadow:var(--lume-amber)}
+@media(max-width:520px){
+  .body-grid{grid-template-columns:1fr}
+  .rack{grid-template-columns:repeat(auto-fill,minmax(90px,1fr))}
+  .section-head{font-size:18px}
+}
+
+/* Raised ship-log keys share one treatment for navigation and preferences. */
+.log-key,.topbar .seg button{font:600 14px/1.4 var(--sans);color:var(--text-dim);
+  background:var(--rock-3);border:1px solid var(--frame-soft);border-radius:2px;padding:8px 13px;
+  box-shadow:inset 0 0 0 2px var(--edge-soft),0 2px 3px rgba(0,0,0,.2);cursor:pointer;
+  text-shadow:var(--lume-white);transition:color .12s,box-shadow .12s}
+.topbar .seg{border:0;gap:8px;overflow:visible}
+.log-key:hover:not(:disabled),.log-key:focus-visible,.topbar .seg button:hover,
+.topbar .seg button[aria-pressed="true"]{color:var(--text);background:var(--rock-3);
+  border-color:var(--frame);box-shadow:inset 0 0 0 2px var(--edge),var(--lume-frame)}
+.log-key:disabled{opacity:.35;cursor:default;text-shadow:none}
+.log-key .chosen{color:var(--text);text-shadow:var(--lume-white);font-weight:700}
+.topbar{flex-wrap:nowrap}
+.header-actions{margin-left:auto;display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;min-width:0}
+#crumb{gap:8px;flex-wrap:nowrap;min-height:0}
+#crumb .log-key{font:600 13px/1.4 var(--sans);text-decoration:none;padding:8px 10px;white-space:nowrap}
+.topbar h1{min-width:0;flex:1 1 220px;overflow-wrap:anywhere}
+.header-actions{flex:0 1 auto}
+@media(max-width:600px){
+  .topbar{gap:10px;padding:12px 10px;align-items:center}
+  .topbar h1{font-size:24px;letter-spacing:.03em;flex:1 1 40%}
+  .header-actions{flex:0 1 58%;gap:6px}
+  #crumb{flex-wrap:wrap;justify-content:flex-end;gap:6px}
+  #crumb .log-key,.header-actions .log-key,.topbar .seg button{padding:6px 7px;font-size:11px}
+  .topbar .seg{gap:5px}
+}
+</style>
+<style>
+.library-boot{position:fixed;inset:0;z-index:200;background:radial-gradient(ellipse at center,#102431 0%,#07121c 65%,#040b12 100%);display:grid;place-items:center;
+  transition:opacity .2s;pointer-events:auto}
+.library-boot.leaving{opacity:0;pointer-events:none}
+.library-boot[hidden]{display:none}
+.boot-badge{width:min(62vw,340px);mix-blend-mode:screen;
+  filter:brightness(1.12) drop-shadow(0 0 2px #e9f4ff80) drop-shadow(0 0 9px #d9eaff40)}
+.boot-badge svg{width:100%;display:block}
+</style>
+<div class="library-boot" id="library-boot" hidden aria-label="Outer Wilds Ventures">
+  <div class="boot-badge">
+    <svg viewBox="100 170 550 440" role="img" aria-label="Outer Wilds Ventures">
+      <defs><clipPath id="boot-scene"><path d="M375 210 L597 565 H149 Z"/></clipPath></defs>
+      <path d="M375 190 Q380 190 386 200 L627 574 Q638 591 617 591 H133 Q112 591 123 574 L364 200 Q370 190 375 190Z" fill="#000" stroke="#edf3f6" stroke-width="5"/>
+      <image href="../assets/outer-wilds-ventures-reference.jpg" width="750" height="1000" clip-path="url(#boot-scene)"/>
+      <path d="M375 209 L606 577 H144 Z" fill="none" stroke="#edf3f6" stroke-width="3" stroke-linejoin="round"/>
+    </svg>
+  </div>
+</div>
+<script>
+const bootRequested = new URLSearchParams(location.search).has("boot");
+const bootStarted = performance.now();
+if (bootRequested) document.getElementById("library-boot").hidden = false;
+function finishLibraryBoot(){
+  if (!bootRequested) return;
+  setTimeout(() => {
+    const boot = document.getElementById("library-boot");
+    boot.classList.add("leaving");
+    setTimeout(() => { boot.hidden = true; }, 200);
+    const url = new URL(location.href);url.searchParams.delete("boot");
+    history.replaceState(null,"",url);
+  }, Math.max(0,1500-(performance.now()-bootStarted)));
+}
+</script>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <radialGradient id="mask-gold" cx="34%" cy="28%" r="85%">
+    <stop offset="0" stop-color="#dfb56e"/><stop offset=".35" stop-color="#bf883d"/>
+    <stop offset=".72" stop-color="#965e25"/><stop offset="1" stop-color="#70441f"/>
+  </radialGradient>
+</defs></svg>
+<svg hidden aria-hidden="true"><symbol id="nomai-mask" viewBox="0 0 637 609"><g fill="var(--mask-fill,currentColor)" fill-rule="evenodd" transform="translate(0 609) scale(1 -1)"><path d="M325 471 C336.6655 471.3333 348.3345 471.6667 360 472 C360 472.9999 360 474.0001 360 475 C362.1832 484.3108 356.2332 486.4859 357 495 C358.5991 512.7542 361.8148 576.9124 367 587 C374.4284 587.1357 375.4529 588.7237 381 590 C381.5223 553.9713 435.6867 565.6754 464 556 C514.7174 538.6686 559.9325 504.3097 583 459 C581.0002 458.0001 578.9998 456.9999 577 456 C578.5687 448.2742 584.5473 439.6418 582 432 C580.3335 429.0003 578.6665 425.9997 577 423 C556.0021 421.3335 534.9979 419.6665 514 418 C513.6667 418.9999 513.3333 420.0001 513 421 C508.2889 427.3457 509.8420 447.3372 514 449 C518.1580 450.6628 528.6674 452.3335 536 454 C535.6667 455.9998 535.3333 458.0002 535 460 C527.6911 461.5281 511.5823 455.0653 505 461 C496.6675 469.3325 488.3325 477.6675 480 486 C464.1549 496.4320 437.4707 498.4116 412 496 C399.7764 463.5420 414.3731 465.9785 418 444 C413.4938 441.5863 410.5955 439.4747 409 434 C410.9998 433.0001 413.0002 431.9999 415 431 C415.3333 423.3341 415.6667 415.6659 416 408 C420.6662 401.6673 425.3338 395.3327 430 389 C440.9989 375.0014 452.0011 360.9986 463 347 C463.6666 343.6670 464.3334 340.3330 465 337 C473.2468 326.7330 486.0535 318.3655 494 308 C494.6666 303.6671 495.3334 299.3329 496 295 C504.8420 279.6964 523.3060 262.9726 537 252 C538.9998 252.6666 541.0002 253.3334 543 254 C545.3331 261.3326 547.6669 268.6674 550 276 C554.5912 297.8650 551.0923 319.9781 550 341 C541.1280 340.8319 529.2640 342.2020 525 347 C522.2482 351.6084 519.9010 365.1756 523 372 C523.9999 373.6665 525.0001 375.3335 526 377 C544.8948 377.7133 565.4131 378.1748 574.1448 374.4335 C582.8765 370.6922 575.7183 362.5962 582 353 C591.3324 352.3334 600.6676 351.6666 610 351 C622.8766 303.8627 616.6440 254.7169 595 213 C585.9297 195.5179 557.4279 165.6608 573 141 C567.8097 139.3662 569.0254 137.4467 565 135 C564.0001 134.6667 562.9999 134.3333 562 134 C558.6670 139.6661 555.3330 145.3339 552 151 C544.3341 157.6660 536.6659 164.3340 529 171 C528.0001 174.6663 526.9999 178.3337 526 182 C517.3342 190.3325 508.6658 198.6675 500 207 C489.2394 223.7265 481.0953 240.4572 469 256 C461.7347 252.3289 456.4572 246.4180 452 240 C452 238.3335 452 236.6665 452 235 C492.5725 204.5159 515.5989 154.7289 550 118 C549.6667 114.6670 549.3333 111.3330 549 108 C536.4270 104.0340 530.3224 125.8685 517 113 C352.1754 29.6467 399.9930 53.4716 392 52 C383.3270 48.8674 376.0580 45.4254 365 45 C360.3338 61.3317 355.6662 77.6683 351 94 C356.1532 98.9705 359.2259 100.7066 364 105 C358.2047 106.3890 359.0930 113.3625 356 120 C341.3348 120 326.6652 120 312 120 C307.9008 117.8504 307.8522 116.3250 307 111 C304.0003 111.6666 300.9997 112.3334 298 113 C295.7908 131.1944 293.7977 141.7654 279 148 C276.3151 164.3550 265.7559 187.5887 271 203 C267.6922 208.4695 261.3061 211.6789 256 215 C247.2106 209.8460 240.8678 200.1831 235 192 C228.1426 182.4369 213.9130 173.3653 211 161 C203.7873 130.3829 294.4731 109.7600 315 98 C308.6312 83.5375 305.2760 56.9336 293 48 C255.7155 52.2819 214.3629 63.1910 187 88 C178.4463 95.7554 158.2463 124.0281 151 128 C135.4838 135.9150 125.6559 123.2098 118 117 C115.0003 119.6664 111.9997 122.3336 109 125 C109.3333 125.6666 109.6667 126.3334 110 127 C117.9029 143.8469 137.7834 155.3490 152 167 C156.7712 170.9102 156.2519 176.9074 160 182 C168.9121 194.1089 183.3304 205.3635 196 214 C205.9470 220.7806 215.0859 235.4184 224 244 C224 245.3332 224 246.6668 224 248 C219.6671 251.9996 215.3329 256.0004 211 260 C209.3335 260 207.6665 260 206 260 C198.8990 250.0851 188.6931 244.0149 181 235 C161.4699 212.1143 126.6789 158.4641 100 147 C95.9029 149.8258 94.8087 153.8124 94.9353 158.5511 C116.8117 175.9939 100.3984 180.6914 96 193 C95.0692 195.6048 80.5789 225.8847 79 221 C71.6941 237.3455 49.7928 310.5120 60 339 C62.3331 339.6666 64.6669 340.3334 67 341 C66.8010 351.4761 66.9614 359.3382 71 367 C78.3995 366.6448 93.0699 365.2934 97 369 C99.7918 374.6409 101.0894 387.9215 104 390 C106.9106 392.0785 158.0 385.0 158.0 385.0 C158.0 385.0 159.3854 363.0801 155.0 358.0 C149.9761 352.8585 135.4725 357.7096 130 353 C121.4431 335.3840 120.5721 274.8423 136 266 C136.9999 266 138.0001 266 139 266 C151.5939 271.2012 173.1582 292.3008 181 305 C182.3332 309.6662 183.6668 314.3338 185 319 C194.6830 328.5447 210.6789 335.4767 218 347 C228.1952 363.0472 236.3757 376.8447 248 391 C255.3326 398.6659 262.6674 406.3341 270 414 C270.6666 421.6659 271.3334 429.3341 272 437 C274.3331 437 276.6669 437 279 437 C276.9712 443.9559 272.0790 446.2770 268 451 C275.6064 468.4748 294.0481 475.4657 274 502 C226.8421 506.0253 204.7581 493.6307 181 470 C171.2574 471.1163 142.1249 474.6153 153 465 C160.6659 463.0002 168.3341 460.9998 176 459 C176.3333 458.3334 176.6667 457.6666 177 457 C175.6668 448.6675 174.3332 440.3325 173 432 C171.6668 431.0001 170.3332 429.9999 169 429 C148.6687 432.3330 128.3313 435.6670 108 439 C106.3335 442.3330 104.6665 445.6670 103 449 C105.3331 456.3326 107.6669 463.6674 110 471 C107.3980 471.4253 109.4540 470.0243 107 472 C114.9243 513.1319 193.3787 556.6907 237 566 C255.8541 570.0237 272.9489 561.7063 292 566 C312.1505 570.5415 312.5596 588.5284 321 590 C323.3331 589.0001 325.6669 587.9999 328 587 C330.5776 582.9621 336.2064 503.2845 333 493 C330.4127 484.7014 325.3405 485.1989 325 471 Z M340 426 C324.5336 409.6343 306.1336 398.9051 289 384 C286.0003 378.6672 282.9997 373.3328 280 368 C269.5376 358.8447 261.1874 348.2769 251 339 C239.5051 328.5324 220.2417 319.1717 216 302 C225.2391 287.6002 268.0769 234.0193 288 238 C288.3333 237.3334 288.6667 236.6666 289 236 C293.6261 229.1326 309.6835 133.2379 309 124 C316.7489 124.2558 325.0224 124.0823 330 122 C330.2770 137.8857 328.9768 149.1616 326 160 C333.3336 158.7051 334.1805 159.5937 343 160 C340.5279 148.5079 336.1555 138.7238 339 124 C344.6661 123.6667 350.3339 123.3333 356 123 C359.3330 129.3327 362.6670 135.6673 366 142 C370.7413 158.4866 376.6252 224.5023 387 230 C395.6658 233.3330 404.3342 236.6670 413 240 C417.8111 243.4271 461.9198 289.9530 463 294 C464.9585 301.3377 460.2990 303.7672 458 307 C445.5427 309.9137 441.7722 324.1601 434 332 C414.3675 351.8033 392.6688 376.7477 373 400 C364.9160 409.5569 353.1922 414.0982 347 426 C344.6669 426 342.3331 426 340 426 Z M341 412 C349.9009 408.6560 388.6250 368.4750 390 358 C373.0017 343.0015 355.9983 327.9985 339 313 C338.3334 313 337.6666 313 337 313 C326.6464 326.5743 295.8257 350.3906 292 366 C308.3317 381.3318 324.6683 396.6682 341 412 Z M339 394 C326.0398 382.8421 313.4138 372.2930 309 358 C318.9978 349.9649 325.0550 335.7549 337 330 C337.3333 330.9999 337.6667 332.0001 338 333 C334.9361 348.0112 321.9220 350.2558 318 363 C325.3326 370.9992 332.6674 379.0008 340 387 C339.6667 389.3331 339.3333 391.6669 339 394 Z M345 392 C344.6667 389.3336 344.3333 386.6664 344 384 C352.8694 376.8224 356.0483 362.7466 371 362 C371 362.9999 371 364.0001 371 365 C364.8234 373.7388 354.8999 387.2998 345 392 Z M367 392 C367.3333 391.3334 367.6667 390.6666 368 390 C367.6667 390.6666 367.3333 391.3334 367 392 Z M341 374 C336.6671 369.6671 332.3329 365.3329 328 361 C328 360.3334 328 359.6666 328 359 C331.9996 355.3337 336.0004 351.6663 340 348 C344.6662 352.3329 349.3338 356.6671 354 361 C350.7089 365.6644 346.4027 371.4360 341 374 Z M366 359 C357.1110 350.0444 346.7632 345.3731 341 333 C341.3333 332.0001 341.6667 330.9999 342 330 C352.9459 333.2435 365.6968 348.4394 372 357 C371.6667 357.6666 371.3333 358.3334 371 359 C369.3335 359 367.6665 359 366 359 Z M279 351 C291.9390 344.8246 319.2453 314.4867 327 302 C315.6930 283.5417 287.5250 272.8472 279 253 C278.6667 253 278.3333 253 278 253 C274.7726 270.1767 241.0017 286.3626 233 306 C248.3318 320.9985 263.6682 336.0015 279 351 Z M397 349 C397.9999 349 399.0001 349 400 349 C416.0608 336.9600 436.5943 316.3993 447 299 C430.3350 282.0017 413.6650 264.9983 397 248 C396.3334 248.3333 395.6666 248.6667 395 249 C380.0015 266.9982 364.9985 285.0018 350 303 C361.2306 321.2455 383.9663 331.8411 397 349 Z M275 334 C266.6675 325.3342 258.3325 316.6658 250 308 C250 307.0001 250 305.9999 250 305 C251.6665 305 253.3335 305 255 305 C262.9992 311.3327 271.0008 317.6673 279 324 C279 327.3330 279 330.6670 279 334 C277.6668 334 276.3332 334 275 334 Z M282 332 C282.6299 326.6868 296.7413 303.1653 310 303 C310 304.3332 310 305.6668 310 307 C299.7322 313.7406 291.7859 331.0805 282 332 Z M394 332 C385.3342 322.6676 376.6658 313.3324 368 304 C368 303.0001 368 301.9999 368 301 C370.6664 301 373.3336 301 376 301 C381.1457 308.9705 389.8410 315.9026 397 322 C397.3391 327.8124 397.7457 329.9184 394 332 Z M401 328 C401.3333 326.3335 401.6667 324.6665 402 323 C405.6699 314.9265 413.9866 306.0143 421 301 C423.3331 301 425.6669 301 428 301 C428 301.3333 428 301.6667 428 302 C420.6674 310.6658 413.3326 319.3342 406 328 C404.3335 328 402.6665 328 401 328 Z M279 316 C275.3337 312.0004 271.6663 307.9996 268 304 C270.0448 298.3383 278.0958 295.0660 282 292 C285.9996 295.3330 290.0004 298.6670 294 302 C290.0004 305.9996 285.9996 310.0004 282 314 C280.1996 316.0421 281.9849 314.7066 279 316 Z M397 312 C393.6670 308.3337 390.3330 304.6663 387 301 C388.6900 295.1291 392.2627 288.9665 398 287 C401.6663 290.6663 405.3337 294.3337 409 298 C407.1352 303.7880 402.7969 310.0443 397 312 Z M253 300 C255.7352 289.1196 266.8423 283.8536 273 276 C273.6666 276.3333 274.3334 276.6667 275 277 C274.0498 287.8410 263.6365 298.8964 253 300 Z M302 300 C296.4603 291.5159 285.5871 288.5352 281 279 C281 276.6669 281 274.3331 281 272 C281.3333 272 281.6667 272 282 272 C290.1141 277.5096 305.8569 290.2144 309 300 C306.6669 300 304.3331 300 302 300 Z M371 296 C373.3212 286.4300 384.7442 277.0293 392 272 C392.3333 272 392.6667 272 393 272 C393 273.6665 393 275.3335 393 277 C388.8951 284.5736 380.9987 294.4224 371 296 Z M421 296 C413.3341 288.6674 405.6659 281.3326 398 274 C398.4048 269.9697 398.3272 270.0883 400 268 C409.3324 276.9991 418.6676 286.0009 428 295 C428 295.3333 428 295.6667 428 296 C425.6669 296 423.3331 296 421 296 Z M349 291 C350.9998 289.6668 353.0002 288.3332 355 287 C355 286.6667 355 286.3333 355 286 C353.6668 286 352.3332 286 351 286 C351 283.0003 351 279.9997 351 277 C354.9231 276.3727 364.6832 267.3063 362 263 C360.0002 260.0003 357.9998 256.9997 356 254 C355.3334 254 354.6666 254 354 254 C353.3334 255.9998 352.6666 258.0002 352 260 C353.9998 261.3332 356.0002 262.6668 358 264 C358 264.9999 358 266.0001 358 267 C355.3336 269.3331 352.6664 271.6669 350 274 C349.6667 268.0006 349.3333 261.9994 349 256 C348.3334 256.3333 347.6666 256.6667 347 257 C347.6666 268.3322 348.3334 279.6678 349 291 Z M326 290 C330.6881 278.4663 325.1593 177.4105 323 164 C319.1727 165.3210 320.9201 163.9984 319 167 C319.3333 171.9995 319.6667 177.0005 320 182 C316.0004 185.3330 311.9996 188.6670 308 192 C307.3334 205.9986 306.6666 220.0014 306 234 C302.2572 241.9716 293.2803 247.0155 289 256 C290.6665 255.6667 292.3335 255.3333 294 255 C299.3328 249.0006 304.6672 242.9994 310 237 C315.7526 221.3207 308.0787 202.6750 316 189 C316.9999 188.6667 318.0001 188.3333 319 188 C319.3333 188 319.6667 188 320 188 C320.9508 234.6242 320.3958 240.4562 298 263 C298.9999 263.9999 300.0001 265.0001 301 266 C307.3327 258.3341 313.6673 250.6659 320 243 C320.9999 243.3333 322.0001 243.6667 323 244 C322.6667 247.6663 322.3333 251.3337 322 255 C317.1069 257.4202 315.9768 260.6970 314 266 C317.4765 273.4639 321.4729 282.4409 326 290 Z M321 271 C319.6668 269.6668 318.3332 268.3332 317 267 C317.6666 265.6668 318.3334 264.3332 319 263 C320.3554 260.9453 320.1199 261.3907 322 260 C322.3333 260 322.6667 260 323 260 C323.1551 266.2844 323.0093 268.8321 321 271 Z M373 262 C374.3332 261.3334 375.6668 260.6666 377 260 C374.3336 257.3336 371.6664 254.6664 369 252 C363.6672 246.0006 358.3328 239.9994 353 234 C349.8152 213.1980 345.9169 183.6140 358 184 C353.6087 171.2940 351.6551 173.9903 349 164 C347.6668 164 346.3332 164 345 164 C345 171.9992 345 180.0008 345 188 C345.3333 201.3320 345.6667 214.6680 346 228 C350.3329 233.3328 354.6671 238.6672 359 244 C355.6426 246.3933 357.0897 245.0794 360 248 C364.3329 252.6662 368.6671 257.3338 373 262 Z M380 257 C384.6160 255.5856 384.7523 254.4416 387 251 C387 250.6667 387 250.3333 387 250 C381.5867 247.4282 378.5052 243.6628 381 242 C377.6736 244.9099 366.4158 230 366 230 C365.5842 230 369.0675 217.1085 360 186 C359.6667 186.6666 359.3333 187.3334 359 188 C358.3334 188 357.6666 188 357 188 C366.6956 226.3982 353.6442 226.7668 381 253 C380.6667 254.3332 380.3333 255.6668 380 257 Z M353 254 C353.3333 253.3334 353.6667 252.6666 354 252 C353.6667 252.6666 353.3333 253.3334 353 254 Z M351 251 C351 248.3336 351 245.6664 351 243 C351 245.6664 351 248.3336 351 251 Z M354 244 C354.6666 244 355.3334 244 356 244 C355.3334 244 354.6666 244 354 244 Z M352 243 C352.6666 243 353.3334 243 354 243 C353.3334 243 352.6666 243 352 243 Z M417 209 C412.3338 206.6669 407.6662 204.3331 403 202 C401.2711 178.5495 394.4534 159.8885 390 140 C383.2099 139.1931 377.7361 136.9200 375 132 C370.8089 125.1196 367.7816 109.7474 375 105 C388.6042 101.4005 455.5164 139.6913 460 152 C461.1201 159.6989 430.0136 199.1283 424 209 C421.6669 209 419.3331 209 417 209 Z M186 142 C186.6666 141.6667 187.3334 141.3333 188 141 C187.3334 141.3333 186.6666 141.6667 186 142 Z"/></g></symbol></svg>
+<div class="shell">
+  <div class="topbar">
+    <h1 id="page-title">Nomai Repository</h1>
+    <div class="header-actions">
+    <div class="crumb" id="crumb"></div>
+    <div class="seg lang" role="group" aria-label="Language">
+      <button id="lang-en" aria-pressed="true">English</button>
+      <button id="lang-zh" aria-pressed="false">中文</button>
+    </div>
+    <button class="log-key" id="theme" role="switch" aria-checked="true">昼 / 夜</button>
+    </div>
+  </div>
+  <div class="search-bar">
+    <input id="search" type="text" placeholder="Search speakers or text…">
+    <span class="search-hits" id="search-hits"></span>
+  </div>
+  <div id="main"></div>
+  <a class="back-link" href="nomai-scriptorium.html">← Back to Scriptorium</a>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+/* ── i18n ───────────────────────────────────────────── */
+const BODY_ZH = {
+  "Hourglass Twins":"沙漏双星","Timber Hearth":"木炉星","Brittle Hollow":"碎空星",
+  "Giant's Deep":"深巨星","Dark Bramble":"黑棘星","The Interloper":"闯入者",
+  "Quantum Moon":"量子卫星","White Hole":"白洞"
+};
+const LOC_ZH = CORPUS_LABELS.locations;
+const SPEAKER_ZH = CORPUS_LABELS.speakers;
+const spkName = s => LANG === "zh" ? (SPEAKER_ZH[s] || s) : s;
+const UI_ZH = {
+  "Nomai Repository":"挪麦文库","All Bodies":"所有天体",
+  "locations":"个地点","conversations":"段对话","spirals":"条螺旋",
+  "Search speakers or text…":"搜索说话人或文字…",
+  "Back to Scriptorium":"返回「书房」","recording":"录音",
+  "projection stone":"投影石","question pair":"问题组合",
+  "No results":"没有结果","conversation":"段对话","of":"/"
+};
+let LANG = "en";
+const t = s => LANG === "zh" ? (UI_ZH[s] || s) : s;
+const bodyName = b => LANG === "zh" ? (BODY_ZH[b] || b) : b;
+const locName = l => LANG === "zh" ? (LOC_ZH[l] || l) : l;
+
+/* ── Body colours ───────────────────────────────────── */
+const BODY_COLORS = {
+  "Hourglass Twins":"linear-gradient(135deg,#c8843a,#e8b060,#a06020)",
+  "Timber Hearth":"linear-gradient(135deg,#5a7040,#8a6040,#6a8050)",
+  "Brittle Hollow":"linear-gradient(135deg,#4858a0,#8070b0,#3a4880)",
+  "Giant's Deep":"linear-gradient(135deg,#206868,#40a0a0,#184858)",
+  "Dark Bramble":"linear-gradient(135deg,#2a3a20,#4a5a30,#1a2818)",
+  "The Interloper":"linear-gradient(135deg,#90b8c8,#d0e8f0,#6090a0)",
+  "Quantum Moon":"linear-gradient(135deg,#808888,#b0b8b8,#606868)",
+  "White Hole":"linear-gradient(135deg,#c0c8d0,#e8f0f8,#a0a8b0)"
+};
+
+/* ── State ──────────────────────────────────────────── */
+let DATA = [];
+let byBody = {};
+let view = { type: "map" };   /* map | body | location */
+let speakerFilter = null;
+
+/* ── Data loading ───────────────────────────────────── */
+/* The corpus is inlined when the page is built, so the file you save to disk opens
+   from a double click with nothing running behind it. fetch is only for the source
+   file, which is what the dev server serves: over file:// it is refused by CORS, and
+   that refusal is what an unbuilt page looks like when you open it directly. */
+const CORPUS = /*__CORPUS__*/null;
+
+async function load(){
+  if (CORPUS){
+    DATA = CORPUS;
+  } else {
+    try {
+      const r = await fetch("../docs/nomai_corpus.json");
+      DATA = await r.json();
+    } catch {
+      $("main").innerHTML = '<p class="empty-note">Could not load nomai_corpus.json</p>';
+      return;
+    }
+  }
+  byBody = {};
+  for (const loc of DATA){
+    const b = loc.celestial_body || "Unknown";
+    if (!byBody[b]) byBody[b] = [];
+    byBody[b].push(loc);
+  }
+  routeFromHash();
+  finishLibraryBoot();
+}
+
+/* ── Hash routing ───────────────────────────────────── */
+function routeFromHash(){
+  const old = capturePage();
+  const p = new URLSearchParams(location.hash.slice(1));
+  const body = p.get("body");
+  const loc = p.get("loc");
+  const ci = p.get("c");
+  speakerFilter = p.get("speaker");
+  if (body && loc != null){
+    /* `c` was read and then dropped on the floor here too, which is why a reloaded or
+       pasted link opened the location and selected nothing. Out-of-range survives as
+       a number and simply matches no slot, which is the same as selecting nothing. */
+    const n = ci == null || ci === "" ? NaN : Number(ci);
+    view = { type:"location", body, location:loc,
+             conv: Number.isInteger(n) && n >= 0 ? n : null };
+  } else if (speakerFilter){
+    view = { type:"speaker", speaker:speakerFilter };
+  } else if (body){
+    view = { type:"body", body };
+  } else {
+    view = { type:"map" };
+  }
+  render();
+  enterPage(old);
+}
+function nav(v){
+  const old = capturePage();
+  speakerFilter = v.speaker || null;
+  $("search").value = "";
+  /* `conv` is the scroll the caller was pointing at -- a speaker's list knows which
+     entry of a location its row stands for. It was being flattened to null one line
+     after the caller worked it out, so arriving from a name always landed on the
+     whole location with nothing selected, and which of the near-identical triangles
+     was meant was left to be guessed. It goes into the hash as well, so the link
+     carries the answer and can be shared or reloaded. */
+  view = {...v, conv: v.conv == null ? null : v.conv};
+  const p = new URLSearchParams();
+  if (speakerFilter) p.set("speaker", speakerFilter);
+  if (v.body) p.set("body", v.body);
+  if (v.location != null) p.set("loc", v.location);
+  if (view.conv != null) p.set("c", view.conv);
+  const h = p.toString();
+  history.pushState(null, "", h ? "#" + h : location.pathname);
+  render();
+  enterPage(old);
+}
+function capturePage(){
+  document.querySelectorAll(".page-ghost").forEach(e => e.remove());
+  if (matchMedia("(prefers-reduced-motion:reduce)").matches || !$("main").children.length) return null;
+  const shell = document.querySelector(".shell"), r = shell.getBoundingClientRect();
+  const old = shell.cloneNode(true);
+  old.classList.add("page-ghost");old.inert = true;old.setAttribute("aria-hidden","true");
+  old.removeAttribute("id");old.querySelectorAll("[id]").forEach(e => e.removeAttribute("id"));
+  Object.assign(old.style,{left:r.left+"px",top:r.top+"px",width:r.width+"px"});
+  document.body.appendChild(old);
+  return old;
+}
+function enterPage(old){
+  const shell = document.querySelector(".shell");
+  shell.getAnimations().forEach(a => a.cancel());
+  $("main").classList.remove("tracking");
+  window.scrollTo({top:0,behavior:"instant"});
+  if (matchMedia("(prefers-reduced-motion:reduce)").matches) { if(old)old.remove(); return; }
+  if(old){
+    const exit = old.animate([{transform:"scale(1)",opacity:1},{transform:"scale(1.16)",opacity:0,filter:"blur(3px)"}],
+      {duration:220,easing:"ease-in",fill:"forwards"});
+    exit.onfinish = () => old.remove();
+  }
+  shell.animate([
+    {transform:"perspective(1100px) translateZ(-180px)",opacity:0,filter:"blur(2px) brightness(1.15)"},
+    {transform:"perspective(1100px) translateZ(0)",opacity:1,filter:"blur(0) brightness(1)"}
+  ],{duration:270,easing:"cubic-bezier(.16,.8,.28,1)"});
+}
+window.addEventListener("popstate", routeFromHash);
+
+/* ── Render dispatch ────────────────────────────────── */
+function render(){
+  document.querySelector(".shell:not(.page-ghost) .back-link").textContent = "← " + t("Back to Scriptorium");
+  $("page-title").textContent = view.type === "location" ? locName(view.location)
+    : view.type === "body" ? bodyName(view.body)
+    : view.type === "speaker" ? spkName(speakerFilter) : t("Nomai Repository");
+  paintThemeKey();
+  renderCrumb();
+  const m = $("main");
+  m.onpointermove = e => {
+    if (e.pointerType === "touch") { m.classList.remove("tracking"); return; }
+    const r = m.getBoundingClientRect();
+    m.style.setProperty("--pointer-x", (e.clientX - r.left - m.clientLeft) + "px");
+    m.style.setProperty("--pointer-y", (e.clientY - r.top - m.clientTop) + "px");
+    m.classList.add("tracking");
+  };
+  m.onpointerleave = m.onpointercancel = m.onkeydown = () => m.classList.remove("tracking");
+  const q = ($("search").value || "").trim().toLowerCase();
+  if (q) { renderSearch(q); return; }
+  if (view.type === "map" || view.type === "speaker") renderMap(m);
+  else if (view.type === "body") renderBody(m);
+  else if (view.type === "location") renderLocation(m);
+}
+
+/* ── Breadcrumb ─────────────────────────────────────── */
+/* Escape is the same gesture without a mouse. Bound once, here, rather than inside a
+   render -- listeners added per render stack up and fire once per render that ever
+   happened. */
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape" || view.type !== "location" || view.conv == null) return;
+  view.conv = null;
+  view.reading = false;
+  render();
+});
+
+function renderCrumb(){
+  const c = $("crumb");
+  const home = view.type === "map";
+  c.innerHTML = `<button class="log-key" id="nav-home" ${home ? "disabled" : ""}>${LANG === "zh" ? "回到主页面" : "Back to main page"}</button>`
+    + `<button class="log-key" id="nav-up" ${home ? "disabled" : ""}>${LANG === "zh" ? "返回上一级" : "Back one level"}</button>`;
+  $("nav-home").onclick = () => nav({type:"map"});
+  $("nav-up").onclick = () => {
+    if (view.type === "location") nav(speakerFilter ? {type:"speaker",speaker:speakerFilter} : {type:"body",body:view.body});
+    else nav({type:"map"});
+  };
+
+}
+
+/* ── Global speaker bar (all speakers across corpus) ── */
+function buildGlobalSpeakers(){
+  const sp = {};
+  for (const loc of DATA)
+    for (const conv of loc.conversations)
+      for (const s of conv.spirals)
+        if (s.speaker) sp[s.speaker] = (sp[s.speaker] || 0) + 1;
+  return Object.keys(sp).sort((a, b) => sp[b] - sp[a]);
+}
+function renderSpeakerBar(speakers, container){
+  let html = '<div class="speaker-field"><div class="speaker-bar" role="group" aria-label="' + (LANG === "zh" ? "按说话人筛选" : "Filter by speaker") + '">';
+  for (const sp of speakers){
+    const active = speakerFilter === sp ? " active" : "";
+    html += `<button class="speaker-chip${active}" aria-pressed="${speakerFilter === sp}" data-speaker="${esc(sp)}">
+      <svg width="24" height="23" aria-hidden="true"><use href="#nomai-mask"/></svg>
+      <span class="sp-name">${esc(spkName(sp))}</span>
+    </button>`;
+  }
+  html += '</div><span class="speaker-more left" aria-hidden="true" hidden>‹</span>'
+    + '<span class="speaker-more right" aria-hidden="true" hidden>›</span></div>';
+  return html;
+}
+function bindSpeakerChips(container, onToggle){
+  const field = container.querySelector(".speaker-field");
+  if (field){
+    field.querySelector(".speaker-bar").onscroll = updateSpeakerEdges;
+    requestAnimationFrame(updateSpeakerEdges);
+  }
+  container.querySelectorAll("[data-speaker]").forEach(el =>
+    el.onclick = () => {
+      nav({type:"speaker", speaker:el.dataset.speaker});
+    });
+}
+function updateSpeakerEdges(){
+  const field = document.querySelector(".speaker-field");
+  if (!field) return;
+  const bar = field.querySelector(".speaker-bar");
+  field.querySelector(".left").hidden = bar.scrollLeft <= 1;
+  field.querySelector(".right").hidden = bar.scrollLeft + bar.clientWidth >= bar.scrollWidth - 1;
+}
+window.addEventListener("resize", updateSpeakerEdges);
+
+/* ── Map view ───────────────────────────────────────── */
+function renderMap(m){
+  const allSpeakers = buildGlobalSpeakers();
+  let html = speakerFilter ? "" : renderSpeakerBar(allSpeakers, m);
+
+  if (speakerFilter){
+    /* speaker-first view: show all locations where this speaker appears, grouped by body */
+    const hits = [];
+    for (const loc of DATA)
+      for (let ci = 0; ci < loc.conversations.length; ci++){
+        const conv = loc.conversations[ci];
+        if (conv.spirals.some(s => s.speaker === speakerFilter))
+          hits.push({ loc, ci, conv });
+      }
+    html += `<p class="section-sub">${hits.length} ${t("conversations")}</p><div class="loc-list">`;
+    for (const h of hits){
+      html += `<button class="loc-row" data-body="${esc(h.loc.celestial_body)}" data-loc="${esc(h.loc.location)}" data-entry="${h.ci}">
+        <span class="loc-marker" aria-hidden="true">▸</span>
+        <span class="loc-name">${esc(locName(h.loc.location))} · ${convName(h.ci)}</span>
+        <span class="loc-count">${esc(bodyName(h.loc.celestial_body))}</span>
+      </button>`;
+    }
+    html += "</div>";
+  } else {
+    /* normal body grid */
+    const bodies = Object.keys(byBody).sort((a, b) =>
+      byBody[b].length - byBody[a].length);
+    html += '<div class="body-grid">' + bodies.map(b => {
+      const locs = byBody[b];
+      const convs = locs.reduce((s, l) => s + l.conversations.length, 0);
+      const grad = BODY_COLORS[b] || "linear-gradient(135deg,#555,#777)";
+      return `<button class="body-card" data-body="${esc(b)}" style="--body-tint:${grad}">
+        <span class="body-name">${esc(bodyName(b))}</span>
+        <span class="body-art" aria-hidden="true"><span class="body-orb" style="background:${grad}"></span></span>
+        <span class="body-sub">${locs.length} ${t("locations")} · ${convs} ${t("conversations")}</span>
+      </button>`;
+    }).join("") + "</div>";
+  }
+
+  m.innerHTML = html;
+  bindSpeakerChips(m, () => renderMap(m));
+  m.querySelectorAll("[data-body]:not([data-loc])").forEach(el =>
+    el.onclick = () => nav({ type:"body", body:el.dataset.body }));
+  m.querySelectorAll("[data-loc]").forEach(el =>
+    el.onclick = () => nav({ type:"location", body:el.dataset.body, location:el.dataset.loc, conv:el.dataset.entry != null ? +el.dataset.entry : null, speaker:speakerFilter }));
+}
+
+/* ── Body view ──────────────────────────────────────── */
+function renderBody(m){
+  const locs = byBody[view.body] || [];
+
+  /* collect speakers across all locations for this body */
+  const spCounts = {};
+  for (const loc of locs)
+    for (const conv of loc.conversations)
+      for (const sp of conv.spirals)
+        if (sp.speaker) spCounts[sp.speaker] = (spCounts[sp.speaker] || 0) + 1;
+  const speakers = Object.keys(spCounts).sort((a, b) => spCounts[b] - spCounts[a]);
+
+  /* filter locations when a speaker is active */
+  const filtered = speakerFilter
+    ? locs.filter(loc => loc.conversations.some(c =>
+        c.spirals.some(sp => sp.speaker === speakerFilter)))
+    : locs;
+
+  let html = "";
+  html += `<p class="section-sub">${locs.length} ${t("locations")} · ` +
+    `${locs.reduce((s, l) => s + l.conversations.length, 0)} ${t("conversations")}` +
+    `${speakerFilter ? ` · ${LANG === "zh" ? "筛选" : "filter"}: ${spkName(speakerFilter)}` : ""}</p>`;
+
+  /* speaker mask bar */
+  if (speakers.length) html += renderSpeakerBar(speakers, m);
+
+  html += '<div class="loc-list">';
+  for (const loc of filtered){
+    const n = speakerFilter
+      ? loc.conversations.filter(c => c.spirals.some(sp => sp.speaker === speakerFilter)).length
+      : loc.conversations.length;
+    html += `<div class="loc-row" data-loc="${esc(loc.location)}">
+      <span class="loc-marker">▸</span>
+      <span class="loc-name">${esc(locName(loc.location))}</span>
+      <span class="loc-count">${n}</span>
+    </div>`;
+  }
+  html += "</div>";
+  m.innerHTML = html;
+  m.querySelectorAll("[data-loc]").forEach(el =>
+    el.onclick = () => nav({ type:"location", body:view.body, location:el.dataset.loc }));
+  bindSpeakerChips(m, () => renderBody(m));
+}
+
+/* ── Location view ──────────────────────────────────── */
+function renderLocation(m){
+  const loc = DATA.find(l => l.celestial_body === view.body && l.location === view.location);
+  if (!loc){ m.innerHTML = '<p class="empty-note">Location not found</p>'; return; }
+  const convs = loc.conversations;
+  let html = "";
+  html += `<p class="section-sub">${convs.length} ${t("conversations")}</p>`;
+
+  html += '<div id="scroll-actions"></div>';
+  /* scroll rack */
+  const tri = r => [[0,1],[-.866,-.5],[.866,-.5]]
+    .map(p => (p[0]*r).toFixed(1)+","+(p[1]*r).toFixed(1)).join(" ");
+  html += '<div class="rack">';
+  for (let ci = 0; ci < convs.length; ci++){
+    const c = convs[ci];
+    const speakers = [...new Set(c.spirals.map(s => s.speaker).filter(Boolean))];
+    const label = speakers.map(spkName).join(LANG === "zh" ? "、" : ", ");
+    const tag = c.recording ? "🎥" : c.projection_stone ? "🔗" : c.question_pair ? "❓" : "";
+    /* Lit while the scroll is the one being pointed at; not once it is open. The
+       highlight exists to answer "which of these did I come for", and the thread
+       underneath, titled with the same number, answers it better from then on. The
+       button is still the pressed one, so aria-pressed keeps saying so. */
+    const active = view.conv === ci && !view.reading ? " active" : "";
+    html += `<button class="scroll-slot${active}" aria-pressed="${view.conv === ci}" data-conv="${ci}">
+      <svg width="56" height="50" viewBox="-28 -25 56 50" aria-hidden="true">
+        <polygon class="housing" points="${tri(22)}"/>
+        <polygon class="key" points="${tri(15)}"/>
+      </svg>
+      <span class="scroll-who">${tag ? tag + " " : ""}${esc(label)}</span>
+      <span class="scroll-tag">${convName(ci)} · ${c.spirals.length} ${t("spirals")}</span>
+    </button>`;
+  }
+  html += "</div>";
+
+  /* selected conversation thread */
+  if (view.conv != null && view.conv < convs.length){
+    const conv = convs[view.conv];
+    const turns = conv.spirals.map(sp => {
+      if (LANG !== "zh" || !sp.zh) return [sp.text, sp.speaker || "", sp.parent];
+      const prefix = sp.zh.match(/^([^:：]+)[:：]\s*/);
+      return prefix && sp.speaker
+        ? [sp.zh.slice(prefix[0].length), prefix[1], sp.parent]
+        : [sp.zh, "", sp.parent];
+    });
+    const payload = {version:1,lang:LANG,where:locName(loc.location),turns};
+    const href = "nomai-scriptorium.html#library-scroll=" + encodeURIComponent(JSON.stringify(payload));
+    html = html.replace('<div id="scroll-actions"></div>', `<div id="scroll-actions" class="scroll-actions">
+      <button class="log-key" id="read-here">${LANG === "zh" ? "在文库中阅读" : "Read in Repository"}</button>
+      <a class="log-key study-choice" href="${esc(href)}" target="_blank" rel="noopener">${LANG === "zh" ? "在书房中阅读" : "Read in Scriptorium"}</a></div>`);
+    if (view.reading) html += renderConv(convs[view.conv], view.conv);
+  }
+
+  m.innerHTML = html;
+  /* The wall itself, in the gaps between scrolls. Clicking the same slot again always
+     did this, but only for somebody who thought to try it, and a selection with no
+     visible way out of it reads as stuck. One click, not two: re-selecting costs one
+     click, so there is nothing here worth guarding against. */
+  const rack = m.querySelector(".rack");
+  if (rack) rack.onclick = e => {
+    if (view.conv == null || e.target.closest(".scroll-slot")) return;
+    view.conv = null;
+    view.reading = false;
+    renderLocation(m);
+  };
+  m.querySelectorAll("[data-conv]").forEach(el => el.onclick = () => {
+    view.conv = view.conv === +el.dataset.conv ? null : +el.dataset.conv;
+    view.reading = false;
+    renderLocation(m);
+    m.querySelector("#scroll-actions button")?.focus({preventScroll:true});
+  });
+  const readHere = m.querySelector("#read-here");
+  if (readHere) readHere.onclick = async () => {
+    if (readHere.disabled || view.reading) return;
+    readHere.disabled = true;
+    const reduced = matchMedia("(prefers-reduced-motion:reduce)").matches;
+    const key = m.querySelector(".scroll-slot.active .key");
+    if (!reduced) await key.animate([
+      {transform:"translateY(-4px) rotate(0deg)",opacity:1},
+      {transform:"translateY(-16px) rotate(100deg) scale(1.18)",opacity:1,offset:.65},
+      {transform:"translateY(-28px) rotate(150deg) scale(.8)",opacity:0}
+    ],{duration:280,easing:"ease-in-out",fill:"forwards"}).finished;
+    if (!readHere.isConnected) return;
+    view.reading = true;
+    renderLocation(m);
+    if (!reduced) m.querySelectorAll(".conv-pane .trow").forEach((row,i)=>
+      row.animate([{transform:"translateY(18px)",opacity:0},{transform:"translateY(0)",opacity:1}],
+        {duration:200,delay:i*65,easing:"ease-out",fill:"backwards"}));
+  };
+}
+
+/* ── Conversation thread ────────────────────────────── */
+/* The one place a conversation is named. It is written in three: the list that sends
+   you here, the slot you land on, and the thread that opens -- and matching "Conversation
+   3" against a rack of near-identical triangles only works while all three agree. */
+const convName = i => (LANG === "zh" ? "对话" : "Conversation") + " " + (i + 1);
+
+function renderConv(conv, ci){
+  const spirals = conv.spirals;
+  const depth = spirals.map(() => 0);
+  spirals.forEach((sp, k) => {
+    if (sp.parent != null && sp.parent < k) depth[k] = depth[sp.parent] + 1;
+  });
+
+  const badges = [];
+  if (conv.recording) badges.push(t("recording"));
+  if (conv.projection_stone)
+    badges.push(t("projection stone") + ": " + conv.projection_stone.join(" ↔ "));
+  if (conv.question_pair)
+    badges.push(t("question pair") + ": " + conv.question_pair.join(" + "));
+
+  let html = '<div class="conv-pane"><div class="conv-head">';
+  html += `<span class="conv-title">${convName(ci)} · ${spirals.length} ${t("spirals")}</span>`;
+  for (const b of badges) html += `<span class="conv-badge">${esc(b)}</span>`;
+  html += '</div><div class="thread">';
+
+  for (let k = 0; k < spirals.length; k++){
+    const sp = spirals[k];
+    let said;
+    if (LANG === "zh" && sp.zh){
+      said = esc(sp.zh);
+    } else {
+      said = sp.speaker
+        ? `<b>${esc(sp.speaker)}:</b> ${esc(sp.text)}`
+        : `<span class="unsigned">${esc(sp.text)}</span>`;
+    }
+    html += `<div class="trow">` +
+      `<span class="depth">${"│ ".repeat(depth[k])}</span>` +
+      `<span class="said">${said}</span></div>`;
+  }
+  html += "</div></div>";
+  return html;
+}
+
+/* ── Search ─────────────────────────────────────────── */
+function renderSearch(q){
+  const m = $("main");
+  const hits = [];
+  for (const loc of DATA){
+    for (let ci = 0; ci < loc.conversations.length; ci++){
+      const conv = loc.conversations[ci];
+      for (const sp of conv.spirals){
+        const hay = ((sp.speaker || "") + " " + sp.text + " " + (sp.zh || "")).toLowerCase();
+        if (hay.includes(q)){
+          hits.push({ loc, ci, conv });
+          break;
+        }
+      }
+    }
+  }
+  $("search-hits").textContent = hits.length + (hits.length === 1 ? " result" : " results");
+  if (!hits.length){ m.innerHTML = `<p class="empty-note">${t("No results")}</p>`; return; }
+
+  let html = '<div class="loc-list">';
+  for (const h of hits){
+    const speakers = [...new Set(h.conv.spirals.map(s => s.speaker).filter(Boolean))];
+    const label = speakers.slice(0, 3).map(spkName).join(", ");
+    html += `<div class="loc-row" data-body="${esc(h.loc.celestial_body)}"
+      data-loc="${esc(h.loc.location)}" data-conv="${h.ci}">
+      <span class="loc-marker">◇</span>
+      <span class="loc-name">${esc(locName(h.loc.location))} — ${esc(label)}</span>
+      <span class="loc-count">${esc(bodyName(h.loc.celestial_body))}</span>
+    </div>`;
+  }
+  html += "</div>";
+  m.innerHTML = html;
+  m.querySelectorAll("[data-conv]").forEach(el =>
+    el.onclick = () => nav({
+      type:"location",
+      body: el.dataset.body,
+      location: el.dataset.loc,
+      conv: +el.dataset.conv
+    }));
+}
+
+/* ── Language ───────────────────────────────────────── */
+function setLang(v){
+  LANG = v;
+  try { localStorage.setItem("nomai-repo.lang", v); } catch {}
+  $("lang-en").setAttribute("aria-pressed", String(v === "en"));
+  $("lang-zh").setAttribute("aria-pressed", String(v === "zh"));
+  $("page-title").textContent = t("Nomai Repository");
+  $("search").placeholder = t("Search speakers or text…");
+  document.documentElement.setAttribute("lang", v);
+  render();
+}
+$("lang-en").onclick = () => setLang("en");
+$("lang-zh").onclick = () => setLang("zh");
+
+/* ── Theme ──────────────────────────────────────────── */
+function paintThemeKey(){
+  const dark = $("theme").getAttribute("aria-checked") === "true";
+  $("theme").innerHTML = `<span class="${dark ? "" : "chosen"}">${LANG === "zh" ? "昼" : "Day"}</span><span aria-hidden="true"> / </span><span class="${dark ? "chosen" : ""}">${LANG === "zh" ? "夜" : "Night"}</span>`;
+  $("theme").setAttribute("aria-label", LANG === "zh" ? "切换昼夜" : "Switch day and night");
+}
+$("theme").onclick = () => {
+  const isDark = $("theme").getAttribute("aria-checked") === "true";
+  const next = isDark ? "light" : "dark";
+  $("theme").setAttribute("aria-checked", String(!isDark));
+  document.documentElement.setAttribute("data-theme", next);
+  paintThemeKey();
+  try { localStorage.setItem("nomai-repo.theme", next); } catch {};
+};
+
+/* ── Search input ───────────────────────────────────── */
+let searchTimer = null;
+$("search").oninput = () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    const q = $("search").value.trim().toLowerCase();
+    if (q) renderSearch(q);
+    else { $("search-hits").textContent = ""; render(); }
+  }, 200);
+};
+
+/* ── Init ───────────────────────────────────────────── */
+try {
+  const lang = localStorage.getItem("nomai-repo.lang");
+  if (lang === "zh" || lang === "en") setLang(lang);
+  const th = localStorage.getItem("nomai-repo.theme");
+  if (th === "light"){
+    $("theme").setAttribute("aria-checked", "false");
+    document.documentElement.setAttribute("data-theme", "light");
+  } else if (th === "dark"){
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
+} catch {}
+load();
+</script>

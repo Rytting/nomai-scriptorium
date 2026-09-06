@@ -1,5 +1,11 @@
-"""Inline the glyph table into the page so it ships as one self-contained file."""
+"""Inline what each page needs so it ships as one self-contained file.
+
+Two pages are built: the scriptorium, which carries the glyph table and the reader,
+and the repository, which carries the corpus. Both are meant to survive being saved
+to a disk and opened from a double click, where there is no server to fetch from.
+"""
 import json
+import base64
 import pathlib
 import subprocess
 from urllib.parse import quote
@@ -13,6 +19,11 @@ out = ROOT / "web" / "nomai-scriptorium.html"
 read_js = (ROOT / "web" / "read.js").read_text(encoding="utf-8")
 assert src.count("/*__READ__*/") == 1, "read placeholder missing"
 built = src.replace(marker, data).replace("/*__READ__*/", read_js)
+labels = (ROOT / "web" / "corpus-labels.js").read_text(encoding="utf-8")
+built = built.replace('<script src="corpus-labels.js"></script>', '<script>' + labels + '</script>')
+corpus = (ROOT / "docs" / "nomai_corpus.json").read_text(encoding="utf-8")
+assert built.count("/*__RANDOM_CORPUS__*/null") == 1
+built = built.replace("/*__RANDOM_CORPUS__*/null", corpus)
 for name, count in (("write-icon", 1), ("read-icon", 1), ("curl-icons", 2)):
     icon = (ROOT / "assets" / "icons" / f"{name}.svg").read_text(encoding="utf-8")
     # Inline the geometry so the downloadable HTML needs no external icon files.
@@ -41,5 +52,24 @@ stamp = '{ rev: "%s", date: "%s" }' % (rev.stdout.strip() or "dev", day.stdout.s
 assert built.count("/*__BUILD__*/") == 1, "build placeholder missing"
 built = built.replace('/*__BUILD__*/{ rev: "dev", date: "" }', "/*__BUILD__*/" + stamp)
 
+def report(path):
+    print(f"wrote {path.relative_to(ROOT)}  "
+          f"{len(path.read_text(encoding='utf-8')):,} bytes")
+
+
 out.write_text(built, encoding="utf-8")
-print(f"wrote {out.relative_to(ROOT)}  {len(out.read_text(encoding='utf-8')):,} bytes")
+report(out)
+
+# The repository is the same trick with a different payload. Over file:// a fetch is
+# refused by CORS, so the unbuilt page opens to "could not load" and nothing else --
+# which is exactly what it looks like when somebody double-clicks the source.
+repo_src = (ROOT / "web" / "repository.html").read_text(encoding="utf-8")
+repo_src = repo_src.replace('<script src="corpus-labels.js"></script>', '<script>' + labels + '</script>')
+boot_image = base64.b64encode((ROOT / "assets" / "outer-wilds-ventures-reference.jpg").read_bytes()).decode("ascii")
+repo_src = repo_src.replace("../assets/outer-wilds-ventures-reference.jpg", "data:image/jpeg;base64," + boot_image)
+corpus = (ROOT / "docs" / "nomai_corpus.json").read_text(encoding="utf-8")
+corpus_marker = "/*__CORPUS__*/null"
+assert repo_src.count(corpus_marker) == 1, "corpus placeholder missing (already built?)"
+repo_out = ROOT / "web" / "nomai-repository.html"
+repo_out.write_text(repo_src.replace(corpus_marker, corpus), encoding="utf-8")
+report(repo_out)
