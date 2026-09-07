@@ -418,7 +418,22 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
 .rack .slot[disabled]{cursor:default}
 .rack .busy{align-self:center;color:var(--text-faint);font-size:13px;padding:0 6px}
 @media (prefers-reduced-motion: reduce){.rack .key{transition:none}}
-.thread{display:flex;flex-direction:column;gap:2px}
+/* A translation grows a row at a time and never stops, so the wall ends up scrolled
+   off the top and all that is left is a screen of dialogue. Measured on a 390x844
+   phone: eight rows run to 871px, taller than the viewport, with the wall 570px above
+   them. Capping the box and scrolling inside it puts the wall, the translator and the
+   words back on one screen -- and the cap is in vh because what has to fit is the
+   screen, not a number of rows. */
+.thread-field{position:relative}
+.thread{display:flex;flex-direction:column;gap:2px;
+  max-height:44vh;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-width:thin}
+/* The same hint the library gives its mask row when it overflows sideways, turned
+   ninety degrees. Drawn outside the box so it never sits on a word. */
+.thread-more{position:absolute;left:50%;transform:translateX(-50%);
+  color:var(--mode-active);font:12px/1 var(--sans);pointer-events:none;z-index:3;
+  filter:drop-shadow(0 0 4px var(--mode-glow))}
+.thread-more.up{top:-9px}
+.thread-more.down{bottom:-9px}
 .trow{display:flex;gap:10px;align-items:baseline;padding:7px 10px;border-radius:3px;
   background:var(--rock-2);border:1px solid var(--edge-soft)}
 .trow .depth{color:var(--text-faint);font-family:var(--mono);font-size:12px;
@@ -886,7 +901,11 @@ footer a{color:var(--text-dim)}
      the lines it recovers, then the numbers -- reads downwards from under it. -->
 <div class="tcell" id="tcell"></div>
 
-<div class="thread" id="thread" hidden></div>
+<div class="thread-field" id="thread-field" hidden>
+  <div class="thread" id="thread"></div>
+  <span class="thread-more up" aria-hidden="true" hidden>&#9652;</span>
+  <span class="thread-more down" aria-hidden="true" hidden>&#9662;</span>
+</div>
 
 <div class="panel">
   <div class="row" id="write-controls">
@@ -4008,10 +4027,10 @@ function trackFromFit(ncols, fit){
    yourself needs no such ceremony. */
 function paintThread(){
   const sc = state.scroll, box = $("thread");
-  if (sc.length < 1){ box.hidden = true; return; }
+  if (sc.length < 1){ $("thread-field").hidden = true; return; }
   const depth = sc.map(() => 0);
   sc.forEach((sp, k) => { if (sp.parent != null) depth[k] = depth[sp.parent] + 1; });
-  box.hidden = false;
+  $("thread-field").hidden = false;
   box.innerHTML = sc.map((sp, k) => {
     /* A row for a spiral that is not on the wall yet would give away how many replies
        are coming, which is the one thing the reveal is for. */
@@ -4046,7 +4065,30 @@ function paintThread(){
       if (!e.target.closest(".linky")) selectSpiral(+r.dataset.row);
     });
   if (sc.some((_, k) => !state.seen.has(k))) scrambleRows();
+  /* The box no longer grows to fit, so the row being worked on has to be brought to
+     the reader instead. Moved by hand rather than with scrollIntoView, which walks
+     every scrollable ancestor and would drag the page along with it. */
+  const here = box.querySelector(".trow.picked, .trow.aimed");
+  if (here){
+    const top = here.offsetTop, bottom = top + here.offsetHeight;
+    if (top < box.scrollTop) box.scrollTop = top;
+    else if (bottom > box.scrollTop + box.clientHeight)
+      box.scrollTop = bottom - box.clientHeight;
+  }
+  updateThreadEdges();
 }
+/* Which way there is more to read. Hidden when the box is not overflowing at all, so
+   an arrow never points at nothing. */
+function updateThreadEdges(){
+  const field = $("thread-field"), box = $("thread");
+  if (!field || field.hidden) return;
+  const over = box.scrollHeight - box.clientHeight > 1;
+  field.querySelector(".thread-more.up").hidden = !over || box.scrollTop <= 1;
+  field.querySelector(".thread-more.down").hidden =
+    !over || box.scrollTop + box.clientHeight >= box.scrollHeight - 1;
+}
+$("thread").addEventListener("scroll", updateThreadEdges);
+window.addEventListener("resize", updateThreadEdges);
 /* keep the unread rows moving, so they read as writing rather than as damage */
 let scrambleTimer = null;
 function scrambleRows(){
@@ -4477,7 +4519,7 @@ function clearWallState(){
   state.aim = { kind: "new", index: 0 };
   state.seen = new Set(); state.sel = 0; state.parents = []; state.edges = [];
   state.track = null; state.socket = null;
-  $("thread").innerHTML = ""; $("thread").hidden = true;
+  $("thread").innerHTML = ""; $("thread-field").hidden = true;
   $("answering").hidden = true;
 }
 function clearReader(){
@@ -4593,7 +4635,7 @@ function readDrawing(text, name, source = "file"){
   } else {
     state.scroll = [];
     state.aim = { kind: "new", index: 0 };
-    $("thread").hidden = true;
+    $("thread-field").hidden = true;
   }
   state.seen = new Set();
   state.sel = 0;
@@ -10801,7 +10843,7 @@ function takeDown(i, btn){
 
 /* Which build this is. Filled in from git when the page is built; `dev` when the
    source file is opened straight from disk. */
-const BUILD = /*__BUILD__*/{"rev": "v1.1", "date": "2026-09-07"};
+const BUILD = /*__BUILD__*/{"rev": "v1.1-1-g8bc8b69", "date": "2026-09-07"};
 const REPO = "github.com/Rytting/nomai-scriptorium";
 
 /* The same writer, on a straight track instead of a coiled one. Everything that
