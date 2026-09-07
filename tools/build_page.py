@@ -5,12 +5,17 @@ and the repository, which carries the corpus. Both are meant to survive being sa
 to a disk and opened from a double click, where there is no server to fetch from.
 """
 import json
+import argparse
+from datetime import date
 import base64
 import pathlib
 import subprocess
 from urllib.parse import quote
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--release-version', help='Stamp a release before its final commit is tagged')
+args = parser.parse_args()
 src = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
 data = (ROOT / "web" / "glyphs.min.json").read_text(encoding="utf-8")
 marker = "/*__GLYPHS__*/null"
@@ -48,7 +53,8 @@ rev = subprocess.run(["git", "describe", "--tags", "--always"], cwd=ROOT,
                      capture_output=True, text=True)
 day = subprocess.run(["git", "log", "-1", "--format=%cs"], cwd=ROOT,
                      capture_output=True, text=True)
-stamp = '{ rev: "%s", date: "%s" }' % (rev.stdout.strip() or "dev", day.stdout.strip())
+stamp = json.dumps(dict(rev=args.release_version or rev.stdout.strip() or 'dev',
+                        date=date.today().isoformat() if args.release_version else day.stdout.strip()))
 assert built.count("/*__BUILD__*/") == 1, "build placeholder missing"
 built = built.replace('/*__BUILD__*/{ rev: "dev", date: "" }', "/*__BUILD__*/" + stamp)
 

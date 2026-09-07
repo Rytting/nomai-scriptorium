@@ -21,7 +21,15 @@ in one HTML file.
 - **Read** a scroll somebody else drew &mdash; hold the translator against it and the
   lines come back one at a time. Replies stay hidden until you have read what they
   answer.
-- **Take one off the wall**: six walls from the game, verbatim, in English and Chinese.
+- **Explore the [Nomai Library](https://rytting.github.io/nomai-scriptorium/web/nomai-repository.html)**:
+  45 locations, 143 conversations and 684 spirals, browsable by celestial body or speaker.
+  Choose to read in the library or take a scroll into the Scriptorium without revealing its text first.
+- **Draw random scrolls** from the library. The original preset selection stays until you refresh it.
+
+Version **1.1** introduces the library. Every collected spiral now has Chinese text;
+existing mod translations are preserved and gaps use official Chinese with recorded
+source keys for later replacement. Search currently covers the whole library.
+See [release notes](docs/releases/v1.1.md).
 
 ## How this was made
 
