@@ -616,12 +616,27 @@ footer a{color:var(--text-dim)}
 .tcell:not(:empty){margin-top:-19px;display:flex;flex-direction:column}
 #write-main{display:flex;justify-content:center;margin-top:-12px}
 .translator{display:flex;flex-direction:column;gap:12px}
+/* The screen shows every spiral that is on the wall, translated ones as words and the
+   rest as noise, so it grows with the scroll -- on a phone an eight-turn thread fills
+   it past the height of the viewport and pushes the wall off the top. Capped, it
+   scrolls instead, and paintTranslator keeps the line being held in view. */
+.screen-field{position:relative}
 .screen{border:2px solid #cfd6dc;border-radius:6px;padding:20px 22px;min-height:104px;
+  max-height:32vh;overflow-y:auto;overscroll-behavior-y:contain;
   display:flex;align-items:center;justify-content:center;text-align:center;
   background:radial-gradient(ellipse at 50% 55%,var(--screen-1) 0%,var(--screen-2) 78%);
   font-family:var(--mono);font-size:14px;line-height:1.75;color:var(--screen-ink);
   text-shadow:0 0 9px var(--screen-glow,rgba(110,242,192,.45));word-break:break-word}
-.screen.many{text-align:left;line-height:1.9}
+/* `align-items:center` on a child taller than the box puts its first line above the
+   scroll origin, where nothing can reach it. `many` is already the multi-line case. */
+.screen.many{text-align:left;line-height:1.9;align-items:flex-start}
+/* inside the border rather than outside it: the translator is pulled up into the
+   plate, so an arrow above the screen would land on the drawing */
+.screen-more{position:absolute;left:50%;transform:translateX(-50%);
+  color:var(--mode-active);font:12px/1 var(--sans);pointer-events:none;z-index:3;
+  filter:drop-shadow(0 0 4px var(--mode-glow))}
+.screen-more.up{top:3px}
+.screen-more.down{bottom:3px}
 .screen .idle{opacity:.85}
 .screen .garble{color:var(--screen-garble,#5fbfa4);opacity:.9}
 .trow .said.original-message,.reading .t.original-message{color:var(--warn)}
@@ -3717,11 +3732,47 @@ function paintTranslator(){
     : t("Hold to translate");
   const fill = $("tfill");
   if (fill) fill.style.width = (state.seen.has(state.sel) ? 100 : tprog * 100) + "%";
+  keepHeldLineInView();
 }
+/* The line being held is the one de-garbling in front of you, so it is the one that
+   has to stay on the screen; `.pick` is the marker screenLine puts on it. Measured off
+   rectangles rather than offsetTop, which would be read against whichever ancestor
+   happens to be positioned. */
+function keepHeldLineInView(){
+  const line = $("line");
+  if (!line) return;
+  const sc = line.parentElement, pick = line.querySelector(".pick");
+  if (pick){
+    const pr = pick.getBoundingClientRect(), sr = sc.getBoundingClientRect();
+    if (pr.top < sr.top) sc.scrollTop += pr.top - sr.top;
+    else if (pr.bottom > sr.bottom) sc.scrollTop += pr.bottom - sr.bottom;
+  }
+  updateScreenEdges();
+}
+function updateScreenEdges(){
+  const line = $("line");
+  if (!line) return;
+  const sc = line.parentElement, field = sc.parentElement;
+  const up = field.querySelector(".screen-more.up");
+  const down = field.querySelector(".screen-more.down");
+  if (!up || !down) return;
+  const over = sc.scrollHeight - sc.clientHeight > 1;
+  up.hidden = !over || sc.scrollTop <= 1;
+  down.hidden = !over || sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 1;
+}
+document.addEventListener("scroll", e => {
+  if (e.target instanceof Element && e.target.classList.contains("screen"))
+    updateScreenEdges();
+}, true);
+window.addEventListener("resize", updateScreenEdges);
 
 function translator(){
   $("tcell").innerHTML = `<div class="translator">
-    <div class="screen"><span class="line" id="line"></span></div>
+    <div class="screen-field">
+      <div class="screen"><span class="line" id="line"></span></div>
+      <span class="screen-more up" aria-hidden="true" hidden>&#9652;</span>
+      <span class="screen-more down" aria-hidden="true" hidden>&#9662;</span>
+    </div>
     <div class="tbar"><i id="tfill"></i></div>
     <div class="hold-row">
       <button class="btn arrow" id="t-prev" hidden
