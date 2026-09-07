@@ -1784,11 +1784,13 @@ PYE: The more we know about this alien matter, the better our chances of surviva
 
 White Hole Station
 
-POKE: Welcome to the White Hole Station! Did you fall through the black hole by accident? (Don’t worry; you aren’t the first.) You can use this warp tower to return to Brittle Hollow.
+POKE: Welcome to the White Hole Station! If you fell through the black hole by accident (don't worry, you aren’t the first), this warp tower can return you to Brittle Hollow.
 
-POKE: Warp towers work like this: Stand in the middle of the platform on the floor, look up, and wait.
+POKE: Every warp tower is tuned to a specific astral body. A tower's warp can only be used during the brief window when the tower is aligned with its corresponding astral body (in this case, Brittle Hollow).
 
-POKE: The path opens when the tower’s corresponding astral body (in this case, Brittle Hollow) is directly overhead.
+You must be standing on the warp platform on the floor during this alignment to be warped.
+
+POKE: If you look up while the station is rotating, you can see the alignment happens when the astral body is directly overhead.
 
 
 

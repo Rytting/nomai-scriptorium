@@ -20,7 +20,7 @@ Branching:
 """
 
 import re, json, html, sys, pathlib
-from difflib import SequenceMatcher
+from chinese_lookup import ChineseLookup
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -49,43 +49,13 @@ official_zh = load_xml_translations(mod_xml) if mod_xml.exists() else {}
 mod_zh = load_xml_translations(mod_path_alt) if mod_path_alt.exists() else {}
 
 
+chinese_lookup = ChineseLookup(mod_zh, official_zh)
+
+
 def find_chinese(english_line):
-    """Look up Chinese for an English speaker line. Mod first, then official."""
-    clean = re.sub(r"\s+", " ", english_line.replace("*", "")).strip()
-    if clean in mod_zh:
-        return mod_zh[clean], "mod"
-    if clean in official_zh:
-        return official_zh[clean], "official"
-    # fuzzy match within speaker bucket
-    m = re.match(r"^([A-Z][A-Z]+): ", clean)
-    if not m:
-        return _fuzzy_all(clean)
-    speaker = m.group(1)
-    best_ratio, best_val, best_src = 0, None, None
-    clean_norm = re.sub(r"\s+", " ", clean)
-    for table, src in [(mod_zh, "mod"), (official_zh, "official")]:
-        for key, val in table.items():
-            if not key.startswith(speaker + ": "):
-                continue
-            key_norm = re.sub(r"\s+", " ", key)
-            ratio = SequenceMatcher(None, clean_norm[:100], key_norm[:100]).ratio()
-            if ratio > best_ratio:
-                best_ratio, best_val, best_src = ratio, val, src
-    if best_ratio > 0.75:
-        return best_val, best_src
-    return None, None
-
-
-def _fuzzy_all(text):
-    best_ratio, best_val, best_src = 0, None, None
-    for table, src in [(mod_zh, "mod"), (official_zh, "official")]:
-        for key, val in table.items():
-            ratio = SequenceMatcher(None, text[:100], key[:100]).ratio()
-            if ratio > best_ratio:
-                best_ratio, best_val, best_src = ratio, val, src
-    if best_ratio > 0.75:
-        return best_val, best_src
-    return None, None
+    """Prefer real mod Chinese, then official; use only exact/reviewed keys."""
+    value, source, _ = chinese_lookup.find(english_line)
+    return value, source
 
 
 # ── Parse corpus ────────────────────────────────────────────────────────
@@ -340,9 +310,11 @@ def attach_chinese(locations):
             for sp in conv["spirals"]:
                 en_line = (f"{sp['speaker']}: {sp['text']}"
                            if sp["speaker"] else sp["text"])
-                zh, src = find_chinese(en_line)
+                zh, src, key = chinese_lookup.find(en_line)
                 if zh:
                     sp["zh"] = zh
+                    sp["zh_source"] = src
+                    sp["zh_key"] = key
                     stats[src] += 1
                 else:
                     sp["zh"] = None
