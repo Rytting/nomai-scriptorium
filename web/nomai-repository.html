@@ -94,6 +94,19 @@ const CORPUS_LABELS = {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nomai Repository</title>
+<script>
+/* The log opens at night whatever the room is set to. It is a lit screen in a dark
+   cockpit, and it is the one page here that does not take the browser's word for what
+   time it is -- the scriptorium still does.
+   This runs in the head, ahead of the stylesheet, because the attribute has to be on
+   the element before the first paint; set from the init block at the end of the body
+   it would let a light-mode browser paint one white frame first. An explicit choice
+   still wins: the toggle writes nomai-repo.theme, and only "light" moves it. */
+document.documentElement.setAttribute("data-theme", (() => {
+  try { return localStorage.getItem("nomai-repo.theme") === "light" ? "light" : "dark"; }
+  catch { return "dark"; }
+})());
+</script>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap">
 <style>
@@ -7042,13 +7055,10 @@ $("search").oninput = () => {
 try {
   const lang = localStorage.getItem("nomai-repo.lang");
   if (lang === "zh" || lang === "en") setLang(lang);
-  const th = localStorage.getItem("nomai-repo.theme");
-  if (th === "light"){
+  /* the theme itself was settled in the head, before the first paint; all that is
+     left here is to make the switch agree with what is already on screen */
+  if (localStorage.getItem("nomai-repo.theme") === "light")
     $("theme").setAttribute("aria-checked", "false");
-    document.documentElement.setAttribute("data-theme", "light");
-  } else if (th === "dark"){
-    document.documentElement.setAttribute("data-theme", "dark");
-  }
 } catch {}
 load();
 </script>
