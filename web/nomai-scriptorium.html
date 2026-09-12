@@ -447,8 +447,7 @@ svg.socket-layer{position:absolute;left:0;top:0;width:100%;height:100%;
 .trow .linky{flex:none}
 .trow.aimed{border-color:var(--amber);background:var(--rock-3)}
 .trow.picked{border-color:var(--beam);background:var(--rock-3)}
-.trow[data-row]{cursor:default}
-#read-pane ~ * .trow[data-row]{cursor:pointer}
+.trow[data-row]{cursor:pointer}
 .screen .pick{color:var(--beam)}
 .screen .off{opacity:.45}
 .answering{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;
@@ -707,6 +706,52 @@ footer a{color:var(--text-dim)}
 .tcell:empty{display:none}
 .tcell:not(:empty){margin-top:-19px;display:flex;flex-direction:column}
 #write-main{display:flex;justify-content:center;margin-top:-12px}
+body.wall-editing .wrap{max-width:1460px}
+.wall-editor{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(340px,1fr);gap:24px;align-items:start}
+.editor-wall{position:sticky;top:16px;min-width:0}
+.editor-side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.editor-toolbar,.editor-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.editor-toolbar{margin-bottom:10px}
+.editor-toolbar .label{margin-right:auto}
+.editor-toolbar .btn,.editor-nav .btn{min-height:40px;padding:7px 12px}
+.editor-nav output{flex:1;text-align:center;color:var(--text-dim)}
+.wall-editor .plate{height:68vh;min-height:300px}
+.wall-editor #art{width:100%;height:100%}
+.wall-editor #art > svg{width:100%;height:100%;max-width:none}
+.wall-editor #write-main{margin:0;justify-content:stretch;gap:8px}
+.wall-editor #write-main .wall-action{flex:1;min-width:0;padding:12px}
+.wall-editor #editor-reply{flex:none;min-width:0}
+.wall-editor .sigrow .hint{display:none}
+.wall-editor .sigrow input{flex:1;min-width:100px;width:auto}
+.wall-editor #msg{min-height:150px;max-height:36vh}
+.wall-editor .answering{margin:0}
+.wall-editor .answering .q{display:none}
+.wall-editor .answering .label{margin-right:auto}
+.wall-editor .thread{max-height:26vh}
+.wall-editor #write-controls{display:flex;flex-direction:column;align-items:stretch;gap:12px}
+.editor-settings{border-top:1px solid var(--edge);padding-top:10px}
+.editor-settings summary{cursor:pointer;color:var(--text-dim)}
+.editor-settings .row{gap:16px;padding-top:12px;align-items:flex-start}
+.editor-settings .field{flex:1 1 130px}
+.editor-settings input[type="range"]{min-width:0;max-width:100%}
+.editor-settings .hw{max-width:100%;flex-wrap:wrap}
+.editor-settings .curl-toggle svg{width:60px;height:70px}
+.editor-settings .curl-toggle button{min-width:70px}
+.wall-editor .trow .said{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.wall-editor .trow.aimed .said{-webkit-line-clamp:unset}
+.wall-editor .trow .depth{max-width:24%;overflow:hidden}
+.draft-mark{color:var(--amber);font-size:11px;white-space:nowrap}
+.editor-save-status{font-size:11px;color:var(--text-faint);margin-left:auto}
+.editor-reply-context{display:flex;gap:8px;align-items:baseline;font-size:13px;color:var(--text-dim)}
+.editor-reply-context button{min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;flex:1;border:0;background:none;color:var(--text);font:inherit;cursor:pointer;padding:4px 0}
+@media(max-width:850px){
+  .wall-editor{grid-template-columns:minmax(0,1fr);gap:16px}
+  .editor-wall{position:static}
+  .wall-editor .plate{height:42vh;min-height:230px}
+  .wall-editor #msg{min-height:110px}
+  .wall-editor .thread{max-height:24vh}
+}
 .translator{display:flex;flex-direction:column;gap:12px}
 /* The screen shows every spiral that is on the wall, translated ones as words and the
    rest as noise, so it grows with the scroll -- on a phone an eight-turn thread fills
@@ -722,6 +767,13 @@ footer a{color:var(--text-dim)}
 /* `align-items:center` on a child taller than the box puts its first line above the
    scroll origin, where nothing can reach it. `many` is already the multi-line case. */
 .screen.many{text-align:left;line-height:1.9;align-items:flex-start}
+.screen.conversations{height:32vh;min-height:150px;box-sizing:border-box}
+.screen.conversations .line{display:block;width:100%}
+.screen.conversations .line::before,.screen.conversations .line::after{
+  content:"";display:block;height:var(--leading-space,0px)}
+.screen.conversations .line::after{height:var(--trailing-space,0px)}
+.translator-entry{display:block;opacity:.55;transition:opacity .15s ease}
+.translator-entry[aria-current="true"]{opacity:1}
 /* inside the border rather than outside it: the translator is pulled up into the
    plate, so an arrow above the screen would land on the drawing */
 .screen-more{position:absolute;left:50%;transform:translateX(-50%);
@@ -950,7 +1002,7 @@ footer a{color:var(--text-dim)}
       </div>
     </div>
     <div class="field">
-      <span class="label" id="cl">Curl</span>
+      <span class="label" id="cl">Curl (selected spiral)</span>
       <div class="seg curl-toggle" role="group" aria-labelledby="cl">
         <button id="c-cw" type="button" aria-pressed="true">
           <svg viewBox="22 57 83 97" aria-hidden="true" focusable="false"><g fill="currentColor" fill-rule="evenodd" transform="translate(-0 165) scale(1 -1)">
@@ -964,6 +1016,13 @@ footer a{color:var(--text-dim)}
   </g></svg>
           <span class="curl-label">The other way</span>
         </button>
+      </div>
+    </div>
+    <div class="field">
+      <label class="label" for="handmix">Hand mix</label>
+      <div class="hw">
+        <input type="range" id="handmix" min="0" max="100" step="5" value="100">
+        <span class="hw-read" id="handmix-read"></span>
       </div>
     </div>
     <div class="field">
@@ -1290,7 +1349,7 @@ function layoutFor(ncols, tilt, flip, tight){
   return {
     /* the shape parameters, so a scroll can tell one placement's hand and coil from
        another's when it shortlists them */
-    b, flip: f,
+    b, flip: f, tilt: tilt || 0,
     ncols, box, fraction, slopeAt, colAt,
     /* the point the path winds into, in the same coordinates place() returns --
        what "away from the spiral" is measured against */
@@ -1535,7 +1594,30 @@ const REACH = [1, 1.5, 2.2, 3.2];
    for here, but only lightly: a wall in the game has replies curling both ways and
    coiled to different degrees, and that is what it should look like. The charge is
    there to keep a change from being arbitrary, not to keep the scroll uniform. */
-const PAY_FLIP = 0.1, PAY_TIGHT = 0.04;
+/* PAY_FLIP used to be 0.1 -- the weight of a tie-breaker, which is what a scroll-wide
+   default was. It now carries the hand mix, something somebody set on purpose, so it
+   has to be able to win an ordinary contest of clearance while still losing to a
+   placement that is the only one that fits. A spiral asked for by name does not come
+   through here at all; that sorts ahead outright. */
+const PAY_FLIP = 0.45, PAY_TIGHT = 0.04;
+/* The mix says how much of the tree leans clockwise; this says which spirals do.
+   A stable dither, not a run: each spiral holds its own draw, so raising the mix turns
+   them over one at a time rather than reshuffling the sheet, and a scroll keeps its
+   pattern between redraws. Keyed on state.seed rather than the retry seed so relaying
+   the scroll does not deal a new hand to everybody. */
+function mixDraw(i){
+  let h = ((i + 1) * 2654435761) ^ (((state.seed | 0) * 40503) >>> 0);
+  h = (h ^ (h >>> 15)) >>> 0;
+  return (h % 1000) / 1000;
+}
+function mixHand(i){
+  const p = (state.handMix == null ? 100 : state.handMix) / 100;
+  if (p >= 1) return 1;
+  if (p <= 0) return -1;
+  return mixDraw(i) < p ? 1 : -1;
+}
+/* What a spiral is actually drawn in: its own hand if it was given one, else the mix. */
+const handOf = (sp, i) => sp.flip == null ? mixHand(i) : sp.flip;
 /* Attaching on the inward normal grows a reply into the parent's own coil. Nothing
    has to touch for that to look tangled, so it is a last resort, not a choice. */
 const PAY_INWARD = 0.9;
@@ -1556,7 +1638,15 @@ const TOO_CLOSE = 4;
 let WANT_ROOM = 6;
 const tights = b => [b, Math.min(0.6, b * 1.4), Math.max(0.15, b * 0.72)]
   .filter((v, i, a) => a.indexOf(v) === i);
-function chooseSpot(laid, parentIdx, ncols, flip, tight, keys){
+/* `chosen` says the hand came from somebody rewriting this spiral rather than from
+   the scroll's default. PAY_FLIP is a tie-breaker -- 0.1 of `want` -- which is the
+   right weight for a preference and far too light for an instruction: measured on a
+   ten-spiral scroll, asking for the mirror hand put it sixth in the shortlist and
+   layScroll takes the first, so the choice never reached the page at all. A chosen
+   hand sorts ahead of the other one outright instead. The other hand stays in the
+   list, at the tail, because it is still what rescues a grid that cannot be read at
+   the hand that was asked for. */
+function chooseSpot(laid, parentIdx, ncols, flip, tight, keys, chosen){
   const par = laid[parentIdx];
   /* The reply's own glyphs. This used to borrow the parent's on the grounds that any
      grid of the same size has the same shape -- but they are only the same size when
@@ -1575,8 +1665,13 @@ function chooseSpot(laid, parentIdx, ncols, flip, tight, keys){
   const thinTaken = thin(taken);
   const want = WANT_ROOM * K * MAX_SCALE;
   const ranked = [];
+  /* Every list here is ordered best-first -- REACH, tights, the preferred hand, SPOTS
+     -- so the candidates already found when the clock runs out are the ones that were
+     worth finding. Never bail on an empty shortlist: layScroll reads cands[0]. */
+  outer:
   for (const reach of REACH) for (const tw of tights(tight)) for (const fl of [flip, -flip])
   for (const t of SPOTS) for (const side of [1, -1]){
+    if (ranked.length && outOfLayoutTime()) break outer;
     const pl = attach(par.L, par.shift, t, side, reach, fl, tw, ncols);
     const pts = centres(ncols, keys, pl.L, pl.shift);
     /* nothing hangs below the socket: the scroll is plugged into the wall at its
@@ -1600,7 +1695,13 @@ function chooseSpot(laid, parentIdx, ncols, flip, tight, keys){
     if (room < TOO_CLOSE * K * MAX_SCALE) score -= 50 * want;
     ranked.push({ score, pl });
   }
-  ranked.sort((a, b) => b.score - a.score);
+  ranked.sort((a, b) => {
+    if (chosen){
+      const am = a.pl.L.flip === flip, bm = b.pl.L.flip === flip;
+      if (am !== bm) return am ? -1 : 1;
+    }
+    return b.score - a.score;
+  });
   /* The shortlist has to be varied, not just good. Some grids cannot be read at one
      winding at all -- no seed, tilt or coil rescues them -- so a shortlist that
      happens to be eight placements of the same hand leaves such a reply nowhere to go
@@ -1717,6 +1818,18 @@ function handFor(grid, amount, seed0, L, budget){
    slow, do not start. An unverified placement is what the code has always fallen back
    to when nothing read -- this only means it falls back sooner. */
 const SCROLL_MS = 3000;
+/* `scrollUntil` only ever bounded verification -- the reads. The placement search was
+   outside it entirely, and that is where the time actually goes: chooseSpot is a
+   4x3x2x8x2 sweep whose every candidate measures itself against every glyph already
+   placed, and layScroll runs it once per reply. Measured on a six-spiral scroll, one
+   renderScroll took 5.6s with a 3s budget and 4.6s with a 300ms one -- the budget was
+   not being disobeyed, it was simply not covering the expensive half. Six seconds of
+   synchronous layout is a frozen page, and every control that reshapes (the hand, the
+   coil, the lean) went through it. This deadline covers the whole call. */
+/* What a redraw gets while you are still moving a control, and what a commit gets. */
+const RESHAPE_MS = 1000, COMMIT_MS = 5000;
+let layoutUntil = Infinity;
+const outOfLayoutTime = () => layoutUntil !== Infinity && performance.now() > layoutUntil;
 /* Typing is where three seconds is the right answer: the layout runs on every
    keystroke and a slow one is felt. A scroll pulled out of the library is not that --
    it is one click, once, against a page that has already navigated, so the budget it
@@ -1739,20 +1852,25 @@ function tryHand(grid, amount, seed0, L){
   if (got === null && handRanOut) scrollRanOut = true;
   return got;
 }
-function layScroll(spirals, tilt0, flip, tight, amount, seed){
+function layScroll(spirals, tilt0, flip, tight, amount, seed, fixed = []){
   const laid = [];
   spirals.forEach((sp, idx) => {
     const seed0 = seed + idx * 101;
+    if (fixed[idx]){ laid.push({ ...fixed[idx], sp }); return; }
     let place;
     if (idx === 0){
       /* The root was never checked at all, which is how a whole scroll could come out
          unreadable. The layout may not change its winding or its coil, those being
          the writer's, but its angle and its hand are nobody's. */
-      place = { shift: [0, 0], L: layoutFor(sp.grid.ncols, tilt0, flip, tight),
+      /* A hand chosen while rewriting this spiral wins over the scroll's default.
+         The root has no placement search to fall back on, so its hand is simply
+         what it was given. */
+      const rootFlip = handOf(sp, idx);
+      place = { shift: [0, 0], L: layoutFor(sp.grid.ncols, tilt0, rootFlip, tight),
                 seed: seed0, verified: false };
       if (amount !== undefined){
         for (const dt of NUDGES){
-          const L = layoutFor(sp.grid.ncols, tilt0 + dt, flip, tight);
+          const L = layoutFor(sp.grid.ncols, tilt0 + dt, rootFlip, tight);
           const got = tryHand(sp.grid, amount, seed0, L);
           if (got !== null){
             place = { shift: [0, 0], L, seed: got, verified: true };
@@ -1762,8 +1880,12 @@ function layScroll(spirals, tilt0, flip, tight, amount, seed){
         }
       }
     } else {
-      const cands = chooseSpot(laid, sp.parent, sp.grid.ncols, flip, tight,
-                               [...sp.grid.glyphs.keys()]);
+      /* A reply's chosen hand goes in as the preference the search ranks by, not as
+         a rule. Some grids cannot be read at one winding at all, and the shortlist
+         keeps the other hand precisely so verification can rescue them; forcing it
+         would ship those unreadable. PAY_FLIP is what makes the choice show. */
+      const cands = chooseSpot(laid, sp.parent, sp.grid.ncols, handOf(sp, idx), tight,
+                               [...sp.grid.glyphs.keys()], sp.flip != null);
       place = { ...cands[0], seed: seed0, verified: false };
       if (amount !== undefined){
         for (const c of cands){
@@ -1778,11 +1900,16 @@ function layScroll(spirals, tilt0, flip, tight, amount, seed){
   });
   return laid;
 }
-function renderScroll(spirals, amount, seed, flip, tight, budget = SCROLL_MS){
-  const tilt0 = balanceTilt(spirals, flip, tight);
-  scrollUntil = amount === undefined ? Infinity : performance.now() + budget;
+function renderScroll(spirals, amount, seed, flip, tight, budget = SCROLL_MS, fixed = []){
+  const started = performance.now();
+  /* The trial pass wants a centre of mass, not a good sheet, so it gets a third and
+     the placements it settles for under pressure cost only the lean. */
+  layoutUntil = started + budget / 3;
+  const tilt0 = fixed.length ? fixed[0].L.tilt : balanceTilt(spirals, flip, tight);
+  layoutUntil = started + budget;
+  scrollUntil = amount === undefined ? Infinity : layoutUntil;
   scrollRanOut = false;
-  let placed = layScroll(spirals, tilt0, flip, tight, amount, seed);
+  let placed = layScroll(spirals, tilt0, flip, tight, amount, seed, fixed);
   /* The root is settled first, on whether it reads, and the replies then fit around
      whatever it did. If one of them could not find a placement that reads back it has
      been shipped on hope, and the sheet it was given is the thing to change: lean the
@@ -1800,7 +1927,7 @@ function renderScroll(spirals, amount, seed, flip, tight, budget = SCROLL_MS){
          false is that the check was skipped, and the retry would skip them again. */
       if (scrollRanOut || performance.now() > scrollUntil) break;
       const alt = layScroll(spirals, tilt0 + RELAY[k], flip, tight, amount,
-                            seed + (k + 1) * SEED_STEP);
+                            seed + (k + 1) * SEED_STEP, fixed);
       if (kept(alt) > kept(placed)) placed = alt;
     }
   }
@@ -1847,7 +1974,8 @@ function renderScroll(spirals, amount, seed, flip, tight, budget = SCROLL_MS){
   /* the hand the root was actually written in, which is not the one asked for:
      layScroll searches for a seed that reads back, per spiral */
   return { svg: document_(groups, -W / 2, Y, W, H), root: laid[0].L, tilt0,
-           hand: placed[0].seed, unchecked: scrollRanOut };
+           hand: placed[0].seed, unchecked: scrollRanOut,
+           placements: placed.map(p => ({ L: p.L, shift: p.shift, seed:p.seed, verified:p.verified })) };
 }
 
 /* Reading a drawing back.
@@ -3261,6 +3389,27 @@ const ZH = {
   "Rewriting": "\u6539\u5199",
   "not a reply after all": "\u7b97\u4e86\uff0c\u4e0d\u56de\u590d\u4e86",
   "leave it as it is": "\u7b97\u4e86\uff0c\u4e0d\u6539\u4e86",
+  "Exit rewrite": "退出改写",
+  "Exit reply": "退出回复",
+  "Wall": "整面墙",
+  "Fit wall": "查看全墙",
+  "Zoom in": "放大墙面",
+  "Zoom out": "缩小墙面",
+  "Current spiral": "当前螺旋",
+  "Wall appearance": "整面墙的外观",
+  "Reply to this spiral": "回复这条",
+  "Draft": "草稿",
+  "Save": "保存",
+  "Undo": "撤销",
+  "Redo": "重做",
+  "Autosaved": "已自动暂存",
+  "Saving…": "暂存中…",
+  "Not saved locally": "尚未在本机保存",
+  "Local save unavailable": "本机保存不可用",
+  "Could not restore saved wall": "暂存的墙面无法恢复",
+  "Replying to": "正在回复",
+  "Unsigned spiral": "未署名螺旋",
+  "Clear this wall? You can undo this. Your input text and signature will be kept.": "清空这面墙？可以撤销，输入框里的文字和署名会保留。",
   "Your text": "\u4f60\u7684\u6587\u5b57",
   "Someone else's scroll": "\u522b\u4eba\u7684\u5377\u8f74",
   "Drop a Nomai SVG here, or click to choose one":
@@ -3317,6 +3466,8 @@ const ZH = {
   "Settle on this reading": "就用这一句",
   "previous reading": "上一句读法",
   "next reading": "下一句读法",
+  "previous spiral": "上一条对话",
+  "next spiral": "下一条对话",
   "The original dialect is on.": "原始方言已打开。",
   "ORIGINAL DIALECT ON": "原始方言已打开",
   "SCROLL ETCHED": "卷轴已刻录，可导入阅读",
@@ -3342,12 +3493,13 @@ const ZH = {
   "replies": "\u56de\u590d", "joins": "\u8fde\u63a5", "alphabet": "\u5b57\u6bcd\u8868",
   "Hold to translate": "\u6309\u4f4f\u7ffb\u8bd1",
   "All translated": "\u5168\u90e8\u7ffb\u8bd1\u5b8c\u4e86",
+  "This spiral is translated": "这一条已翻译",
   "reading": "\u8bfb\u6cd5", "scroll": "\u5377\u8f74", "or": "\u6216",
   "intended": "\u672c\u610f", "also fits": "\u4e5f\u8bf4\u5f97\u901a", "stuck": "\u5361\u4f4f\u4e86",
   "Download SVG": "\u4e0b\u8f7d SVG",
   "Could not save": "\u5b58\u4e0d\u4e0b\u6765",
   "Try again in a moment": "\u7a0d\u540e\u518d\u8bd5\u4e00\u6b21",
-  "Saved": "存好了",
+  "Saved": "已保存",
   /* Names of places and people follow the game's official Chinese localisation
      rather than a transliteration of our own: someone who has played it in Chinese
      should recognise the wall without having to translate back through English.
@@ -3361,6 +3513,8 @@ const ZH = {
     "\u8fd9\u91cc\u6709\u4e00\u4e9b\u5df2\u7ecf\u523b\u5f55\u597d\u7684\u5377\u8f74\uff0c\u76f4\u63a5\u53d6\u81ea\u6e38\u620f\u3002\u5982\u679c\u4f60\u8fd8\u6ca1\u901a\u5173\uff0c\u8fd9\u4e9b\u5377\u8f74\u6700\u597d\u8fd8\u662f\u5728\u6e38\u620f\u91cc\u9047\u89c1\u3002",
   "Open the wall": "\u6253\u5f00\u5377\u8f74\u5899",
   "There's more to explore here.": "这里还有更多可探索的地方",
+  "Hand mix": "手性分布", "Curl (selected spiral)": "当前选中螺旋手性",
+  "all one way": "全部同向", "all mirrored": "全部镜像",
   "Draw random scrolls": "随机换一批卷轴",
   "Or someone else's scroll": "或者别人的卷轴",
   "Six scrolls the Nomai left in this star system, kept here the way a wall keeps them. Take one down and read it; you can answer it afterwards, which is what the walls were for.":
@@ -3399,6 +3553,8 @@ function paintLang(){
   $("lang-en").setAttribute("aria-pressed", String(LANG === "en"));
   $("lang-zh").setAttribute("aria-pressed", String(LANG === "zh"));
   $("m-write").setAttribute("aria-label", t("Write"));
+  /* the mix readout is written in, not marked up, so the walker cannot reach it */
+  syncMix();
   $("m-read").setAttribute("aria-label", t("Read a scroll"));
   /* The heading is not one sentence with a word swapped in -- each language wants
      its own shape -- so it is written whole here instead of walked. */
@@ -3487,6 +3643,366 @@ function setLang(v){
   else idleTranslator();
 }
 const state = { dialect: "strict", base: 256, hw: 0.15, svg: "", seed: 47 };
+/* Local editor checkpoints. Structured cloning preserves BigInts and exact grids;
+   a checkpoint never commits a draft or decodes/re-encodes the wall to save it. */
+const WORKSPACE_DB = "nomai-workspace-v1";
+let workspaceDB = null, workspaceReady = false, workspaceBusy = false;
+let workspaceTimer = null, workspaceRevision = 0, savedRevision = 0;
+let saveStatus = "Not saved locally", saveQueue = Promise.resolve();
+let historyPast = [], historyFuture = [], historyGroup = null;
+const HISTORY_LIMIT = 20;
+
+function captureWorkspace(){
+  if (state.mode !== "write") return state.writerDraft?.workspace || null;
+  keepAimDraft();
+  return structuredClone({ version:1, lang:LANG, scroll:state.scroll, svg:state.svg,
+    settings:{hw:state.hw,seed:state.seed,tilt:state.tilt,flip:state.flip,
+      handMix:state.handMix,tight:state.tight},
+    composer:{text:$("msg").value,sig:$("sig").value,signed:state.signed,
+      dialect:state.dialect,base:state.base},
+    aim:state.aim, aimChosen:state.aimChosen, drafts:state.editDrafts || new Map(),
+    committed:state.committed, source:state.scrollSource,
+    placements:(state.placements || []).map(p=>({ncols:p.L.ncols,tilt:p.L.tilt,
+      flip:p.L.flip,tight:p.L.b,shift:p.shift,seed:p.seed,verified:p.verified})),
+    view:editorView, layoutKey:state.layoutKey,
+    openSettings:[...document.querySelectorAll(".editor-settings")].map(d=>d.open)
+  });
+}
+function validateWorkspace(s){
+  if (!s || s.version!==1 || !Array.isArray(s.scroll) || s.scroll.length>1000
+      || typeof s.svg!=="string" || !s.composer || !s.settings
+      || !["new","edit","reply"].includes(s.aim?.kind) || !Number.isInteger(s.aim.index)
+      || !(s.drafts instanceof Map) || !Array.isArray(s.placements)) throw Error("Invalid checkpoint");
+  for (const [i,sp] of s.scroll.entries()){
+    if(typeof sp.text!=="string" || typeof sp.sig!=="string"
+      || !["strict","upstream"].includes(sp.dialect) || ![256,200000].includes(sp.base)
+      || !(sp.grid?.glyphs instanceof Map) || !Array.isArray(sp.grid.paths)
+      || !Array.isArray(sp.grid.conns) || !Number.isInteger(sp.grid.ncols)
+      || (i===0 ? sp.parent!==null : !Number.isInteger(sp.parent) || sp.parent<0 || sp.parent>=i))
+      throw Error("Invalid wall record");
+  }
+  if(s.scroll.length && (s.aim.index<0 || s.aim.index>=s.scroll.length
+    || s.placements.length!==s.scroll.length)) throw Error("Invalid target");
+  for(const p of s.placements) if(!Array.isArray(p.shift) || p.shift.length!==2
+    || ![p.ncols,p.tilt,p.flip,p.tight,p.seed,...p.shift].every(Number.isFinite))
+    throw Error("Invalid placement");
+  if(!["hw","seed","tilt","flip","handMix","tight"].every(k=>Number.isFinite(s.settings[k])))
+    throw Error("Invalid settings");
+  const c=s.composer;
+  if(typeof c.text!=="string" || typeof c.sig!=="string" || typeof c.signed!=="boolean"
+    || ![256,200000].includes(c.base) || !["strict","upstream"].includes(c.dialect))
+    throw Error("Invalid composer");
+  if(s.view && (!Object.values(s.view).every(Number.isFinite) || s.view.zoom<1 || s.view.zoom>4
+    || s.view.w<=0 || s.view.h<=0))throw Error("Invalid viewport");
+}
+function restoreWorkspace(saved){
+  validateWorkspace(saved);
+  const s=structuredClone(saved);
+  workspaceBusy=true;
+  try {
+    if(reshapeTimer){clearTimeout(reshapeTimer);reshapeTimer=null;}
+    stopTranslation(); cancelReadLoad();
+    state.mode="write"; state.pending=null; state.writerDraft=null;
+    Object.assign(state,s.settings);
+    state.scroll=s.scroll;state.svg=s.svg;state.aim=s.aim;state.aimChosen=s.aimChosen;
+    state.editDrafts=s.drafts;state.committed=s.committed;state.scrollSource=s.source;
+    state.written=s.scroll[0]?.text || "";state.signedAs=s.composer.signed?s.composer.sig:"";
+    state.seen=new Set(s.scroll.map((_,i)=>i));state.sel=s.aim.index;
+    state.parents=s.scroll.map(sp=>sp.parent);
+    state.placements=s.placements.map(p=>({L:layoutFor(p.ncols,p.tilt,p.flip,p.tight),
+      shift:p.shift,seed:p.seed,verified:p.verified}));
+    state.layoutKey=s.layoutKey;state.laidGrids=s.scroll.map(sp=>sp.grid);
+    state.laidFlips=s.scroll.map(sp=>sp.flip);
+    syncEditorLayout();
+    for(const id of ["write-pane","write-main","write-actions","write-controls"]) $(id).hidden=false;
+    $("read-pane").hidden=true;$("tcell").innerHTML="";
+    $("m-write").setAttribute("aria-pressed","true");$("m-read").setAttribute("aria-pressed","false");
+    $("msg").value=s.composer.text;$("sig").value=s.composer.sig;
+    setBaseUI(s.composer.base);setDialectUI(s.composer.dialect);setSigned(s.composer.signed,false);
+    for(const [id,value] of [["hw",state.hw],["tight",state.tight],["handmix",state.handMix],
+      ["tilt",Math.round(state.tilt*180/Math.PI)]]) $(id).value=value;
+    hwRead();syncMix();syncTilt();syncCurl();
+    $("tight-read").textContent=t(state.tight<=.22?"very tight":state.tight<=.34?"tight":state.tight<=.46?"open":"very open");
+    if(s.scroll.length){
+      state.track=trackFromLayout(state.placements[0].L);state.socket=socketFor(state.track);
+      draw(s.svg,false);applyInk(sigsOf());
+      if(s.view){editorView=s.view;applyWallView();}
+      pointEditor(false);paint(s.scroll,false,false,false);
+    }else{state.socket=null;state.track=null;editorView=null;empty("waiting for words");}
+    if(s.openSettings)document.querySelectorAll(".editor-settings").forEach((d,i)=>d.open=!!s.openSettings[i]);
+    paintThread();showAim();syncWrite();
+  } finally { workspaceBusy=false; }
+}
+function paintSaveStatus(){
+  const el=$("editor-save-status");if(el)el.textContent=t(saveStatus);
+}
+function scheduleWorkspaceSave(){
+  if(!workspaceReady || workspaceBusy || state.mode!=="write")return;
+  workspaceRevision++;saveStatus="Saving…";paintSaveStatus();
+  clearTimeout(workspaceTimer);
+  workspaceTimer=setTimeout(()=>saveWorkspace(false),500);
+}
+function saveWorkspace(manual=false){
+  clearTimeout(workspaceTimer);workspaceTimer=null;
+  if(!workspaceReady)return Promise.resolve(false);
+  // Shape controls are debounced. Saving must include the resulting drawing, too.
+  if(reshapeTimer){clearTimeout(reshapeTimer);reshapeTimer=null;timedBuild();}
+  let snapshot;
+  try{snapshot=captureWorkspace();}
+  catch(e){saveStatus="Local save unavailable";paintSaveStatus();if(manual)hud(t(saveStatus));return Promise.resolve(false);}
+  const revision=workspaceRevision;
+  if(!snapshot)return Promise.resolve(false);
+  const write=async()=>{
+    try{
+      if(!workspaceDB)throw Error("Storage unavailable");
+      await new Promise((resolve,reject)=>{
+        const tx=workspaceDB.transaction("walls","readwrite");
+        tx.objectStore("walls").put(snapshot,"current");
+        tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+      });
+      savedRevision=Math.max(savedRevision,revision);
+      if(savedRevision===workspaceRevision)saveStatus="Autosaved";
+      if(manual)hud(t("Saved"));
+      paintSaveStatus();return true;
+    }catch(e){saveStatus="Local save unavailable";paintSaveStatus();if(manual)hud(t(saveStatus));return false;}
+  };
+  saveQueue=saveQueue.then(write,write);
+  return saveQueue;
+}
+function syncHistory(){
+  if($("editor-undo"))$("editor-undo").disabled=!historyPast.length;
+  if($("editor-redo"))$("editor-redo").disabled=!historyFuture.length;
+}
+function rememberHistory(group=null, committed=false){
+  if(!workspaceReady || workspaceBusy || state.mode!=="write")return;
+  if(group && historyGroup===group)return;
+  const s=captureWorkspace();
+  if(committed && s.aim.kind==="edit" && s.scroll[s.aim.index]){
+    const sp=s.scroll[s.aim.index];
+    s.composer={text:sp.text,sig:sp.sig,signed:!!sp.sig,dialect:sp.dialect,base:sp.base};
+    s.drafts.delete("edit:"+s.aim.index);
+    s.committed=JSON.stringify([sp.text,sp.sig,sp.dialect,sp.base,"edit",s.aim.index]);
+  }
+  historyPast.push(s);if(historyPast.length>HISTORY_LIMIT)historyPast.shift();
+  historyFuture=[];historyGroup=group;syncHistory();
+}
+function travelHistory(direction){
+  if(state.mode!=="write")return;
+  if(reshapeTimer){clearTimeout(reshapeTimer);reshapeTimer=null;timedBuild();}
+  const from=direction<0?historyPast:historyFuture,to=direction<0?historyFuture:historyPast;
+  if(!from.length)return;
+  const current=captureWorkspace(),previous=from[from.length-1];
+  restoreWorkspace(previous);from.pop();to.push(current);historyGroup=null;
+  syncHistory();scheduleWorkspaceSave();
+}
+async function initWorkspace(){
+  let interacted=false;
+  const mark=()=>{interacted=true;};
+  document.addEventListener("input",mark,true);document.addEventListener("pointerdown",mark,true);
+  try{
+    workspaceDB=await new Promise((resolve,reject)=>{
+      const req=indexedDB.open(WORKSPACE_DB,1);
+      req.onupgradeneeded=()=>req.result.createObjectStore("walls");
+      req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+      req.onblocked=()=>reject(Error("Storage busy"));
+    });
+    const saved=await new Promise((resolve,reject)=>{
+      const req=workspaceDB.transaction("walls").objectStore("walls").get("current");
+      req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+    });
+    if(saved){
+      try{
+        const libraryEntry=location.hash.startsWith("#library-scroll=");
+        if(libraryEntry && state.mode==="read" && state.writerDraft?.workspace.source==="opening"){
+          // The library borrows the reader; the saved writing stays behind it.
+          validateWorkspace(saved);
+          state.writerDraft={lang:saved.lang || LANG,workspace:saved};
+          saveStatus="Autosaved";
+        }else if(!interacted && !libraryEntry){
+          restoreWorkspace(saved);saveStatus="Autosaved";
+        }
+      }
+      catch(e){saveStatus="Could not restore saved wall";hud(t(saveStatus));}
+    }
+  }catch(e){saveStatus="Local save unavailable";}
+  finally{
+    document.removeEventListener("input",mark,true);document.removeEventListener("pointerdown",mark,true);
+    workspaceReady=true;paintSaveStatus();syncHistory();
+  }
+  for(const id of ["hw","tight","handmix","tilt"]){
+    const el=$(id),input=el.oninput;
+    el.oninput=e=>{rememberHistory("shape:"+id);input(e);scheduleWorkspaceSave();};
+    el.addEventListener("change",()=>{historyGroup=null;});
+  }
+  document.addEventListener("input",()=>scheduleWorkspaceSave());
+  document.addEventListener("click",()=>scheduleWorkspaceSave());
+  document.addEventListener("pointerup",()=>scheduleWorkspaceSave());
+  document.addEventListener("keydown",e=>{
+    const mod=e.ctrlKey||e.metaKey,key=e.key.toLowerCase();
+    if(mod && key==="s"){e.preventDefault();saveWorkspace(true);return;}
+    if(state.mode!=="write" || !mod || e.altKey
+      || e.target.closest('input,textarea,[contenteditable]'))return;
+    if(key==="z" || key==="y"){
+      e.preventDefault();travelHistory(key==="y" || e.shiftKey ? 1 : -1);
+    }
+  });
+  const flush=()=>{if(workspaceTimer || savedRevision<workspaceRevision)saveWorkspace(false);};
+  window.addEventListener("pagehide",flush);
+  document.addEventListener("visibilitychange",()=>{if(document.hidden)flush();});
+}
+
+let editorHomes = [], editorView = null;
+function initWallEditor(){
+  const host = document.createElement("section");
+  host.id = "wall-editor"; host.className = "wall-editor"; host.hidden = true;
+  host.innerHTML = `<div class="editor-wall" id="editor-wall">
+    <div class="editor-toolbar"><span class="label">Wall</span>
+      <button class="btn" id="wall-out" aria-label="${t("Zoom out")}">−</button>
+      <button class="btn" id="wall-fit">Fit wall</button>
+      <button class="btn" id="wall-in" aria-label="${t("Zoom in")}">+</button></div>
+      <div class="editor-toolbar">
+        <button class="btn" id="editor-undo">Undo</button>
+        <button class="btn" id="editor-redo">Redo</button>
+        <span class="editor-save-status" id="editor-save-status" role="status"></span>
+        <button class="btn" id="editor-save">Save</button>
+      </div>
+    </div><div class="editor-side" id="editor-side">
+      <div class="editor-nav" id="editor-nav">
+        <button class="btn" id="editor-prev" aria-label="${t("previous spiral")}">▲</button>
+        <output id="editor-target"></output>
+        <button class="btn" id="editor-next" aria-label="${t("next spiral")}">▼</button>
+      </div></div>`;
+  $("write-pane").before(host);
+  for (const id of ["plate", "write-pane", "write-main", "thread-field", "write-controls"]){
+    const el = $(id), home = document.createComment(id + " home");
+    el.before(home); editorHomes.push({el, home});
+  }
+  const reply = document.createElement("button");
+  reply.id = "editor-reply"; reply.className = "btn"; reply.textContent = "Reply to this spiral";
+  $("write-main").appendChild(reply);
+  const context=document.createElement("div");context.className="editor-reply-context";context.id="reply-context";context.hidden=true;
+  context.innerHTML='<span>Replying to</span><button type="button" id="reply-parent"></button>';
+  $("msg").before(context);
+  $("reply-parent").onclick=()=>pointEditor(true);
+  $("editor-save").onclick=()=>saveWorkspace(true);
+  $("editor-undo").onclick=()=>travelHistory(-1);
+  $("editor-redo").onclick=()=>travelHistory(1);
+  const fields = [...$("write-controls").children];
+  for (const [title, indices, open] of [
+    ["Current spiral", [0,1,3], true], ["Wall appearance", [2,4,5,6], false]
+  ]){
+    const d = document.createElement("details"); d.className = "editor-settings"; d.open = open;
+    const summary = document.createElement("summary"); summary.textContent = title;
+    const row = document.createElement("div"); row.className = "row";
+    d.append(summary,row); indices.forEach(i => row.appendChild(fields[i]));
+    $("write-controls").appendChild(d);
+  }
+  $("editor-prev").onclick = () => moveEditor(-1);
+  $("editor-next").onclick = () => moveEditor(1);
+  reply.onclick = () => setAim("reply", state.aim.index, false);
+  $("wall-in").onclick = () => zoomWall(1.4);
+  $("wall-out").onclick = () => zoomWall(1/1.4);
+  $("wall-fit").onclick = () => {
+    if(editorView){ const v=editorView; v.zoom=1;v.cx=v.x+v.w/2;v.cy=v.y+v.h/2;applyWallView(); }
+  };
+  host.addEventListener("keydown", e => {
+    if(e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey
+      || e.target.closest('input,textarea,select,summary,[contenteditable]'))return;
+    const d = e.key === "ArrowUp" ? -1 : e.key === "ArrowDown" ? 1 : 0;
+    if(d){ e.preventDefault(); moveEditor(d); }
+  });
+  syncEditorLayout();
+}
+function syncEditorLayout(){
+  const host = $("wall-editor");
+  if (!host) return;
+  const on = state.mode === "write";
+  document.body.classList.toggle("wall-editing", on); host.hidden = !on;
+  for (const {el, home} of editorHomes){
+    if (on) $(el.id === "plate" ? "editor-wall" : "editor-side").appendChild(el);
+    else home.after(el);
+  }
+  $("editor-reply").hidden = !on;
+  $("plate").tabIndex = on ? 0 : -1;
+}
+function syncEditor(){
+  if (!$("editor-target")) return;
+  const i = state.aim.index, count = state.scroll.length;
+  $("editor-target").textContent = count ? `${i + 1} / ${count}` : "—";
+  $("editor-prev").disabled = !count || i <= 0;
+  $("editor-next").disabled = !count || i >= count - 1;
+  $("editor-reply").disabled = !count;
+  for (const [id,key] of [["editor-prev","previous spiral"],["editor-next","next spiral"],
+    ["wall-out","Zoom out"],["wall-in","Zoom in"]]) $(id).setAttribute("aria-label",t(key));
+  const drafts=state.editDrafts;
+  document.querySelectorAll(".draft-mark").forEach(mark=>{
+    const k=+mark.dataset.draft,sp=state.scroll[k];
+    const d=state.mode==="write" && state.aim.kind==="edit" && state.aim.index===k
+      ? {text:$("msg").value,sig:$("sig").value,signed:state.signed,dialect:state.dialect,base:state.base}
+      : drafts && drafts.get("edit:"+k);
+    mark.hidden=!sp || !d || (d.text===sp.text && (d.signed?d.sig.trim():"")===(sp.sig||"") && d.dialect===sp.dialect && d.base===sp.base);
+    mark.textContent=t("Draft");
+  });
+  const parent=state.aim.kind==="reply" ? state.scroll[state.aim.index] : null;
+  $("reply-context").hidden=!parent;
+  if(parent){
+    const text=(parent.sig || t("Unsigned spiral"))+": "+parent.text;
+    $("reply-parent").textContent=text;$("reply-parent").title=text;
+  }
+  syncHistory(); paintSaveStatus();
+}
+function moveEditor(d){
+  const i = state.aim.index + d;
+  if (state.mode === "write" && state.scroll[i]) setAim("edit", i, false);
+}
+function pointEditor(recenter = true){
+  if (state.mode !== "write") return;
+  const p = state.placements && state.placements[state.aim.index];
+  if (!p){ beams(false); return; }
+  state.track = trackFromLayout(p.L, p.shift);
+  walkers = []; beams(false); beams("idle");
+  if (recenter && editorView && editorView.zoom > 1){
+    const b = $("art").querySelector(`g[data-spiral="${state.aim.index}"]`)?.getBBox();
+    if (b){ editorView.cx = b.x+b.width/2; editorView.cy=b.y+b.height/2; applyWallView(); }
+  }
+}
+function resetWallView(){
+  const base = $("art").querySelector("svg");
+  if (!base) { editorView = null; return; }
+  const [x,y,w,h] = base.getAttribute("viewBox").split(/[ ,]+/).map(Number);
+  editorView = {x,y,w,h,cx:x+w/2,cy:y+h/2,zoom:1};
+}
+function applyWallView(){
+  if (!editorView) return;
+  const v=editorView,w=v.w/v.zoom,h=v.h/v.zoom;
+  v.cx=Math.max(v.x+w/2,Math.min(v.x+v.w-w/2,v.cx));
+  v.cy=Math.max(v.y+h/2,Math.min(v.y+v.h-h/2,v.cy));
+  $("art").querySelectorAll(":scope > svg").forEach(s=>s.setAttribute("viewBox",`${v.cx-w/2} ${v.cy-h/2} ${w} ${h}`));
+  $("wall-out").disabled=v.zoom<=1; $("wall-in").disabled=v.zoom>=4;
+}
+function zoomWall(factor){
+  if (!editorView) return;
+  editorView.zoom=Math.max(1,Math.min(4,editorView.zoom*factor));
+  pointEditor(); applyWallView();
+}
+let wallPan=null;
+$("plate").addEventListener("pointerdown",e=>{
+  if(state.mode!=="write" || e.pointerType!=="mouse" || e.button!==0 || !editorView || editorView.zoom<=1)return;
+  const m=$("art").querySelector("svg").getScreenCTM();
+  if(m)wallPan={id:e.pointerId,x:e.clientX,y:e.clientY,cx:editorView.cx,cy:editorView.cy,inverse:m.inverse()};
+});
+window.addEventListener("pointermove",e=>{
+  if(!wallPan || e.pointerId!==wallPan.id)return;
+  const p=wallPan,dx=e.clientX-p.x,dy=e.clientY-p.y;
+  if(Math.hypot(dx,dy)<=8)return;
+  wallPress=null;
+  editorView.cx=p.cx-dx*p.inverse.a-dy*p.inverse.c;
+  editorView.cy=p.cy-dx*p.inverse.b-dy*p.inverse.d;
+  applyWallView();
+});
+window.addEventListener("pointerup",()=>{wallPan=null;});
+window.addEventListener("pointercancel",()=>{wallPan=null;});
+window.addEventListener("blur",()=>{wallPan=null;});
 const BANDS = [
   [0.2, "var(--ok)", "reads back reliably"],
   [0.4, "var(--warn)", "usually reads back"],
@@ -3529,22 +4045,38 @@ function aimText(){
 }
 function showAim(){
   const a = state.aim, line = aimText();
-  const on = a.kind !== "new" && line !== null
-             && !(a.kind === "edit" && state.scroll.length < 2);
+  const on = state.mode === "write" && a.kind !== "new" && line !== null;
   $("answering").hidden = !on;
   if (!on) return;
   $("answering").querySelector(".label").textContent =
     t(a.kind === "reply" ? "Answering" : "Rewriting");
   $("answering-what").textContent = line;
   $("answering-off").textContent = t(a.kind === "reply"
-    ? "not a reply after all" : "leave it as it is");
+    ? "Exit reply" : "Exit rewrite");
 }
-function setAim(kind, index){
+/* Drafts belong to a target on this wall. Selecting another rewrite must not throw
+   away the words that have not yet been committed. They never enter the SVG. */
+function keepAimDraft(){
+  if (state.mode !== "write" || !state.scroll[state.aim.index]) return;
+  if (!state.editDrafts) state.editDrafts = new Map();
+  state.editDrafts.set(state.aim.kind + ":" + state.aim.index, {
+    text: $("msg").value, sig: $("sig").value, signed: state.signed,
+    dialect: state.dialect, base: state.base
+  });
+}
+function setAim(kind, index, focus = true){
   if (state.mode === "read" && !canAnswerRead()) return;
+  keepAimDraft();
   /* the composer lives in the writing pane, so aiming it is asking to write --
      doing that silently while the pane is hidden looks like a dead button */
   if (state.mode !== "write") setMode("write", true);
   state.aim = { kind, index };
+  /* Aiming has two sources and they must not be confused. This one is a click on
+     `rewrite` or `reply`: somebody named a spiral. Loading a drawing also parks the
+     aim on the root so the composer has somewhere to point, and that is not a choice
+     about the root -- treating it as one sent the chirality control to spiral 0 while
+     the reader was looking at spiral 6. */
+  state.aimChosen = true;
   if (kind === "reply"){
     $("msg").value = "";
   } else if (kind === "edit" && state.scroll[index]){
@@ -3552,18 +4084,30 @@ function setAim(kind, index){
     $("msg").value = sp.text;
     setDialectUI(sp.dialect);
     setBaseUI(sp.base);
-    setSigned(!!sp.sig);
+    /* syncCurl reads the aim, which the caller has just set */
+    setSigned(!!sp.sig, false);
     if (sp.sig) $("sig").value = sp.sig;
   }
+  state.committed = contentNow();
+  const draft = state.editDrafts && state.editDrafts.get(kind + ":" + index);
+  if (draft){
+    $("msg").value = draft.text; $("sig").value = draft.sig;
+    setDialectUI(draft.dialect); setBaseUI(draft.base); setSigned(draft.signed, false);
+  }
   showAim();
+  syncCurl();
   syncWrite();
-  $("msg").focus();
+  paintThread();
+  pointEditor();
+  if (focus) $("msg").focus({preventScroll:true});
+  historyGroup=null; scheduleWorkspaceSave();
 }
 function contentNow(){
   return JSON.stringify([$("msg").value, state.signed ? $("sig").value.trim() : "",
     state.dialect, state.base, state.aim.kind, state.aim.index]);
 }
 function syncWrite(){
+  syncEditor();
   $("clear-wall").disabled = !state.scroll.length;
   const ready = !!$("msg").value.trim()
     && (!state.signed || !!$("sig").value.trim());
@@ -3589,7 +4133,12 @@ function commit(opening = false){
   if (widened) base = 200000;
   const grid = gridFor(text, sig, parent, state.dialect, base);
   if (typeof grid === "string"){ hud(t(grid)); return; }
-  const next = { text, sig, parent, dialect: state.dialect, base, grid };
+  if(opening!==true)rememberHistory(null,true);
+  if (state.editDrafts) state.editDrafts.delete(a.kind + ":" + a.index);
+  /* rewriting replaces the record, so the hand it was given has to be carried over
+     or it would be lost the moment its words were touched */
+  const kept = a.kind === "edit" && state.scroll[a.index] ? state.scroll[a.index].flip : undefined;
+  const next = { text, sig, parent, dialect: state.dialect, base, grid, flip: kept };
   setBaseUI(base);
   state.scrollSource = opening === true ? "opening" : "written";
   state.signedAs = sig;
@@ -3599,11 +4148,24 @@ function commit(opening = false){
     growIdx = state.scroll.length - 1;
     /* aim at what was just written, so the next thing you do is fix it if you want */
     state.aim = { kind: "edit", index: growIdx };
+    state.aimChosen = true;
+    syncCurl();
   } else if (a.kind === "edit" && state.scroll[a.index]){
     state.scroll[a.index] = next;
+    /* The change already happened -- the hand turned the moment it was clicked, and a
+       rewrite only re-encodes words that were already on screen. What the button is
+       for is the landing: it says *this one*, and it says it about the spiral you
+       named rather than about the sheet. Growing the whole scroll again (which is
+       what a null index does, socket insertion and all) starts the story over and
+       points at nothing; growing the one spiral is the same gesture a new reply gets,
+       and it is the gesture that means "written, now". Cf. the translator, which has
+       the reading before it shows you a single character of it. */
+    growIdx = a.index;
   } else {
+    state.editDrafts = new Map();
     state.scroll = [next];
     state.aim = { kind: "edit", index: 0 };
+    state.aimChosen = true;
   }
   state.written = state.scroll[0].text;
   state.seen = new Set(state.scroll.map((_, i) => i));
@@ -3613,6 +4175,7 @@ function commit(opening = false){
      of what got committed */
   state.committed = contentNow();
   syncWrite();
+  scheduleWorkspaceSave();
 }
 /* Redraw what is already written, in whatever shape the controls now say. Does
    nothing before anything has been written -- that is the Write button's job. */
@@ -3676,11 +4239,24 @@ let scrollUnchecked = false;
 function build(grow, growIdx, widened = false){
   const sc = state.scroll;
   if (!sc.length){ empty("waiting for words"); return; }
+  const previousView=state.mode==="write" && editorView ? {...editorView}:null;
+  const layoutKey=JSON.stringify([state.hw,state.seed,state.tilt,state.flip,state.tight,state.handMix]);
+  const fixed=[];
+  if(state.layoutKey===layoutKey && state.laidGrids){
+    for(let i=0;i<sc.length && i<state.laidGrids.length;i++){
+      if(sc[i].grid!==state.laidGrids[i] || sc[i].flip!==state.laidFlips[i] || !state.placements[i])break;
+      fixed.push(state.placements[i]);
+    }
+  }
   /* Committing owns encoding. A redraw only lays out the stored grids, including
      the exact grid recovered from an imported drawing. */
   let L, hand = state.seed;
   if (sc.length === 1){
-    L = layoutFor(sc[0].grid.ncols, state.tilt, state.flip, state.tight);
+    /* `sp.flip` is a hand chosen for this spiral while rewriting it; state.flip is
+       the scroll's default, and what a spiral that has never been given one uses. */
+    const soloFlip = handOf(sc[0], 0);
+    L = layoutFor(sc[0].grid.ncols, state.tilt, soloFlip, state.tight);
+    state.placements = [{ L, shift: [0,0] }];
     /* Which hand it is written in is nobody's business but the drawing's, and for
        some grids one jitter pattern moves a point far enough that the reader loses
        it while the next is fine. A scroll already searches this for every spiral;
@@ -3689,13 +4265,22 @@ function build(grow, growIdx, widened = false){
       const got = handFor(sc[0].grid, state.hw, state.seed, L, CHECK_MS);
       if (got !== null) hand = got;
     }
-    state.svg = renderSVG(sc[0].grid, state.hw, hand, state.tilt, state.flip,
+    state.svg = renderSVG(sc[0].grid, state.hw, hand, state.tilt, soloFlip,
                           state.tight);
+    state.placements[0].seed=hand;state.placements[0].verified=!handRanOut;
   } else {
     /* a scroll turns itself upright about its socket, so the tilt control steps
        aside -- there is nothing sensible for it to mean once replies are attached */
-    const out = renderScroll(sc, state.hw, state.seed, state.flip, state.tight);
+    /* Reshaping and committing want opposite things. Dragging the coil or turning a
+       hand is a live redraw -- it has to keep up with the control, and a drawing that
+       was not read back is fine because another redraw is a moment away. Committing
+       is once, deliberate, and the one time the drawing has to be checked; it keeps
+       the budget it always had. Six spirals verify in about six seconds and reshape
+       in about one, which is the difference between a slider and a frozen page. */
+    const out = renderScroll(sc, state.hw, state.seed, state.flip, state.tight,
+                             grow ? COMMIT_MS : RESHAPE_MS, fixed);
     state.svg = out.svg;
+    state.placements = out.placements;
     L = out.root;
     scrollUnchecked = out.unchecked;
     /* And check the root against the hand it was drawn in. A scroll searches the
@@ -3719,10 +4304,22 @@ function build(grow, growIdx, widened = false){
   state.socket = socketFor(state.track);
   beams(false);
   draw(state.svg, grow, growIdx);
+  if(previousView){
+    const current=editorView;
+    // Keep the viewport's dimensions and centre when working close up. At fit,
+    // keep fitting so newly added replies are not left outside the wall.
+    if(previousView.zoom>1){
+      editorView={...current,zoom:Math.max(1,Math.min(4,current.w/(previousView.w/previousView.zoom))),
+        cx:previousView.cx,cy:previousView.cy};
+      applyWallView();
+    }
+  }
+  state.layoutKey=layoutKey;state.laidGrids=sc.map(sp=>sp.grid);state.laidFlips=sc.map(sp=>sp.flip);
   applyInk(sigsOf());
   paintThread();
   syncTilt();
   paint(sc, widened, shaky, unchecked);
+  pointEditor(false); syncEditor(); syncCurl();scheduleWorkspaceSave();
 }
 function empty(text){
   text = t(text);
@@ -3752,6 +4349,8 @@ function draw(svg, grow, growIdx){
     art.appendChild(over);
     mountSocket();
   }
+  resetWallView();
+  if (state.mode === "write") applyWallView();
   const all = [...art.querySelectorAll("g[data-turn]")];
   /* a reply grows on its own; the rest of the scroll is already on the wall */
   const only = growIdx == null ? null : art.querySelector('[data-spiral="' + growIdx + '"]');
@@ -3888,8 +4487,8 @@ function paintTicks(svg, alpha){
   svg.innerHTML = out.join("");
 }
 /* the spiral of a drawing we laid out ourselves */
-function trackFromLayout(L){
-  return { at: k => L.pointAt(k, 2) };
+function trackFromLayout(L, shift = [0,0]){
+  return { at: k => { const p=L.pointAt(k,2); return {...p,x:p.x+shift[0],y:p.y+shift[1]}; } };
 }
 /* The socket goes at the tail -- k = 1, the outer end. Taking it off the same track
    the beams ride means this works for a drawing we laid out and for one we read
@@ -4065,6 +4664,7 @@ function paintThread(){
     return `<div class="trow${aimed}${picked}" data-row="${k}">`
       + `<span class="depth">${"\u2502 ".repeat(depth[k])}</span>`
       + `<span class="said ${kind}">${said}</span>`
+      + (state.mode === "write" ? `<span class="draft-mark" data-draft="${k}" hidden>${t("Draft")}</span>` : "")
       + (open && (state.mode !== "read" || canAnswerRead()) ? `<button class="linky" data-edit="${k}">${t("rewrite")}</button>`
               + `<button class="linky" data-reply="${k}">${t("reply")}</button>`
               : `<span class="depth">${t(state.sel === k ? "point at it"
@@ -4075,10 +4675,17 @@ function paintThread(){
     b.onclick = () => setAim("reply", +b.dataset.reply));
   box.querySelectorAll("[data-edit]").forEach(b =>
     b.onclick = () => setAim("edit", +b.dataset.edit));
-  if (state.mode === "read")
-    box.querySelectorAll("[data-row]").forEach(r => r.onclick = e => {
-      if (!e.target.closest(".linky")) selectSpiral(+r.dataset.row);
-    });
+  /* A row is the way to point at a spiral, in either mode. It used to be wired only
+     while reading, so the first rewrite -- which switches to writing -- quietly took
+     the ability away: the rows still looked clickable, cursor and all, and nothing
+     happened. Reading points the translator at it; writing aims the composer at it,
+     which is what the two little links do one at a time. */
+  box.querySelectorAll("[data-row]").forEach(r => r.onclick = e => {
+    if (e.target.closest(".linky")) return;
+    const k = +r.dataset.row;
+    if (state.mode === "read") selectSpiral(k);
+    else if (state.scroll[k]) setAim("edit", k, false);
+  });
   if (sc.some((_, k) => !state.seen.has(k))) scrambleRows();
   /* The box no longer grows to fit, so the row being worked on has to be brought to
      the reader instead. Moved by hand rather than with scrollIntoView, which walks
@@ -4091,6 +4698,7 @@ function paintThread(){
       box.scrollTop = bottom - box.clientHeight;
   }
   updateThreadEdges();
+  syncEditor();
 }
 /* Which way there is more to read. Hidden when the box is not overflowing at all, so
    an arrow never points at nothing. */
@@ -4117,9 +4725,30 @@ function scrambleRows(){
   }, 90);
 }
 $("answering-off").onclick = () => {
-  /* backing out returns the aim to the spiral the row was about, which is the thing
-     on screen -- dropping it on the floor would leave the box pointed at nothing */
-  setAim("edit", state.aim.index);
+  if (state.mode !== "write" || !state.svg || !state.scroll.length) return;
+  keepAimDraft();
+  const svg = state.svg, records = state.scroll, drafts = state.editDrafts;
+  const index = state.aim.index, source = state.scrollSource;
+  // Read the committed drawing, never the unfinished composer text.
+  setMode("read");
+  readDrawing(svg, "", source);
+  state.editDrafts = drafts;
+  if (!state.pending) return;
+  // These words were already visible in the writer. Preserve each known reading,
+  // including an original-dialect choice, instead of asking to translate it again.
+  state.pending.per.forEach((list, i) => {
+    const sp = records[i];
+    if (!sp) return;
+    const k = list.findIndex(r => r.text === sp.text && (r.sig || "") === (sp.sig || ""));
+    if (k < 0) return;
+    state.pick[i] = k; state.seen.add(i);
+    if (state.scroll[i]){ state.scroll[i].text = sp.text; state.scroll[i].flip = sp.flip; }
+  });
+  paintReveal(false);
+  selectSpiral(revealable(index) ? index : 0);
+  state.pending.finished = state.pending.per.every((_, i) => state.seen.has(i));
+  paintReadNotes();
+  $("plate").scrollIntoView({ block: "start" });
 };
 
 function paint(sc, widened, shaky, unchecked){
@@ -4397,14 +5026,54 @@ $("msg").addEventListener("keydown", e => {
   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)){ e.preventDefault(); commit(); }
 });
 $("write").onclick = commit;
+/* Chirality follows what you are pointed at. Rewriting one spiral and turning the
+   hand turns that spiral, the way changing its dialect or its alphabet changes only
+   that spiral -- there is no separate per-row control because rewriting already is
+   the way you address one. With nothing aimed at, it sets the scroll's default. */
+/* Curl turns one spiral, and only ever the one that has been named. The whole tree's
+   lean is the mix slider's job now -- one control was doing both, which is how turning
+   a hand while looking at spiral six turned spiral zero. */
 function setFlip(f){
-  state.flip = f;
+  const i = aimedSpiral();
+  if (i == null) return;
+  if(state.scroll[i].flip===f)return;
+  rememberHistory();
+  state.scroll[i].flip = f;
+  syncCurl();
+  reshape();
+}
+/* The spiral the curl control acts on: one somebody named by rewriting it. Loading a
+   drawing parks the aim on the root without anybody choosing it, and that must not
+   count. */
+function aimedSpiral(){
+  const a = state.aim;
+  return state.aimChosen && a && a.kind === "edit" && state.scroll[a.index] ? a.index : null;
+}
+/* Show the hand of whatever is aimed at, and go grey when nothing is: with the mix
+   slider beside it, a control that silently did nothing would be a trap. The label
+   says which of the two this is and never changes -- one that rewrote itself would
+   have to be re-derived on every language switch, and would move under the reader. */
+function syncCurl(){
+  const i = aimedSpiral();
+  const on = i != null;
+  const f = on ? handOf(state.scroll[i], i) : 0;
   $("c-cw").setAttribute("aria-pressed", String(f === 1));
   $("c-ccw").setAttribute("aria-pressed", String(f === -1));
-  reshape();
+  $("c-cw").disabled = !on;
+  $("c-ccw").disabled = !on;
 }
 $("c-cw").onclick = () => setFlip(1);
 $("c-ccw").onclick = () => setFlip(-1);
+function syncMix(){
+  const v = state.handMix;
+  $("handmix-read").textContent = v >= 100 ? t("all one way")
+    : v <= 0 ? t("all mirrored") : v + "%";
+}
+$("handmix").oninput = e => {
+  state.handMix = +e.target.value;
+  syncMix();
+  reshape();
+};
 $("tight").oninput = e => {
   state.tight = +e.target.value;
   $("tight-read").textContent = t(state.tight <= 0.22 ? "very tight"
@@ -4494,21 +5163,15 @@ dlBtn.onclick = async () => {
 let readGeneration = 0;
 /* Reading borrows the display, not the writer's draft or its edit target. */
 function saveWriter(){
-  state.writerDraft = {
-    lang: LANG, text: $("msg").value, sig: $("sig").value, signed: state.signed,
-    scroll: state.scroll, aim: { ...state.aim }, base: state.base, dialect: state.dialect,
-    committed: state.committed, written: state.written, signedAs: state.signedAs,
-    source: state.scrollSource
-  };
+  // A delayed slider redraw still belongs to the writer being put away.
+  if (reshapeTimer){ clearTimeout(reshapeTimer); reshapeTimer = null; timedBuild(); }
+  keepAimDraft();
+  state.writerDraft = { lang: LANG, workspace: captureWorkspace() };
 }
 function restoreWriter(){
   const d = state.writerDraft;
   if (!d) return false;
-  state.writerDraft = null;
-  state.scroll = d.scroll; state.aim = d.aim; state.scrollSource = d.source;
-  state.committed = d.committed; state.written = d.written; state.signedAs = d.signedAs;
-  $("msg").value = d.text; $("sig").value = d.sig;
-  setDialectUI(d.dialect); setBaseUI(d.base); setSigned(d.signed, false);
+  restoreWorkspace(d.workspace);
   return d.lang !== LANG && swapOpening(d.lang);
 }
 function stopTranslation(){
@@ -4532,6 +5195,8 @@ function clearWallState(){
   cancelReadLoad(); stopTranslation();
   state.scroll = []; state.pending = null; state.scrollSource = null;
   state.aim = { kind: "new", index: 0 };
+  state.aimChosen = false; state.editDrafts = new Map();
+  state.placements = []; syncEditor();
   state.seen = new Set(); state.sel = 0; state.parents = []; state.edges = [];
   state.track = null; state.socket = null;
   $("thread").innerHTML = ""; $("thread-field").hidden = true;
@@ -4544,13 +5209,15 @@ function clearReader(){
 }
 function clearWrittenWall(){
   if (state.mode !== "write" || !state.scroll.length) return;
-  if (!confirm(t("Clear all spirals and replies from this wall? This cannot be undone. Your input text and signature will be kept."))) return;
+  if (!confirm(t("Clear this wall? You can undo this. Your input text and signature will be kept."))) return;
+  rememberHistory();
   clearWallState();
   state.writerDraft = null; state.committed = null;
   state.written = ""; state.signedAs = "";
   empty("waiting for words");
   $("tcell").innerHTML = "";
   showAim(); syncWrite();
+  scheduleWorkspaceSave();
 }
 $("clear-wall").onclick = clearWrittenWall;
 function setMode(m, useReadScroll = false){
@@ -4558,6 +5225,7 @@ function setMode(m, useReadScroll = false){
   if (m === "read") saveWriter();
   cancelReadLoad(); stopTranslation();
   state.mode = m;
+  syncEditorLayout();
   $("m-write").setAttribute("aria-pressed", String(m === "write"));
   $("m-read").setAttribute("aria-pressed", String(m === "read"));
   $("write-pane").hidden = m !== "write";
@@ -4566,13 +5234,16 @@ function setMode(m, useReadScroll = false){
   $("write-actions").hidden = m !== "write";
   $("write-controls").hidden = m !== "write";
   if (m === "write"){
-    const swapped = !useReadScroll && restoreWriter();
+    if(useReadScroll){historyPast=[];historyFuture=[];historyGroup=null;}
+    const restoring = !useReadScroll && !!state.writerDraft;
+    const swapped = restoring && restoreWriter();
     state.pending = null;
     /* nothing to point at a drawing you are writing */
     $("tcell").innerHTML = "";
     state.seen = new Set(state.scroll.map((_, i) => i));
-    if (swapped) commit(true); else build(false);
-    showAim(); syncWrite(); hwRead(); syncTilt();
+    // Restoring the exact drawing needs no new layout search.
+    if (swapped) commit(true); else if (!restoring) build(false);
+    showAim(); syncWrite(); hwRead(); syncTilt(); syncCurl();
   }
   else {
     clearReader();
@@ -4584,6 +5255,7 @@ $("m-read").onclick = () => setMode("read");
 
 function readDrawing(text, name, source = "file"){
   stopTranslation();
+  state.editDrafts = new Map();
   state.loadingSource = null;
   state.scrollSource = source;
   state.track = null;
@@ -4646,7 +5318,10 @@ function readDrawing(text, name, source = "file"){
     state.scroll = firsts.map((r, i) => ({ text: r.text, sig: r.sig || "",
       parent: parents[i], dialect: decoded[i].dialect, base: decoded[i].base,
       grid: decoded[i].grid }));
+    /* somewhere for the composer to point, not a spiral anybody picked */
     state.aim = { kind: "edit", index: 0 };
+    state.aimChosen = false;
+    syncCurl();
   } else {
     state.scroll = [];
     state.aim = { kind: "new", index: 0 };
@@ -10858,7 +11533,7 @@ function takeDown(i, btn){
 
 /* Which build this is. Filled in from git when the page is built; `dev` when the
    source file is opened straight from disk. */
-const BUILD = /*__BUILD__*/{"rev": "v1.1-2-ge4c287c", "date": "2026-09-07"};
+const BUILD = /*__BUILD__*/{"rev": "v1.1-3-g42e5bd1", "date": "2026-09-07"};
 const REPO = "github.com/Rytting/nomai-scriptorium";
 
 /* The same writer, on a straight track instead of a coiled one. Everything that
@@ -11003,9 +11678,12 @@ let tprog = 0, thold = false, traf = null, tlast = 0, choiceKeys = null;
 
 function selectSpiral(i){
   if (!state.pending || !state.pending.per[i]) return;
+  if (state.choosing >= 0 && i !== state.choosing) return;
   if (!revealable(i)) return;      /* not found yet, so not something to point at */
   state.sel = i;
   tprog = 0; thold = false;
+  const btn = $("translate");
+  if (btn) btn.setAttribute("aria-pressed", "false");
   if (traf){ cancelAnimationFrame(traf); traf = null; }
   const o = state.pending.obs && state.pending.obs[i] && state.pending.obs[i][0];
   /* the beams ride the spiral you are pointing at, and nothing else */
@@ -11015,6 +11693,60 @@ function selectSpiral(i){
   paintThread();
   paintTranslator();
 }
+
+/* Hit the ink with a small screen-pixel tolerance, without adding any visible ink
+   or changing the SVG that will be saved. Only nearby paths need geometry sampling. */
+function spiralAt(x, y, radius){
+  let picked = null, best = radius * radius;
+  for (const g of $("art").querySelectorAll('g[data-spiral]:not(.not-yet)')){
+    const i = +g.dataset.spiral;
+    if (state.mode === "read" && !revealable(i)) continue;
+    for (const path of g.querySelectorAll("path")){
+      if (g.classList.contains("growing")){
+        const turn = path.closest("g[data-turn]");
+        if (turn && !turn.classList.contains("lit")) continue;
+      }
+      const b = path.getBoundingClientRect();
+      if (x < b.left - radius || x > b.right + radius
+          || y < b.top - radius || y > b.bottom + radius) continue;
+      const m = path.getScreenCTM();
+      if (!m) continue;
+      const length = path.getTotalLength();
+      const scale = Math.max(Math.hypot(m.a, m.b), Math.hypot(m.c, m.d));
+      const steps = Math.max(1, Math.ceil(length * scale / 2));
+      for (let k = 0; k <= steps; k++){
+        const p = path.getPointAtLength(length * k / steps).matrixTransform(m);
+        const d = (p.x - x) ** 2 + (p.y - y) ** 2;
+        if (d < best){ best = d; picked = i; }
+      }
+    }
+  }
+  return picked;
+}
+let wallPress = null;
+$("art").addEventListener("pointerdown", e => {
+  if (!e.isPrimary || e.button !== 0){ wallPress = null; return; }
+  wallPress = { id: e.pointerId, x: e.clientX, y: e.clientY, time: performance.now() };
+});
+$("art").addEventListener("pointermove", e => {
+  if (wallPress && (Math.hypot(e.clientX - wallPress.x, e.clientY - wallPress.y) > 8))
+    wallPress = null;
+});
+$("art").addEventListener("pointerup", e => {
+  const p = wallPress;
+  wallPress = null;
+  if (!p || p.id !== e.pointerId || performance.now() - p.time > 500
+      || Math.hypot(e.clientX - p.x, e.clientY - p.y) > 8
+      || (state.mode === "read" && (!state.pending || state.choosing >= 0))) return;
+  const i = spiralAt(e.clientX, e.clientY, e.pointerType === "touch" ? 12 : 8);
+  if (i != null){
+    if (state.mode === "write") setAim("edit",i,false);
+    else selectSpiral(i);
+  }
+});
+window.addEventListener("pointerup", () => { wallPress = null; });
+window.addEventListener("pointercancel", () => { wallPress = null; });
+window.addEventListener("scroll", () => { wallPress = null; }, true);
 
 /* The chooser owns the whole screen while it is up: one line per reading rather
    than one per spiral, because what is being asked is no longer "which spiral" but
@@ -11053,26 +11785,40 @@ function paintTranslator(){
   if (!line) return;
   const prev = $("t-prev"), next = $("t-next");
   if (state.choosing >= 0){
+    line.parentElement.classList.remove("conversations");
     line.parentElement.classList.add("many");
     line.innerHTML = chooseScreen();
     btn.disabled = false;
     btn.textContent = t("Settle on this reading");
     if (prev) prev.hidden = false;
     if (next) next.hidden = false;
+    if (prev){ prev.disabled = false; prev.setAttribute("aria-label", t("previous reading")); }
+    if (next){ next.disabled = false; next.setAttribute("aria-label", t("next reading")); }
     const bar = $("tfill");
     if (bar) bar.style.width = "100%";
+    keepHeldLineInView();
     return;
   }
-  if (prev) prev.hidden = true;
-  if (next) next.hidden = true;
   /* Only the spirals that have been found. A garbled line for one still to come
      announces that it is coming, which is the whole of what the reveal withholds. */
   const shown = per.map((_, i) => i).filter(revealable);
+  const at = shown.indexOf(state.sel);
+  if (prev){
+    prev.hidden = shown.length < 2; prev.disabled = at <= 0;
+    prev.setAttribute("aria-label", t("previous spiral"));
+  }
+  if (next){
+    next.hidden = shown.length < 2; next.disabled = at >= shown.length - 1;
+    next.setAttribute("aria-label", t("next spiral"));
+  }
   line.parentElement.classList.toggle("many", shown.length > 1);
-  line.innerHTML = shown.map(screenLine).join("<br>");
+  line.parentElement.classList.add("conversations");
+  line.innerHTML = shown.map(i => `<span class="translator-entry" data-entry="${i}"
+    aria-current="${i === state.sel}">${screenLine(i)}</span>`).join("");
   const left = per.filter((_, i) => !state.seen.has(i) && revealable(i)).length;
-  btn.disabled = !left;
+  btn.disabled = !left || state.seen.has(state.sel);
   btn.textContent = !left ? t("All translated")
+    : state.seen.has(state.sel) ? t("This spiral is translated")
     : per.length > 1
       ? (LANG === "zh" ? `\u6309\u4f4f\u7ffb\u8bd1\u8fd9\u4e00\u6761 \u00b7 \u8fd8\u5269 ${left}`
                        : `Hold to translate this one \u00b7 ${left} left`)
@@ -11088,7 +11834,24 @@ function paintTranslator(){
 function keepHeldLineInView(){
   const line = $("line");
   if (!line) return;
-  const sc = line.parentElement, pick = line.querySelector(".pick");
+  const sc = line.parentElement;
+  const selected = line.querySelector('.translator-entry[aria-current="true"]');
+  if (selected){
+    // End padding lets even the first and last messages sit at the screen's centre.
+    const css = getComputedStyle(sc), pad = parseFloat(css.paddingTop);
+    const middle = sc.clientHeight / 2;
+    line.style.setProperty("--leading-space", Math.max(0,
+      middle - pad - line.firstElementChild.offsetHeight / 2) + "px");
+    line.style.setProperty("--trailing-space", Math.max(0,
+      middle - parseFloat(css.paddingBottom) - line.lastElementChild.offsetHeight / 2) + "px");
+    const sr = sc.getBoundingClientRect(), pr = selected.getBoundingClientRect();
+    // A message taller than the screen starts at its first line so it can be read.
+    sc.scrollTop += pr.top - sr.top - sc.clientTop
+      - Math.max(pad, (sc.clientHeight - pr.height) / 2);
+    updateScreenEdges();
+    return;
+  }
+  const pick = line.querySelector(".pick");
   if (pick){
     const pr = pick.getBoundingClientRect(), sr = sc.getBoundingClientRect();
     if (pr.top < sr.top) sc.scrollTop += pr.top - sr.top;
@@ -11111,7 +11874,7 @@ document.addEventListener("scroll", e => {
   if (e.target instanceof Element && e.target.classList.contains("screen"))
     updateScreenEdges();
 }, true);
-window.addEventListener("resize", updateScreenEdges);
+window.addEventListener("resize", keepHeldLineInView);
 
 function translator(){
   $("tcell").innerHTML = `<div class="translator">
@@ -11123,10 +11886,10 @@ function translator(){
     <div class="tbar"><i id="tfill"></i></div>
     <div class="hold-row">
       <button class="btn arrow" id="t-prev" hidden
-        aria-label="${t("previous reading")}">\u2039</button>
+        aria-label="${t("previous spiral")}">\u25b4</button>
       <button class="btn hold" id="translate" aria-pressed="false">${t("Hold to translate")}</button>
       <button class="btn arrow" id="t-next" hidden
-        aria-label="${t("next reading")}">\u203a</button>
+        aria-label="${t("next spiral")}">\u25be</button>
     </div>
   </div>`;
   const btn = $("translate");
@@ -11184,7 +11947,12 @@ function translator(){
   }
   function moveChoice(d){
     const i = state.choosing;
-    if (i < 0) return;
+    if (i < 0){
+      const shown = state.pending.per.map((_, k) => k).filter(revealable);
+      const next = shown.indexOf(state.sel) + d;
+      if (next >= 0 && next < shown.length) selectSpiral(shown[next]);
+      return;
+    }
     const many = state.pending.per[i].length;
     state.pick[i] = (state.pick[i] + d + many) % many;
     paintTranslator();
@@ -11199,7 +11967,10 @@ function translator(){
      behind and one arrow press moves the choice several times. */
   if (choiceKeys) document.removeEventListener("keydown", choiceKeys);
   choiceKeys = e => {
-    if (state.choosing < 0 || state.mode !== "read") return;
+    if (state.mode !== "read" || !state.pending || e.defaultPrevented
+        || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.target instanceof Element && e.target.closest(
+        'input,textarea,select,[contenteditable]:not([contenteditable="false"])')) return;
     const d = KEYS[e.key];
     if (d === undefined) return;
     e.preventDefault();
@@ -11354,6 +12125,9 @@ state.seen = new Set();
 state.sel = 0;
 state.tilt = 0;
 state.flip = 1;
+state.handMix = 100;
+syncMix();
+syncCurl();
 state.tight = 0.29;
 try { state.me = localStorage.getItem("nomai.me") || ""; } catch (e) { state.me = ""; }
 $("me").value = state.me;
@@ -11396,10 +12170,12 @@ try {
     document.documentElement.setAttribute("data-theme", saved);
 } catch (e) { /* private window */ }
 paintTheme();
+initWallEditor();
 openOn(LANG);
 paintLang();
 hwRead();
 commit(true);
+initWorkspace();
 if (location.hash.startsWith("#library-scroll=")){
   try {
     const c = JSON.parse(decodeURIComponent(location.hash.slice("#library-scroll=".length)));

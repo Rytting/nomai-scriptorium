@@ -24,6 +24,9 @@ out = ROOT / "web" / "nomai-scriptorium.html"
 read_js = (ROOT / "web" / "read.js").read_text(encoding="utf-8")
 assert src.count("/*__READ__*/") == 1, "read placeholder missing"
 built = src.replace(marker, data).replace("/*__READ__*/", read_js)
+workspace_js = (ROOT / "web" / "workspace.js").read_text(encoding="utf-8")
+assert built.count("/*__WORKSPACE__*/") == 1
+built = built.replace("/*__WORKSPACE__*/", workspace_js)
 labels = (ROOT / "web" / "corpus-labels.js").read_text(encoding="utf-8")
 built = built.replace('<script src="corpus-labels.js"></script>', '<script>' + labels + '</script>')
 corpus = (ROOT / "docs" / "nomai_corpus.json").read_text(encoding="utf-8")
