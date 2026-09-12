@@ -27,12 +27,15 @@ built = src.replace(marker, data).replace("/*__READ__*/", read_js)
 workspace_js = (ROOT / "web" / "workspace.js").read_text(encoding="utf-8")
 assert built.count("/*__WORKSPACE__*/") == 1
 built = built.replace("/*__WORKSPACE__*/", workspace_js)
+eye_js = (ROOT / "web" / "eye-backdrop.js").read_text(encoding="utf-8")
+assert built.count("/*__EYE_BACKDROP__*/") == 1
+built = built.replace("/*__EYE_BACKDROP__*/", eye_js)
 labels = (ROOT / "web" / "corpus-labels.js").read_text(encoding="utf-8")
 built = built.replace('<script src="corpus-labels.js"></script>', '<script>' + labels + '</script>')
 corpus = (ROOT / "docs" / "nomai_corpus.json").read_text(encoding="utf-8")
 assert built.count("/*__RANDOM_CORPUS__*/null") == 1
 built = built.replace("/*__RANDOM_CORPUS__*/null", corpus)
-for name, count in (("write-icon", 1), ("read-icon", 1), ("curl-icons", 2)):
+for name, count in (("write-icon", 1), ("read-icon", 1), ("curl-icons", 2), ("eye-of-universe", 1)):
     icon = (ROOT / "assets" / "icons" / f"{name}.svg").read_text(encoding="utf-8")
     # Inline the geometry so the downloadable HTML needs no external icon files.
     group = icon[icon.index("<g "):icon.index("</g>") + 4].replace(' id="icon"', '')
