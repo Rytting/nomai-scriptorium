@@ -18,6 +18,10 @@ in one HTML file.
 
 - **Write** a sentence, sign it, and watch the spiral unwind.
 - **Reply** to a spiral and the scroll grows a branch, the way a Nomai wall does.
+- **Edit the whole wall**: select spirals on the wall or in the conversation, keep
+  separate rewrite and reply drafts, and undo or redo wall changes.
+- **Keep writing where you left off**: the wall, drafts and viewing position are
+  saved locally in this browser. Save or Ctrl/Cmd+S confirms with the page's readout.
 - **Read** a scroll somebody else drew &mdash; hold the translator against it and the
   lines come back one at a time. Replies stay hidden until you have read what they
   answer.
@@ -26,10 +30,13 @@ in one HTML file.
   Choose to read in the library or take a scroll into the Scriptorium without revealing its text first.
 - **Draw random scrolls** from the library. The original preset selection stays until you refresh it.
 
-Version **1.1** introduces the library. Every collected spiral now has Chinese text;
-existing mod translations are preserved and gaps use official Chinese with recorded
-source keys for later replacement. Search currently covers the whole library.
-See [release notes](docs/releases/v1.1.md).
+Version **1.2** brings whole-wall editing, local autosave, undo/redo and direct spiral
+selection linked to the translator. A cropped Eye of the Universe guides the read/write
+controls. Existing scrolls remain compatible. See [release notes](docs/releases/v1.2.md).
+
+The library introduced in [v1.1](docs/releases/v1.1.md) retains Chinese text for every
+collected spiral: mod translations take priority, with traceable official Chinese for
+the gaps. Search currently covers the whole library.
 
 ## How this was made
 
@@ -52,6 +59,9 @@ The 33 glyph shapes in `data/glyphs.json` are exported from
 [evanfields/NomaiText.jl](https://github.com/evanfields/NomaiText.jl), so they are
 derived from its author's work &mdash; hand-traced, in turn, from *Outer Wilds*. The
 mode and coil icons on the page were traced from the game by hand for this project.
+The Eye of the Universe background uses a community retrace from
+[OuterWildsPlanetIcons](https://github.com/RiosDeterioratingMentalHealth/OuterWildsPlanetIcons);
+its [source and attribution](assets/icons/eye-of-universe-source.md) are recorded alongside the asset.
 
 *Outer Wilds* is Mobius Digital's. This is a fan project and is not affiliated with
 them.
