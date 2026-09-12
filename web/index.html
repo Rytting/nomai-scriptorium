@@ -954,7 +954,7 @@ body.wall-editing .wrap{max-width:1460px}
     <div class="field">
       <label class="label" for="handmix">Hand mix</label>
       <div class="hw">
-        <input type="range" id="handmix" min="0" max="100" step="5" value="100">
+        <input type="range" id="handmix" min="0" max="100" step="5" value="60">
         <span class="hw-read" id="handmix-read"></span>
       </div>
     </div>
@@ -1533,24 +1533,32 @@ const REACH = [1, 1.5, 2.2, 3.2];
    placement that is the only one that fits. A spiral asked for by name does not come
    through here at all; that sorts ahead outright. */
 const PAY_FLIP = 0.45, PAY_TIGHT = 0.04;
-/* The mix says how much of the tree leans clockwise; this says which spirals do.
-   A stable dither, not a run: each spiral holds its own draw, so raising the mix turns
-   them over one at a time rather than reshuffling the sheet, and a scroll keeps its
-   pattern between redraws. Keyed on state.seed rather than the retry seed so relaying
-   the scroll does not deal a new hand to everybody. */
+/* The mix says how much of the tree leans clockwise. For a multi-spiral scroll the
+   chosen hands are spread across the sequence with a seeded phase, so 60% means
+   roughly 60% in the same direction without leaving a short wall all one way. A
+   single spiral still uses the seed directly. */
 function mixDraw(i){
   let h = ((i + 1) * 2654435761) ^ (((state.seed | 0) * 40503) >>> 0);
   h = (h ^ (h >>> 15)) >>> 0;
   return (h % 1000) / 1000;
 }
-function mixHand(i){
-  const p = (state.handMix == null ? 100 : state.handMix) / 100;
+const DEFAULT_HAND_MIX = 60;
+function mixHand(i, total = 0, mixValue = state.handMix){
+  const p = (mixValue == null ? DEFAULT_HAND_MIX : mixValue) / 100;
   if (p >= 1) return 1;
   if (p <= 0) return -1;
+  if (Number.isInteger(total) && total > 1){
+    const same = Math.max(1, Math.min(total - 1, Math.round(total * p)));
+    const phase = ((state.seed | 0) % total + total) % total;
+    const slot = (i + phase) % total;
+    return Math.floor((slot + 1) * same / total)
+      > Math.floor(slot * same / total) ? 1 : -1;
+  }
   return mixDraw(i) < p ? 1 : -1;
 }
 /* What a spiral is actually drawn in: its own hand if it was given one, else the mix. */
-const handOf = (sp, i) => sp.flip == null ? mixHand(i) : sp.flip;
+const handOf = (sp, i, total = 0, mixValue = state.handMix) =>
+  sp.flip == null ? mixHand(i, total, mixValue) : sp.flip;
 /* Attaching on the inward normal grows a reply into the parent's own coil. Nothing
    has to touch for that to look tangled, so it is a last resort, not a choice. */
 const PAY_INWARD = 0.9;
@@ -1692,9 +1700,9 @@ const joinLine = (p, q) =>
    its socket so it grows upward and stays balanced over it. The root's own tilt is
    exactly that rotation -- the layout is anchored on the tail, so tilting the root
    turns everything about the socket, children included. */
-function balanceTilt(spirals, flip, tight){
+function balanceTilt(spirals, flip, tight, mixValue = state.handMix){
   /* no verification on the trial pass: it only wants the centre of mass */
-  const trial = layScroll(spirals, 0, flip, tight);
+  const trial = layScroll(spirals, 0, flip, tight, undefined, undefined, [], mixValue);
   let sx = 0, sy = 0, n2 = 0;
   for (const it of trial) for (const p of centres(it.L.ncols,
       [...it.sp.grid.glyphs.keys()], it.L, it.shift)){ sx += p[0]; sy += p[1]; n2++; }
@@ -1785,7 +1793,8 @@ function tryHand(grid, amount, seed0, L){
   if (got === null && handRanOut) scrollRanOut = true;
   return got;
 }
-function layScroll(spirals, tilt0, flip, tight, amount, seed, fixed = []){
+function layScroll(spirals, tilt0, flip, tight, amount, seed, fixed = [],
+                   mixValue = state.handMix){
   const laid = [];
   spirals.forEach((sp, idx) => {
     const seed0 = seed + idx * 101;
@@ -1798,7 +1807,7 @@ function layScroll(spirals, tilt0, flip, tight, amount, seed, fixed = []){
       /* A hand chosen while rewriting this spiral wins over the scroll's default.
          The root has no placement search to fall back on, so its hand is simply
          what it was given. */
-      const rootFlip = handOf(sp, idx);
+      const rootFlip = handOf(sp, idx, spirals.length, mixValue);
       place = { shift: [0, 0], L: layoutFor(sp.grid.ncols, tilt0, rootFlip, tight),
                 seed: seed0, verified: false };
       if (amount !== undefined){
@@ -1817,7 +1826,8 @@ function layScroll(spirals, tilt0, flip, tight, amount, seed, fixed = []){
          a rule. Some grids cannot be read at one winding at all, and the shortlist
          keeps the other hand precisely so verification can rescue them; forcing it
          would ship those unreadable. PAY_FLIP is what makes the choice show. */
-      const cands = chooseSpot(laid, sp.parent, sp.grid.ncols, handOf(sp, idx), tight,
+      const cands = chooseSpot(laid, sp.parent, sp.grid.ncols,
+                               handOf(sp, idx, spirals.length, mixValue), tight,
                                [...sp.grid.glyphs.keys()], sp.flip != null);
       place = { ...cands[0], seed: seed0, verified: false };
       if (amount !== undefined){
@@ -1833,16 +1843,17 @@ function layScroll(spirals, tilt0, flip, tight, amount, seed, fixed = []){
   });
   return laid;
 }
-function renderScroll(spirals, amount, seed, flip, tight, budget = SCROLL_MS, fixed = []){
+function renderScroll(spirals, amount, seed, flip, tight, budget = SCROLL_MS, fixed = [],
+                     mixValue = state.handMix){
   const started = performance.now();
   /* The trial pass wants a centre of mass, not a good sheet, so it gets a third and
      the placements it settles for under pressure cost only the lean. */
   layoutUntil = started + budget / 3;
-  const tilt0 = fixed.length ? fixed[0].L.tilt : balanceTilt(spirals, flip, tight);
+  const tilt0 = fixed.length ? fixed[0].L.tilt : balanceTilt(spirals, flip, tight, mixValue);
   layoutUntil = started + budget;
   scrollUntil = amount === undefined ? Infinity : layoutUntil;
   scrollRanOut = false;
-  let placed = layScroll(spirals, tilt0, flip, tight, amount, seed, fixed);
+  let placed = layScroll(spirals, tilt0, flip, tight, amount, seed, fixed, mixValue);
   /* The root is settled first, on whether it reads, and the replies then fit around
      whatever it did. If one of them could not find a placement that reads back it has
      been shipped on hope, and the sheet it was given is the thing to change: lean the
@@ -1860,7 +1871,7 @@ function renderScroll(spirals, amount, seed, flip, tight, budget = SCROLL_MS, fi
          false is that the check was skipped, and the retry would skip them again. */
       if (scrollRanOut || performance.now() > scrollUntil) break;
       const alt = layScroll(spirals, tilt0 + RELAY[k], flip, tight, amount,
-                            seed + (k + 1) * SEED_STEP, fixed);
+                            seed + (k + 1) * SEED_STEP, fixed, mixValue);
       if (kept(alt) > kept(placed)) placed = alt;
     }
   }
@@ -2227,7 +2238,7 @@ const ZH = {
   "Open the wall": "\u6253\u5f00\u5377\u8f74\u5899",
   "There's more to explore here.": "这里还有更多可探索的地方",
   "Hand mix": "手性分布", "Curl (selected spiral)": "当前选中螺旋手性",
-  "all one way": "全部同向", "all mirrored": "全部镜像",
+  "all one way": "全部同向", "all mirrored": "全部镜像", "same direction": "同向",
   "Draw random scrolls": "随机换一批卷轴",
   "Or someone else's scroll": "或者别人的卷轴",
   "Six scrolls the Nomai left in this star system, kept here the way a wall keeps them. Take one down and read it; you can answer it afterwards, which is what the walls were for.":
@@ -2366,7 +2377,7 @@ function initWallEditor(){
       <button class="btn" id="wall-out" aria-label="${t("Zoom out")}">−</button>
       <button class="btn" id="wall-fit">Fit wall</button>
       <button class="btn" id="wall-in" aria-label="${t("Zoom in")}">+</button></div>
-      <div class="editor-toolbar">
+      <div class="editor-toolbar" id="editor-actions">
         <button class="btn" id="editor-undo">Undo</button>
         <button class="btn" id="editor-redo">Redo</button>
         <span class="editor-save-status" id="editor-save-status" role="status"></span>
@@ -2379,7 +2390,10 @@ function initWallEditor(){
         <button class="btn" id="editor-next" aria-label="${t("next spiral")}">▼</button>
       </div></div>`;
   $("write-pane").before(host);
-  for (const id of ["plate", "write-pane", "write-main", "thread-field", "write-controls"]){
+  const dlHome = document.createComment("dl-svg home");
+  $("dl-svg").before(dlHome);
+  editorHomes.push({el:$("dl-svg"), home:dlHome, target:"editor-actions"});
+  for (const id of ["plate", "write-pane", "write-main", "write-actions", "thread-field", "write-controls"]){
     const el = $(id), home = document.createComment(id + " home");
     el.before(home); editorHomes.push({el, home});
   }
@@ -2390,6 +2404,9 @@ function initWallEditor(){
   context.innerHTML='<span>Replying to</span><button type="button" id="reply-parent"></button>';
   $("msg").before(context);
   $("reply-parent").onclick=()=>pointEditor(true);
+  /* Export stays in the editor toolbar, beside Save, so it is visible as soon as a
+     wall is ready. Its home comment returns it to the explanatory panel in reading
+     mode, without creating a second button or event handler. */
   $("editor-save").onclick=()=>saveWorkspace(true);
   $("editor-undo").onclick=()=>travelHistory(-1);
   $("editor-redo").onclick=()=>travelHistory(1);
@@ -2424,8 +2441,8 @@ function syncEditorLayout(){
   if (!host) return;
   const on = state.mode === "write";
   document.body.classList.toggle("wall-editing", on); host.hidden = !on;
-  for (const {el, home} of editorHomes){
-    if (on) $(el.id === "plate" ? "editor-wall" : "editor-side").appendChild(el);
+  for (const {el, home, target} of editorHomes){
+    if (on) $(target || (el.id === "plate" ? "editor-wall" : "editor-side")).appendChild(el);
     else home.after(el);
   }
   $("editor-reply").hidden = !on;
@@ -2760,7 +2777,7 @@ function build(grow, growIdx, widened = false){
   if (sc.length === 1){
     /* `sp.flip` is a hand chosen for this spiral while rewriting it; state.flip is
        the scroll's default, and what a spiral that has never been given one uses. */
-    const soloFlip = handOf(sc[0], 0);
+    const soloFlip = handOf(sc[0], 0, sc.length);
     L = layoutFor(sc[0].grid.ncols, state.tilt, soloFlip, state.tight);
     state.placements = [{ L, shift: [0,0] }];
     /* Which hand it is written in is nobody's business but the drawing's, and for
@@ -3573,7 +3590,7 @@ $("c-ccw").onclick = () => setFlip(-1);
 function syncMix(){
   const v = state.handMix;
   $("handmix-read").textContent = v >= 100 ? t("all one way")
-    : v <= 0 ? t("all mirrored") : v + "%";
+    : v <= 0 ? t("all mirrored") : v + "% " + t("same direction");
 }
 $("handmix").oninput = e => {
   state.handMix = +e.target.value;
@@ -3981,7 +3998,7 @@ function etchCanon(c, budget){
     if (typeof g === "string") return null;
     sp.grid = g;
   }
-  return renderScroll(spirals, 0.12, 47, 1, 0.29, budget).svg;
+  return renderScroll(spirals, 0.12, 47, 1, 0.29, budget, [], DEFAULT_HAND_MIX).svg;
 }
 
 function takeDown(i, btn){
@@ -4604,7 +4621,7 @@ state.seen = new Set();
 state.sel = 0;
 state.tilt = 0;
 state.flip = 1;
-state.handMix = 100;
+state.handMix = DEFAULT_HAND_MIX;
 syncMix();
 syncCurl();
 state.tight = 0.29;

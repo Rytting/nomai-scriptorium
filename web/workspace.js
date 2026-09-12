@@ -10,7 +10,14 @@ const HISTORY_LIMIT = 20;
 function captureWorkspace(){
   if (state.mode !== "write") return state.writerDraft?.workspace || null;
   keepAimDraft();
-  return structuredClone({ version:1, lang:LANG, scroll:state.scroll, svg:state.svg,
+  /* The drawing is kept out of the clone and put back by reference. Strings cannot be
+     mutated, so sharing one is free and safe: every snapshot taken while the same
+     drawing was on screen now points at a single copy instead of carrying its own
+     megabytes, and an autosave -- which fires every half second of typing -- stops
+     copying the whole SVG on the main thread only to hand it to IndexedDB, which
+     serialises it again regardless. */
+  const svg = state.svg;
+  const shot = structuredClone({ version:1, lang:LANG, scroll:state.scroll,
     settings:{hw:state.hw,seed:state.seed,tilt:state.tilt,flip:state.flip,
       handMix:state.handMix,tight:state.tight},
     composer:{text:$("msg").value,sig:$("sig").value,signed:state.signed,
@@ -22,6 +29,8 @@ function captureWorkspace(){
     view:editorView, layoutKey:state.layoutKey,
     openSettings:[...document.querySelectorAll(".editor-settings")].map(d=>d.open)
   });
+  shot.svg = svg;
+  return shot;
 }
 function validateWorkspace(s){
   if (!s || s.version!==1 || !Array.isArray(s.scroll) || s.scroll.length>1000
@@ -52,7 +61,9 @@ function validateWorkspace(s){
 }
 function restoreWorkspace(saved){
   validateWorkspace(saved);
-  const s=structuredClone(saved);
+  /* same bargain on the way back: undoing should not cost a copy of the drawing */
+  const s=structuredClone({...saved,svg:""});
+  s.svg=saved.svg;
   workspaceBusy=true;
   try {
     if(reshapeTimer){clearTimeout(reshapeTimer);reshapeTimer=null;}

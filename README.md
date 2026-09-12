@@ -30,9 +30,10 @@ in one HTML file.
   Choose to read in the library or take a scroll into the Scriptorium without revealing its text first.
 - **Draw random scrolls** from the library. The original preset selection stays until you refresh it.
 
-Version **1.2** brings whole-wall editing, local autosave, undo/redo and direct spiral
-selection linked to the translator. A cropped Eye of the Universe guides the read/write
-controls. Existing scrolls remain compatible. See [release notes](docs/releases/v1.2.md).
+Version **1.2.1** keeps the whole-wall editing release easy to use: the export button
+now sits in the editor toolbar, and new multi-spiral walls default to a 60% same-direction
+mix so short walls do not all wind alike. Existing scrolls remain compatible. See
+[release notes](docs/releases/v1.2.1.md).
 
 The library introduced in [v1.1](docs/releases/v1.1.md) retains Chinese text for every
 collected spiral: mod translations take priority, with traceable official Chinese for
