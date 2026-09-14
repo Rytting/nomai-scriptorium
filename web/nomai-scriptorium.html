@@ -990,7 +990,7 @@ body.wall-editing .wrap{max-width:1460px}
   translator follows the drawing's own lines, and a picture has only pixels in it.</p>
 </div>
 
-<div class="plate empty" id="plate"><span id="plate-msg">waiting for words</span>
+<div class="plate empty" id="plate"><span id="plate-msg" data-message-key="waiting for words">waiting for words</span>
   <div id="art"></div>
 </div>
 
@@ -3614,7 +3614,7 @@ function paintLang(){
      translated once, and translating them again would have been guesswork. They are
      numbers now, and the labels beside them are ordinary text -- so the walker can
      have them, and a language switch in read mode stops leaving them behind. */
-  const skip = ["thread", "art", "readings", "msg", "sig", "me", "h1", "rack"]
+  const skip = ["thread", "art", "readings", "msg", "sig", "me", "h1", "rack", "plate-msg"]
     .map(id => $(id)).filter(Boolean);
   const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   const jobs = [], done = [];
@@ -3670,6 +3670,7 @@ function paintLang(){
     el.setAttribute(attr, t(box[k]));
   }
   paintRackLabels();
+  paintPlateMessage();
 }
 function setLang(v){
   if (v === LANG) return;
@@ -4406,11 +4407,17 @@ function build(grow, growIdx, widened = false){
   paint(sc, widened, shaky, unchecked);
   pointEditor(false); syncEditor(); syncCurl();scheduleWorkspaceSave();
 }
+function paintPlateMessage(){
+  // Dynamic messages must retain their key, not cache a translated text node as
+  // the original. Repainting this label must never clear or rebuild the drawing.
+  const message = $("plate-msg");
+  message.textContent = t(message.dataset.messageKey);
+}
 function empty(text){
-  text = t(text);
+  $("plate-msg").dataset.messageKey = text;
   $("plate").className = "plate empty";
   $("etch-done").hidden = true;
-  $("plate-msg").textContent = text;
+  paintPlateMessage();
   $("plate-msg").hidden = false;
   $("art").innerHTML = "";
   $("stats").innerHTML = ""; $("readings").innerHTML = ""; state.svg = "";
@@ -11619,7 +11626,7 @@ function takeDown(i, btn){
 
 /* Which build this is. Filled in from git when the page is built; `dev` when the
    source file is opened straight from disk. */
-const BUILD = /*__BUILD__*/{"rev": "v1.2.1", "date": "2026-09-12"};
+const BUILD = /*__BUILD__*/{"rev": "v1.2.1-1-gf915ea5", "date": "2026-09-14"};
 const REPO = "github.com/Rytting/nomai-scriptorium";
 
 /* The same writer, on a straight track instead of a coiled one. Everything that
