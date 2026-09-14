@@ -20,6 +20,9 @@ in one HTML file.
 - **Reply** to a spiral and the scroll grows a branch, the way a Nomai wall does.
 - **Edit the whole wall**: select spirals on the wall or in the conversation, keep
   separate rewrite and reply drafts, and undo or redo wall changes.
+- **Return to start**: restore the original opening spiral, text, signature and drawing
+  settings after confirmation. Undo brings your wall and drafts back; language, theme
+  and your name are kept. Ordinary refresh still restores your saved work.
 - **Keep writing where you left off**: the wall, drafts and viewing position are
   saved locally in this browser. Save or Ctrl/Cmd+S confirms with the page's readout.
 - **Read** a scroll somebody else drew &mdash; hold the translator against it and the

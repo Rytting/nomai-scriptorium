@@ -4,6 +4,7 @@
      thing to fit, which is why everything on it was about 40% of its size. -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nomai Scriptorium</title>
+<link rel="icon" type="image/svg+xml" sizes="any" href="../assets/icons/favicon.svg">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap">
 <style>
@@ -564,7 +565,7 @@ input[type=range]::-moz-range-thumb{
 .btn.primary:hover{background:var(--ui-accent-hover)}
 .btn:focus-visible{outline:2px solid var(--ui-focus);outline-offset:2px}
 #clear-wall{margin-inline-start:auto}
-#clear-wall:disabled{opacity:.45;cursor:default}
+#clear-wall:disabled,#reset-opening:disabled{opacity:.45;cursor:default}
 
 footer{color:var(--text-faint);font-size:12.5px;border-top:1px solid var(--edge-soft);
   padding-top:18px;display:flex;flex-direction:column;gap:5px}
@@ -983,6 +984,7 @@ body.wall-editing .wrap{max-width:1460px}
       <button class="btn" id="dl-svg" title="Saves the drawing as an SVG file">Etch the scroll</button>
       <button class="btn" id="surprise">Surprise me</button>
       <button class="btn" id="clear-wall" disabled>Clear wall</button>
+      <button class="btn" id="reset-opening" disabled>Return to start</button>
     </div>
     <p class="racknote" id="etch-why"><b>To translate it, etch it.</b> What is on the
     wall lives only in this page. Etching saves the scroll as a file, and that file is
@@ -2134,6 +2136,8 @@ const ZH = {
   "Replying to": "正在回复",
   "Unsigned spiral": "未署名螺旋",
   "Clear this wall? You can undo this. Your input text and signature will be kept.": "清空这面墙？可以撤销，输入框里的文字和署名会保留。",
+  "Return to start": "回到初始状态",
+  "Return to the opening spiral? This replaces the wall, input text, signature, and drafts, and resets drawing settings. Language, theme, and your name are kept. You can undo this.": "回到最初的螺旋？当前墙面、输入文字、署名和草稿会被替换，绘制参数也会恢复初始值。语言、主题和“我的名字”会保留。此操作可以撤销。",
   "Your text": "\u4f60\u7684\u6587\u5b57",
   "Someone else's scroll": "\u522b\u4eba\u7684\u5377\u8f74",
   "Drop a Nomai SVG here, or click to choose one":
@@ -3743,6 +3747,7 @@ function clearWrittenWall(){
   scheduleWorkspaceSave();
 }
 $("clear-wall").onclick = clearWrittenWall;
+$("reset-opening").onclick = resetToOpening;
 function setMode(m, useReadScroll = false){
   if (m === state.mode) return;
   if (m === "read") saveWriter();

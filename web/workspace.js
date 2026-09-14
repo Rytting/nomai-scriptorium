@@ -6,6 +6,7 @@ let workspaceTimer = null, workspaceRevision = 0, savedRevision = 0;
 let saveStatus = "Not saved locally", saveQueue = Promise.resolve();
 let historyPast = [], historyFuture = [], historyGroup = null;
 const HISTORY_LIMIT = 20;
+let openingWorkspace = null;
 
 function captureWorkspace(){
   if (state.mode !== "write") return state.writerDraft?.workspace || null;
@@ -138,6 +139,21 @@ function saveWorkspace(manual=false){
 function syncHistory(){
   if($("editor-undo"))$("editor-undo").disabled=!historyPast.length;
   if($("editor-redo"))$("editor-redo").disabled=!historyFuture.length;
+  if($("reset-opening"))$("reset-opening").disabled=!workspaceReady || !openingWorkspace;
+}
+function resetToOpening(){
+  if(!workspaceReady || !openingWorkspace || state.mode!=="write")return;
+  if(!confirm(t("Return to the opening spiral? This replaces the wall, input text, signature, and drafts, and resets drawing settings. Language, theme, and your name are kept. You can undo this.")))return;
+  // Finish pending geometry before the undo checkpoint, just like history travel.
+  if(reshapeTimer){clearTimeout(reshapeTimer);reshapeTimer=null;timedBuild();}
+  rememberHistory();
+  restoreWorkspace(openingWorkspace);
+  // The pristine checkpoint predates autosave restoration. Only its opening text
+  // follows today's UI language; user preferences and stored identity stay intact.
+  if(openingWorkspace.lang!==LANG && swapOpening(openingWorkspace.lang))commit(true);
+  syncHistory();
+  scheduleWorkspaceSave();
+  saveWorkspace(false);
 }
 function rememberHistory(group=null, committed=false){
   if(!workspaceReady || workspaceBusy || state.mode!=="write")return;
@@ -162,6 +178,9 @@ function travelHistory(direction){
   syncHistory();scheduleWorkspaceSave();
 }
 async function initWorkspace(){
+  // Keep the real initial drawing, not a saved user wall or a library import.
+  openingWorkspace=captureWorkspace();
+  openingWorkspace.drafts.clear();
   let interacted=false;
   const mark=()=>{interacted=true;};
   document.addEventListener("input",mark,true);document.addEventListener("pointerdown",mark,true);

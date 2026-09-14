@@ -13,6 +13,16 @@ import subprocess
 from urllib.parse import quote
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+def inline_favicon(page):
+    """Keep the tab icon in saved standalone pages, including offline copies."""
+    ref = 'href="../assets/icons/favicon.svg"'
+    assert page.count(ref) == 1, "favicon reference missing or duplicated"
+    icon = (ROOT / "assets" / "icons" / "favicon.svg").read_text(encoding="utf-8")
+    return page.replace(ref, 'href="data:image/svg+xml,' + quote(icon, safe='') + '"')
+
+
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--release-version', help='Stamp a release before its final commit is tagged')
 args = parser.parse_args()
@@ -69,7 +79,7 @@ def report(path):
           f"{len(path.read_text(encoding='utf-8')):,} bytes")
 
 
-out.write_text(built, encoding="utf-8")
+out.write_text(inline_favicon(built), encoding="utf-8")
 report(out)
 
 # The repository is the same trick with a different payload. Over file:// a fetch is
@@ -83,5 +93,5 @@ corpus = (ROOT / "docs" / "nomai_corpus.json").read_text(encoding="utf-8")
 corpus_marker = "/*__CORPUS__*/null"
 assert repo_src.count(corpus_marker) == 1, "corpus placeholder missing (already built?)"
 repo_out = ROOT / "web" / "nomai-repository.html"
-repo_out.write_text(repo_src.replace(corpus_marker, corpus), encoding="utf-8")
+repo_out.write_text(inline_favicon(repo_src.replace(corpus_marker, corpus)), encoding="utf-8")
 report(repo_out)

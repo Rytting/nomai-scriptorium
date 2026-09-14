@@ -96,6 +96,7 @@ const CORPUS_LABELS = {
      thing to fit, which is why everything on it was about 40% of its size. -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nomai Scriptorium</title>
+<link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%20fill%3D%22none%22%3E%0A%20%20%3Ctitle%3ENomai%20Scriptorium%3A%20send%20and%20receive%3C%2Ftitle%3E%0A%20%20%3Cpath%20d%3D%22M48%2034C37%2019%2025%208%2014%2015%202%2022%203%2037%2013%2042%2022%2047%2033%2042%2031%2034%2030%2028%2021%2027%2020%2033%22%20stroke%3D%22%239667ef%22%20stroke-width%3D%226.2%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M22%2059%2066%2054%2045%2095Z%20M35%2065%2054%2062%2044%2081Z%22%20fill%3D%22%23b49ae9%22%20fill-rule%3D%22evenodd%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M42%2058C43%2048%2044%2041%2048%2034%2058%2021%2074%209%2085%2016%2097%2024%2099%2041%2090%2049%2081%2057%2068%2051%2066%2043%2064%2035%2071%2030%2077%2033%2082%2035%2082%2039%2079%2041%22%20stroke%3D%22%23f18432%22%20stroke-width%3D%226.2%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%0A%3C%2Fsvg%3E%0A">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap">
 <style>
@@ -656,7 +657,7 @@ input[type=range]::-moz-range-thumb{
 .btn.primary:hover{background:var(--ui-accent-hover)}
 .btn:focus-visible{outline:2px solid var(--ui-focus);outline-offset:2px}
 #clear-wall{margin-inline-start:auto}
-#clear-wall:disabled{opacity:.45;cursor:default}
+#clear-wall:disabled,#reset-opening:disabled{opacity:.45;cursor:default}
 
 footer{color:var(--text-faint);font-size:12.5px;border-top:1px solid var(--edge-soft);
   padding-top:18px;display:flex;flex-direction:column;gap:5px}
@@ -1084,6 +1085,7 @@ body.wall-editing .wrap{max-width:1460px}
       <button class="btn" id="dl-svg" title="Saves the drawing as an SVG file">Etch the scroll</button>
       <button class="btn" id="surprise">Surprise me</button>
       <button class="btn" id="clear-wall" disabled>Clear wall</button>
+      <button class="btn" id="reset-opening" disabled>Return to start</button>
     </div>
     <p class="racknote" id="etch-why"><b>To translate it, etch it.</b> What is on the
     wall lives only in this page. Etching saves the scroll as a file, and that file is
@@ -3455,6 +3457,8 @@ const ZH = {
   "Replying to": "正在回复",
   "Unsigned spiral": "未署名螺旋",
   "Clear this wall? You can undo this. Your input text and signature will be kept.": "清空这面墙？可以撤销，输入框里的文字和署名会保留。",
+  "Return to start": "回到初始状态",
+  "Return to the opening spiral? This replaces the wall, input text, signature, and drafts, and resets drawing settings. Language, theme, and your name are kept. You can undo this.": "回到最初的螺旋？当前墙面、输入文字、署名和草稿会被替换，绘制参数也会恢复初始值。语言、主题和“我的名字”会保留。此操作可以撤销。",
   "Your text": "\u4f60\u7684\u6587\u5b57",
   "Someone else's scroll": "\u522b\u4eba\u7684\u5377\u8f74",
   "Drop a Nomai SVG here, or click to choose one":
@@ -3696,6 +3700,7 @@ let workspaceTimer = null, workspaceRevision = 0, savedRevision = 0;
 let saveStatus = "Not saved locally", saveQueue = Promise.resolve();
 let historyPast = [], historyFuture = [], historyGroup = null;
 const HISTORY_LIMIT = 20;
+let openingWorkspace = null;
 
 function captureWorkspace(){
   if (state.mode !== "write") return state.writerDraft?.workspace || null;
@@ -3828,6 +3833,21 @@ function saveWorkspace(manual=false){
 function syncHistory(){
   if($("editor-undo"))$("editor-undo").disabled=!historyPast.length;
   if($("editor-redo"))$("editor-redo").disabled=!historyFuture.length;
+  if($("reset-opening"))$("reset-opening").disabled=!workspaceReady || !openingWorkspace;
+}
+function resetToOpening(){
+  if(!workspaceReady || !openingWorkspace || state.mode!=="write")return;
+  if(!confirm(t("Return to the opening spiral? This replaces the wall, input text, signature, and drafts, and resets drawing settings. Language, theme, and your name are kept. You can undo this.")))return;
+  // Finish pending geometry before the undo checkpoint, just like history travel.
+  if(reshapeTimer){clearTimeout(reshapeTimer);reshapeTimer=null;timedBuild();}
+  rememberHistory();
+  restoreWorkspace(openingWorkspace);
+  // The pristine checkpoint predates autosave restoration. Only its opening text
+  // follows today's UI language; user preferences and stored identity stay intact.
+  if(openingWorkspace.lang!==LANG && swapOpening(openingWorkspace.lang))commit(true);
+  syncHistory();
+  scheduleWorkspaceSave();
+  saveWorkspace(false);
 }
 function rememberHistory(group=null, committed=false){
   if(!workspaceReady || workspaceBusy || state.mode!=="write")return;
@@ -3852,6 +3872,9 @@ function travelHistory(direction){
   syncHistory();scheduleWorkspaceSave();
 }
 async function initWorkspace(){
+  // Keep the real initial drawing, not a saved user wall or a library import.
+  openingWorkspace=captureWorkspace();
+  openingWorkspace.drafts.clear();
   let interacted=false;
   const mark=()=>{interacted=true;};
   document.addEventListener("input",mark,true);document.addEventListener("pointerdown",mark,true);
@@ -5282,6 +5305,7 @@ function clearWrittenWall(){
   scheduleWorkspaceSave();
 }
 $("clear-wall").onclick = clearWrittenWall;
+$("reset-opening").onclick = resetToOpening;
 function setMode(m, useReadScroll = false){
   if (m === state.mode) return;
   if (m === "read") saveWriter();
