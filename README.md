@@ -25,6 +25,9 @@ in one HTML file.
   and your name are kept. Ordinary refresh still restores your saved work.
 - **Keep writing where you left off**: the wall, drafts and viewing position are
   saved locally in this browser. Save or Ctrl/Cmd+S confirms with the page's readout.
+- **Export transparent PNG** for artwork: save the complete committed wall in its
+  current ink colors, without the stone background or interface effects, at 2048 px
+  on the longest side. Keep an SVG copy too: PNG images cannot be read back here.
 - **Read** a scroll somebody else drew &mdash; hold the translator against it and the
   lines come back one at a time. Replies stay hidden until you have read what they
   answer.

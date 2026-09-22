@@ -566,6 +566,7 @@ input[type=range]::-moz-range-thumb{
 .btn:focus-visible{outline:2px solid var(--ui-focus);outline-offset:2px}
 #clear-wall{margin-inline-start:auto}
 #clear-wall:disabled,#reset-opening:disabled{opacity:.45;cursor:default}
+#dl-png:disabled{opacity:.45;cursor:default}
 
 footer{color:var(--text-faint);font-size:12.5px;border-top:1px solid var(--edge-soft);
   padding-top:18px;display:flex;flex-direction:column;gap:5px}
@@ -669,7 +670,10 @@ body.wall-editing .wrap{max-width:1460px}
 .wall-editor .trow.aimed .said{-webkit-line-clamp:unset}
 .wall-editor .trow .depth{max-width:24%;overflow:hidden}
 .draft-mark{color:var(--amber);font-size:11px;white-space:nowrap}
-.editor-save-status{font-size:11px;color:var(--text-faint);margin-left:auto}
+/* Autosave updates on pointerup. Reserve its space so a touch release cannot
+   reflow the export buttons before the browser delivers the following click. */
+.editor-save-status{font-size:11px;color:var(--text-faint);margin-left:auto;
+  flex:0 0 17em;min-height:1.4em;text-align:right}
 .editor-reply-context{display:flex;gap:8px;align-items:baseline;font-size:13px;color:var(--text-dim)}
 .editor-reply-context button{min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap;flex:1;border:0;background:none;color:var(--text);font:inherit;cursor:pointer;padding:4px 0}
@@ -982,6 +986,7 @@ body.wall-editing .wrap{max-width:1460px}
   <div id="write-actions">
     <div class="actions">
       <button class="btn" id="dl-svg" title="Saves the drawing as an SVG file">Etch the scroll</button>
+      <button class="btn" id="dl-png" disabled title="Transparent image, 2048 px on the longest side. Keep the SVG to translate it later.">Export transparent PNG</button>
       <button class="btn" id="surprise">Surprise me</button>
       <button class="btn" id="clear-wall" disabled>Clear wall</button>
       <button class="btn" id="reset-opening" disabled>Return to start</button>
@@ -991,6 +996,7 @@ body.wall-editing .wrap{max-width:1460px}
     what you hand to somebody else, and what the translator reads.</p>
     <p class="racknote" id="etch-done" hidden><b>Etched.</b> Put this file into
     <b>Read a scroll</b> and the translator will read it back.</p>
+    <p class="racknote" id="png-done" hidden>PNG is for artwork. Keep the SVG if you want to translate the scroll later.</p>
   </div>
 </div>
 
@@ -2137,6 +2143,11 @@ const ZH = {
   "Unsigned spiral": "未署名螺旋",
   "Clear this wall? You can undo this. Your input text and signature will be kept.": "清空这面墙？可以撤销，输入框里的文字和署名会保留。",
   "Return to start": "回到初始状态",
+  "Export transparent PNG": "导出透明 PNG",
+  "Transparent image, 2048 px on the longest side. Keep the SVG to translate it later.": "透明背景，最长边 2048 像素。若要读回文字，请保留 SVG。",
+  "PNG is for artwork. Keep the SVG if you want to translate the scroll later.": "PNG 用于绘画素材。若要读回卷轴里的文字，请另外保留 SVG。",
+  "PNG exported": "PNG 已导出",
+  "Could not export PNG": "PNG 导出失败",
   "Return to the opening spiral? This replaces the wall, input text, signature, and drafts, and resets drawing settings. Language, theme, and your name are kept. You can undo this.": "回到最初的螺旋？当前墙面、输入文字、署名和草稿会被替换，绘制参数也会恢复初始值。语言、主题和“我的名字”会保留。此操作可以撤销。",
   "Your text": "\u4f60\u7684\u6587\u5b57",
   "Someone else's scroll": "\u522b\u4eba\u7684\u5377\u8f74",
@@ -2338,7 +2349,7 @@ function paintLang(){
     }
   }
   for (const [id, attr] of [["me", "placeholder"], ["sig", "placeholder"],
-                            ["dl-svg", "title"], ["theme", "aria-label"],
+                            ["dl-svg", "title"], ["dl-png", "title"], ["theme", "aria-label"],
                             ["pot", "aria-label"]]){
     const el = $(id);
     if (!el) continue;
@@ -2395,9 +2406,11 @@ function initWallEditor(){
         <button class="btn" id="editor-next" aria-label="${t("next spiral")}">▼</button>
       </div></div>`;
   $("write-pane").before(host);
-  const dlHome = document.createComment("dl-svg home");
-  $("dl-svg").before(dlHome);
-  editorHomes.push({el:$("dl-svg"), home:dlHome, target:"editor-actions"});
+  for(const id of ["dl-svg", "dl-png"]){
+    const dlHome = document.createComment(id + " home");
+    $(id).before(dlHome);
+    editorHomes.push({el:$(id), home:dlHome, target:"editor-actions"});
+  }
   for (const id of ["plate", "write-pane", "write-main", "write-actions", "thread-field", "write-controls"]){
     const el = $(id), home = document.createComment(id + " home");
     el.before(home); editorHomes.push({el, home});
@@ -2636,6 +2649,7 @@ function contentNow(){
 }
 function syncWrite(){
   syncEditor();
+  syncPngExport();
   $("clear-wall").disabled = !state.scroll.length;
   const ready = !!$("msg").value.trim()
     && (!state.signed || !!$("sig").value.trim());
@@ -2863,6 +2877,8 @@ function empty(text){
   $("plate-msg").hidden = false;
   $("art").innerHTML = "";
   $("stats").innerHTML = ""; $("readings").innerHTML = ""; state.svg = "";
+  $("png-done").hidden = true;
+  syncPngExport();
   beams(false);
 }
 /* Reveal the drawing the way it grows: turn by turn, from the wide outer ring
@@ -3637,16 +3653,22 @@ $("surprise").onclick = () => {
    no such host, and the ordinary link is exactly right. Pick by whether a host is
    there at all -- a host that is there but withholds the capability means saving is
    genuinely unavailable, and then the button hides rather than pretending. */
-let saver = null, plainSave = false;
+/*__PNG_EXPORT__*/
+let saver = null, plainSave = false, pngBusy = false;
 const dlBtn = $("dl-svg");
+const pngBtn = $("dl-png");
 dlBtn.disabled = true;
 (async () => {
   if (window.claude && claude.use){
+    // The existing artifact-host saver only has a verified text-file contract.
+    // PNG downloads are supported in the standalone browser page.
+    pngBtn.hidden = true;
     saver = await claude.use("downloads");
     if (saver) dlBtn.disabled = false; else dlBtn.hidden = true;
   } else {
     plainSave = true;
     dlBtn.disabled = false;
+    syncPngExport();
   }
 })();
 /* Saving a file is the middle of something, not the end of it: the reason to have
@@ -3692,6 +3714,34 @@ dlBtn.onclick = async () => {
       : "Could not save");
   }
   setTimeout(() => { dlBtn.textContent = was; dlBtn.disabled = false; }, 1600);
+};
+function syncPngExport(){
+  pngBtn.disabled = pngBusy || !plainSave || state.mode !== "write" || !state.svg || !state.scroll.length;
+}
+pngBtn.onclick = async () => {
+  if(pngBtn.disabled)return;
+  pngBusy = true; syncPngExport();
+  try {
+    // Include a just-moved shape slider, but never commit text from the input box.
+    if(reshapeTimer){clearTimeout(reshapeTimer);reshapeTimer=null;timedBuild();}
+    const svg = state.svg, filename = slug().replace(/\.svg$/, ".png");
+    const style = getComputedStyle($("art"));
+    const inks = sigsOf().map(sig => style.getPropertyValue("--ink-" + inkFor(sig)).trim());
+    const blob = await transparentPngBlob(svg, inks);
+    const url = URL.createObjectURL(blob), a = document.createElement("a");
+    try {
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+    } finally {
+      a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+    $("png-done").hidden = false;
+    hud(t("PNG exported"));
+  } catch(err) {
+    hud(t("Could not export PNG"));
+  } finally {
+    pngBusy = false; syncPngExport();
+  }
 };
 /* ---- reading a drawing ---- */
 let readGeneration = 0;

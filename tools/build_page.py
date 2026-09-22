@@ -34,6 +34,9 @@ out = ROOT / "web" / "nomai-scriptorium.html"
 read_js = (ROOT / "web" / "read.js").read_text(encoding="utf-8")
 assert src.count("/*__READ__*/") == 1, "read placeholder missing"
 built = src.replace(marker, data).replace("/*__READ__*/", read_js)
+png_js = (ROOT / "web" / "export-png.js").read_text(encoding="utf-8")
+assert built.count("/*__PNG_EXPORT__*/") == 1
+built = built.replace("/*__PNG_EXPORT__*/", png_js)
 workspace_js = (ROOT / "web" / "workspace.js").read_text(encoding="utf-8")
 assert built.count("/*__WORKSPACE__*/") == 1
 built = built.replace("/*__WORKSPACE__*/", workspace_js)
