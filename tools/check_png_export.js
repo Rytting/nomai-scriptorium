@@ -16,6 +16,8 @@ async caller => {
     check('PNG enabled beside existing SVG export', await page.evaluate(() =>
       !$('dl-png').disabled && $('dl-png').parentElement.id === 'editor-actions'
       && $('dl-svg').parentElement.id === 'editor-actions'));
+    check('English photo label explains transparent PNG on hover', await page.evaluate(() =>
+      $('dl-png').textContent==='Take a photo' && $('dl-png').title.includes('transparent PNG')));
     await page.evaluate(() => {
       const create = URL.createObjectURL;
       URL.createObjectURL = function(blob){
@@ -136,7 +138,8 @@ async caller => {
     await page.locator('#m-write').click();
     await page.locator('#lang-zh').click();
     check('PNG label and help switch to Chinese', await page.evaluate(() =>
-      $('dl-png').textContent==='导出透明 PNG' && $('dl-png').title.includes('2048 像素')));
+      $('dl-png').textContent==='拍张照片' && $('dl-png').title.includes('透明 PNG')
+      && $('dl-png').title.includes('2048 像素')));
     await context.setOffline(true);
     const keyboardDownload = page.waitForEvent('download');
     await page.locator('#dl-png').focus();
