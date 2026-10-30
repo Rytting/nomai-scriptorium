@@ -30,7 +30,8 @@ in one HTML file.
   on the longest side. Keep an SVG copy too: PNG images cannot be read back here.
 - **Read** a scroll somebody else drew &mdash; hold the translator against it and the
   lines come back one at a time. Replies stay hidden until you have read what they
-  answer.
+  answer. To open a scroll from a link instead of a file, add `?read=<address of the .svg>`
+  to the page's address; the scroll has to be on the same site or allow being read from it.
 - **Explore the [Nomai Library](https://rytting.github.io/nomai-scriptorium/web/nomai-repository.html)**:
   45 locations, 143 conversations and 684 spirals, browsable by celestial body or speaker.
   Choose to read in the library or take a scroll into the Scriptorium without revealing its text first.

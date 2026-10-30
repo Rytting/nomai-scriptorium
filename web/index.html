@@ -882,7 +882,7 @@ body.wall-editing .wrap{max-width:1460px}
     viewBox="-10 -10 20 20" aria-hidden="true"><circle class="ring" r="8.4"/><circle
     class="pip" r="3.2"/></svg><span>There's more to explore here.</span></a>
   <span class="label">Or someone else's scroll</span>
-  <label class="drop" id="drop" tabindex="0">
+  <label class="drop" id="drop" tabindex="0" role="button" aria-controls="file">
     <!-- Android's picker greys out anything whose reported type is not in this
          list, and it reports an .svg from Files as octet-stream or plain text about
          as often as it reports it as an image. Whatever comes back is read as text
@@ -4766,5 +4766,22 @@ if (location.hash.startsWith("#library-scroll=")){
       } catch (e) { fail(t("that scroll could not be etched")); }
     }, 0));
   } catch (e) { fail(t("that scroll could not be etched")); }
+}
+/* ?read=<address of a scroll> opens the page already reading it. For whoever cannot
+   hand the page a file -- a browser driven by a script or by an assistant has no file
+   picker to click -- but can open a link. The address is fetched like any other
+   resource, so it has to be on this site or allow being read from it. */
+const readParam = new URLSearchParams(location.search).get("read");
+if (readParam && !location.hash.startsWith("#library-scroll=")){
+  setMode("read");
+  fetch(new URL(readParam, location.href))
+    .then(r => { if (!r.ok) throw new Error(r.status + " " + r.statusText); return r.text(); })
+    .then(text => {
+      const name = decodeURIComponent(new URL(readParam, location.href).pathname.split("/").pop())
+        || "scroll.svg";
+      takeFile(new File([text], name, { type: "image/svg+xml" }));
+    })
+    .catch(e => fail(LANG === "zh" ? "取不到链接里的卷轴：" + e.message
+                                   : "Could not fetch the scroll at that link: " + e.message));
 }
 </script>
